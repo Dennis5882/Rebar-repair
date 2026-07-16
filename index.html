@@ -4,19 +4,19 @@
 <meta charset="utf-8">
 <title>배근수정 UI — MIDAS Gen NX</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <div class="wrap">
   <h1>배근수정 UI</h1>
-  <div class="subtitle">MIDAS Gen NX · midas-nx SDK 기반 로컬 편집기 — 여기서 저장하면 실제 Gen NX 모델에 반영됩니다.</div>
+  <div class="subtitle">MIDAS Gen NX · Open API 기반 — 누구나 자신의 MAPI Key로 접속해 자신의 Gen NX 모델을 편집할 수 있습니다.</div>
 
   <section class="panel">
     <h2>연결 정보</h2>
     <div class="conn-grid">
       <div class="field">
         <label for="mapiKey">MAPI Key</label>
-        <input id="mapiKey" type="password" placeholder="Gen NX에서 발급받은 MAPI Key">
+        <input id="mapiKey" type="password" placeholder="본인 Gen NX에서 발급받은 MAPI Key">
       </div>
       <div class="field">
         <label for="product">제품</label>
@@ -26,11 +26,15 @@
         </select>
       </div>
       <div class="field">
-        <label for="baseUrl">Base URL (로컬 Gen NX 사용 시)</label>
-        <input id="baseUrl" type="text" placeholder="예: http://localhost:8080/gen (비워두면 클라우드 API 사용)">
+        <label for="baseUrl">Base URL (온프레미스 전용, 보통 비워둠)</label>
+        <input id="baseUrl" type="text" placeholder="비워두면 MIDASIT 클라우드 API 사용 (권장)">
       </div>
     </div>
-    <div class="hint">Key는 이 브라우저 세션에만 보관되며(sessionStorage), 서버 디스크에 저장되지 않습니다.</div>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn" id="verifyBtn">연결 테스트</button>
+      <span class="hint" id="verifyResult" style="margin:0"></span>
+    </div>
+    <div class="hint">MAPI Key는 이 브라우저 세션에만 보관되며(sessionStorage), 서버에 저장되지 않고 매 요청마다 그대로 전달만 됩니다. Gen NX가 켜져 있고 API가 활성화되어 있어야 합니다.</div>
   </section>
 
   <div class="tabs">
@@ -339,6 +343,6 @@
     단면 미리보기는 개략도이며 실제 배치·간격과 다를 수 있습니다 (보/기둥/가새는 중앙 단면, 벽체는 평면 단면 기준).
   </p>
 </div>
-<script src="/static/app.js"></script>
+<script src="/js/app.js"></script>
 </body>
 </html>

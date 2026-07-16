@@ -13,11 +13,30 @@ for (const id of connFields) {
 
 function connPayload() {
   return {
-    mapi_key: document.getElementById("mapiKey").value,
+    apiKey: document.getElementById("mapiKey").value,
     product: document.getElementById("product").value,
-    base_url: document.getElementById("baseUrl").value,
+    baseUrl: document.getElementById("baseUrl").value,
   };
 }
+
+document.getElementById("verifyBtn").addEventListener("click", async () => {
+  const out = document.getElementById("verifyResult");
+  out.textContent = "확인 중...";
+  try {
+    const res = await api("/api/verify", connPayload());
+    if (res.ok) {
+      out.textContent = `연결 확인됨 (${res.program || connPayload().product}${res.user ? " · " + res.user : ""})`;
+    } else if (res.code === "disconnected") {
+      out.textContent = "키는 유효하지만 Gen NX가 연결되어 있지 않습니다. Gen NX를 켜고 API를 활성화하세요.";
+    } else if (res.code === "mismatch") {
+      out.textContent = `이 키는 ${res.program} 제품용입니다. 제품 선택을 확인하세요.`;
+    } else {
+      out.textContent = "연결 실패: " + (res.error || `HTTP ${res.httpStatus || "?"}`);
+    }
+  } catch (e) {
+    out.textContent = "연결 테스트 중 오류: " + e;
+  }
+});
 
 async function api(path, body) {
   const res = await fetch(path, {
@@ -317,7 +336,7 @@ document.querySelectorAll('[data-action="list"]').forEach((btn) => {
     const type = btn.dataset.type;
     btn.disabled = true;
     try {
-      const res = await api("/api/list", { member_type: type, ...connPayload() });
+      const res = await api("/api/rebar-list", { memberType: type, ...connPayload() });
       if (!res.ok) {
         showStatus(type, false, "목록 조회 실패: " + res.error);
         return;
@@ -364,7 +383,7 @@ document.querySelectorAll('[data-action="save"]').forEach((btn) => {
     btn.disabled = true;
     showStatus(type, true, "저장 중...");
     try {
-      const res = await api("/api/update", { member_type: type, key, payload, ...connPayload() });
+      const res = await api("/api/rebar-update", { memberType: type, key, payload, ...connPayload() });
       if (!res.ok) {
         showStatus(type, false, "저장 실패: " + res.error);
         return;
