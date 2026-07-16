@@ -18,13 +18,7 @@ let currentLang = I18N_DEFAULT;
 let dict = {};
 const localeCache = {};
 
-function detectInitialLang() {
-  try {
-    const saved = localStorage.getItem(I18N_STORAGE_KEY);
-    if (saved && I18N_LANGS.some((l) => l.code === saved)) return saved;
-  } catch (e) {
-    /* localStorage unavailable (private mode etc.) */
-  }
+function detectFromBrowser() {
   const nav = (navigator.language || "").toLowerCase();
   const exact = I18N_LANGS.find((l) => l.code.toLowerCase() === nav);
   if (exact) return exact.code;
@@ -33,6 +27,36 @@ function detectInitialLang() {
   }
   const prefix = I18N_LANGS.find((l) => nav.startsWith(l.code.toLowerCase() + "-"));
   return prefix ? prefix.code : I18N_DEFAULT;
+}
+
+// Vercel attaches geo-IP headers to deployed requests; /api/geo-lang reads
+// those to suggest a language. Unavailable in local/static serving, so this
+// fails fast and falls back to browser-language detection.
+async function detectFromIp() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1500);
+  try {
+    const res = await fetch("/api/geo-lang", { signal: controller.signal });
+    const data = await res.json();
+    if (data && data.lang && I18N_LANGS.some((l) => l.code === data.lang)) return data.lang;
+  } catch (e) {
+    /* geo lookup unavailable — caller falls back to browser language */
+  } finally {
+    clearTimeout(timer);
+  }
+  return null;
+}
+
+async function detectInitialLang() {
+  try {
+    const saved = localStorage.getItem(I18N_STORAGE_KEY);
+    if (saved && I18N_LANGS.some((l) => l.code === saved)) return saved;
+  } catch (e) {
+    /* localStorage unavailable (private mode etc.) */
+  }
+  const byIp = await detectFromIp();
+  if (byIp) return byIp;
+  return detectFromBrowser();
 }
 
 async function loadLocale(code) {
@@ -89,8 +113,8 @@ function buildLangSwitcher() {
   sel.addEventListener("change", () => setLang(sel.value));
 }
 
-currentLang = detectInitialLang();
 const i18nReady = (async () => {
+  currentLang = await detectInitialLang();
   buildLangSwitcher();
   await setLang(currentLang);
 })();

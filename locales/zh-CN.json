@@ -3,6 +3,7 @@
   "app.subtitle": "MIDAS Gen NX · 基于 Open API — 任何人都可以使用自己的 MAPI Key 连接并编辑自己的 Gen NX 模型。",
   "app.footerHint": "尺寸、间距、保护层数值的单位遵循 MIDAS 模型中当前使用的长度单位。断面预览为示意图，可能与实际配置/间距有所不同（梁/柱/斜撑以中央断面为准，墙体以平面断面为准）。",
   "lang.label": "语言",
+  "app.developerLabel": "开发者",
 
   "conn.title": "连接信息",
   "conn.mapiKey": "MAPI Key",
