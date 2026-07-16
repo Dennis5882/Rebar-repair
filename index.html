@@ -8,90 +8,94 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>배근수정 UI</h1>
-  <div class="subtitle">MIDAS Gen NX · Open API 기반 — 누구나 자신의 MAPI Key로 접속해 자신의 Gen NX 모델을 편집할 수 있습니다.</div>
+  <div class="lang-row">
+    <label for="langSelect" data-i18n="lang.label">언어</label>
+    <select id="langSelect"></select>
+  </div>
+  <h1 data-i18n="app.title">배근수정 UI</h1>
+  <div class="subtitle" data-i18n="app.subtitle">MIDAS Gen NX · Open API 기반 — 누구나 자신의 MAPI Key로 접속해 자신의 Gen NX 모델을 편집할 수 있습니다.</div>
 
   <section class="panel">
-    <h2>연결 정보</h2>
+    <h2 data-i18n="conn.title">연결 정보</h2>
     <div class="conn-grid">
       <div class="field">
-        <label for="mapiKey">MAPI Key</label>
-        <input id="mapiKey" type="password" placeholder="본인 Gen NX에서 발급받은 MAPI Key">
+        <label for="mapiKey" data-i18n="conn.mapiKey">MAPI Key</label>
+        <input id="mapiKey" type="password" data-i18n-placeholder="conn.mapiKeyPlaceholder" placeholder="본인 Gen NX에서 발급받은 MAPI Key">
       </div>
       <div class="field">
-        <label for="product">제품</label>
+        <label for="product" data-i18n="conn.product">제품</label>
         <select id="product">
           <option value="gen" selected>Gen NX</option>
           <option value="civil">Civil NX</option>
         </select>
       </div>
       <div class="field">
-        <label for="baseUrl">Base URL (온프레미스 전용, 보통 비워둠)</label>
-        <input id="baseUrl" type="text" placeholder="비워두면 MIDASIT 클라우드 API 사용 (권장)">
+        <label for="baseUrl" data-i18n="conn.baseUrl">Base URL (온프레미스 전용, 보통 비워둠)</label>
+        <input id="baseUrl" type="text" data-i18n-placeholder="conn.baseUrlPlaceholder" placeholder="비워두면 MIDASIT 클라우드 API 사용 (권장)">
       </div>
     </div>
     <div class="btn-row" style="margin-top:0">
-      <button class="btn" id="verifyBtn">연결 테스트</button>
+      <button class="btn" id="verifyBtn" data-i18n="conn.testBtn">연결 테스트</button>
       <span class="hint" id="verifyResult" style="margin:0"></span>
     </div>
-    <div class="hint">MAPI Key는 이 브라우저 세션에만 보관되며(sessionStorage), 서버에 저장되지 않고 매 요청마다 그대로 전달만 됩니다. Gen NX가 켜져 있고 API가 활성화되어 있어야 합니다.</div>
+    <div class="hint" data-i18n="conn.hint">MAPI Key는 이 브라우저 세션에만 보관되며(sessionStorage), 서버에 저장되지 않고 매 요청마다 그대로 전달만 됩니다. Gen NX가 켜져 있고 API가 활성화되어 있어야 합니다.</div>
   </section>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="BEAM">보 (Beam)</button>
-    <button class="tab-btn" data-tab="COLUMN">기둥 (Column)</button>
-    <button class="tab-btn" data-tab="WALL">벽체 (Wall)</button>
-    <button class="tab-btn" data-tab="BRACE">가새 (Brace)</button>
+    <button class="tab-btn active" data-tab="BEAM" data-i18n="tab.beam">보 (Beam)</button>
+    <button class="tab-btn" data-tab="COLUMN" data-i18n="tab.column">기둥 (Column)</button>
+    <button class="tab-btn" data-tab="WALL" data-i18n="tab.wall">벽체 (Wall)</button>
+    <button class="tab-btn" data-tab="BRACE" data-i18n="tab.brace">가새 (Brace)</button>
   </div>
 
   <!-- ===================== BEAM ===================== -->
   <div class="tab-panel active" id="panel-BEAM">
     <div class="editor-grid">
       <div class="panel">
-        <h2>대상 &amp; 불러오기</h2>
+        <h2 data-i18n="common.targetTitle">대상 &amp; 불러오기</h2>
         <div class="select-row">
           <div class="field">
-            <label for="BEAM-key">단면번호 (key)</label>
-            <input id="BEAM-key" type="text" placeholder="예: 211">
+            <label for="BEAM-key" data-i18n="common.sectionKeyLabel">단면번호 (key)</label>
+            <input id="BEAM-key" type="text" data-i18n-placeholder="beam.keyPlaceholder" placeholder="예: 211">
           </div>
-          <button class="btn" data-action="list" data-type="BEAM">목록 불러오기</button>
+          <button class="btn" data-action="list" data-type="BEAM" data-i18n="common.loadListBtn">목록 불러오기</button>
         </div>
         <div class="field">
-          <label for="BEAM-existing">기존 단면 선택</label>
-          <select id="BEAM-existing"><option value="">-- 목록 불러오기 후 선택 --</option></select>
+          <label for="BEAM-existing" data-i18n="common.existingSectionLabel">기존 단면 선택</label>
+          <select id="BEAM-existing"><option value="" data-i18n="common.existingDefaultOption">-- 목록 불러오기 후 선택 --</option></select>
         </div>
         <div class="keylist" id="BEAM-keylist"></div>
 
-        <h2 style="margin-top:16px">배근 값 (I / M / J 동일 구조)</h2>
+        <h2 style="margin-top:16px" data-i18n="beam.sectorsTitle">배근 값 (I / M / J 동일 구조)</h2>
         <div id="BEAM-sectors"></div>
 
-        <div class="subhead">피복두께</div>
+        <div class="subhead" data-i18n="beam.coverTitle">피복두께</div>
         <div class="row2">
-          <div class="field"><label for="BEAM-DT">상부 피복 DT</label><input id="BEAM-DT" type="number" step="any"></div>
-          <div class="field"><label for="BEAM-DB">하부 피복 DB</label><input id="BEAM-DB" type="number" step="any"></div>
+          <div class="field"><label for="BEAM-DT" data-i18n="beam.dtLabel">상부 피복 DT</label><input id="BEAM-DT" type="number" step="any"></div>
+          <div class="field"><label for="BEAM-DB" data-i18n="beam.dbLabel">하부 피복 DB</label><input id="BEAM-DB" type="number" step="any"></div>
         </div>
 
-        <div class="subhead">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
+        <div class="subhead" data-i18n="common.dimsHintTitle">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
         <div class="row2">
-          <div class="field"><label for="BEAM-B">폭 B (mm)</label><input id="BEAM-B" type="number" value="300"></div>
-          <div class="field"><label for="BEAM-H">춤 H (mm)</label><input id="BEAM-H" type="number" value="600"></div>
+          <div class="field"><label for="BEAM-B" data-i18n="common.widthB">폭 B (mm)</label><input id="BEAM-B" type="number" value="300"></div>
+          <div class="field"><label for="BEAM-H" data-i18n="common.heightH">춤 H (mm)</label><input id="BEAM-H" type="number" value="600"></div>
         </div>
 
         <div class="btn-row">
-          <button class="btn primary" data-action="save" data-type="BEAM">저장 (Gen NX에 반영)</button>
+          <button class="btn primary" data-action="save" data-type="BEAM" data-i18n="common.saveBtn">저장 (Gen NX에 반영)</button>
         </div>
         <div class="status" id="BEAM-status"></div>
       </div>
 
       <div class="panel">
-        <h2>단면 미리보기 (중앙 M단 기준)</h2>
+        <h2 data-i18n="beam.previewTitle">단면 미리보기 (중앙 M단 기준)</h2>
         <div class="diagrams">
-          <div class="diagram-box"><div class="cap">불러온 값</div><div id="BEAM-svg-before" class="sec-empty">불러오기 전</div></div>
-          <div class="diagram-box"><div class="cap">현재 입력값</div><div id="BEAM-svg-after" class="sec-empty">-</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.loadedCap">불러온 값</div><div id="BEAM-svg-before" class="sec-empty" data-i18n="common.beforeLoad">불러오기 전</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.currentCap">현재 입력값</div><div id="BEAM-svg-after" class="sec-empty">-</div></div>
         </div>
         <div class="legend">
-          <span><i class="dot" style="background:var(--main-bar)"></i>주철근</span>
-          <span><i class="dot" style="background:var(--hoop)"></i>스터럽</span>
+          <span><i class="dot" style="background:var(--main-bar)"></i><span data-i18n="common.mainBar">주철근</span></span>
+          <span><i class="dot" style="background:var(--hoop)"></i><span data-i18n="beam.stirrup">스터럽</span></span>
         </div>
       </div>
     </div>
@@ -101,78 +105,78 @@
   <div class="tab-panel" id="panel-COLUMN">
     <div class="editor-grid">
       <div class="panel">
-        <h2>대상 &amp; 불러오기</h2>
+        <h2 data-i18n="common.targetTitle">대상 &amp; 불러오기</h2>
         <div class="select-row">
           <div class="field">
-            <label for="COLUMN-key">단면번호 (key)</label>
-            <input id="COLUMN-key" type="text" placeholder="예: 1">
+            <label for="COLUMN-key" data-i18n="common.sectionKeyLabel">단면번호 (key)</label>
+            <input id="COLUMN-key" type="text" data-i18n-placeholder="common.keyPlaceholderGeneric" placeholder="예: 1">
           </div>
-          <button class="btn" data-action="list" data-type="COLUMN">목록 불러오기</button>
+          <button class="btn" data-action="list" data-type="COLUMN" data-i18n="common.loadListBtn">목록 불러오기</button>
         </div>
         <div class="field">
-          <label for="COLUMN-existing">기존 단면 선택</label>
-          <select id="COLUMN-existing"><option value="">-- 목록 불러오기 후 선택 --</option></select>
+          <label for="COLUMN-existing" data-i18n="common.existingSectionLabel">기존 단면 선택</label>
+          <select id="COLUMN-existing"><option value="" data-i18n="common.existingDefaultOption">-- 목록 불러오기 후 선택 --</option></select>
         </div>
         <div class="keylist" id="COLUMN-keylist"></div>
 
-        <div class="subhead">주철근 (MAIN_BAR)</div>
+        <div class="subhead" data-i18n="common.mainBarTitle">주철근 (MAIN_BAR)</div>
         <div class="row3">
-          <div class="field"><label for="COLUMN-mainName">규격</label><input id="COLUMN-mainName" placeholder="D25"></div>
-          <div class="field"><label for="COLUMN-mainNum">총 개수</label><input id="COLUMN-mainNum" type="number"></div>
-          <div class="field"><label for="COLUMN-mainRow">열수</label><input id="COLUMN-mainRow" type="number"></div>
+          <div class="field"><label for="COLUMN-mainName" data-i18n="common.spec">규격</label><input id="COLUMN-mainName" placeholder="D25"></div>
+          <div class="field"><label for="COLUMN-mainNum" data-i18n="common.totalCount">총 개수</label><input id="COLUMN-mainNum" type="number"></div>
+          <div class="field"><label for="COLUMN-mainRow" data-i18n="common.rowCount">열수</label><input id="COLUMN-mainRow" type="number"></div>
         </div>
-        <div class="checkline"><input id="COLUMN-useCorner" type="checkbox"><label for="COLUMN-useCorner" style="margin:0">코너철근 사용</label></div>
-        <div class="field" id="COLUMN-cornerWrap"><label for="COLUMN-cornerName">코너철근 규격</label><input id="COLUMN-cornerName" placeholder="D29"></div>
+        <div class="checkline"><input id="COLUMN-useCorner" type="checkbox"><label for="COLUMN-useCorner" style="margin:0" data-i18n="column.useCorner">코너철근 사용</label></div>
+        <div class="field" id="COLUMN-cornerWrap"><label for="COLUMN-cornerName" data-i18n="column.cornerSpec">코너철근 규격</label><input id="COLUMN-cornerName" placeholder="D29"></div>
 
-        <div class="subhead">단부 후프 (SHEAR_BAR_END)</div>
+        <div class="subhead" data-i18n="common.endHoopTitle">단부 후프 (SHEAR_BAR_END)</div>
         <div class="row4">
-          <div class="field"><label for="COLUMN-endName">규격</label><input id="COLUMN-endName" placeholder="D13"></div>
-          <div class="field"><label for="COLUMN-endLegY">leg Y</label><input id="COLUMN-endLegY" type="number"></div>
-          <div class="field"><label for="COLUMN-endLegZ">leg Z</label><input id="COLUMN-endLegZ" type="number"></div>
-          <div class="field"><label for="COLUMN-endDist">간격</label><input id="COLUMN-endDist" type="number" step="any"></div>
+          <div class="field"><label for="COLUMN-endName" data-i18n="common.spec">규격</label><input id="COLUMN-endName" placeholder="D13"></div>
+          <div class="field"><label for="COLUMN-endLegY" data-i18n="common.legY">leg Y</label><input id="COLUMN-endLegY" type="number"></div>
+          <div class="field"><label for="COLUMN-endLegZ" data-i18n="common.legZ">leg Z</label><input id="COLUMN-endLegZ" type="number"></div>
+          <div class="field"><label for="COLUMN-endDist" data-i18n="common.dist">간격</label><input id="COLUMN-endDist" type="number" step="any"></div>
         </div>
 
-        <div class="subhead">중앙 후프 (SHEAR_BAR_CEN)</div>
+        <div class="subhead" data-i18n="common.cenHoopTitle">중앙 후프 (SHEAR_BAR_CEN)</div>
         <div class="row4">
-          <div class="field"><label for="COLUMN-cenName">규격</label><input id="COLUMN-cenName" placeholder="D13"></div>
-          <div class="field"><label for="COLUMN-cenLegY">leg Y</label><input id="COLUMN-cenLegY" type="number"></div>
-          <div class="field"><label for="COLUMN-cenLegZ">leg Z</label><input id="COLUMN-cenLegZ" type="number"></div>
-          <div class="field"><label for="COLUMN-cenDist">간격</label><input id="COLUMN-cenDist" type="number" step="any"></div>
+          <div class="field"><label for="COLUMN-cenName" data-i18n="common.spec">규격</label><input id="COLUMN-cenName" placeholder="D13"></div>
+          <div class="field"><label for="COLUMN-cenLegY" data-i18n="common.legY">leg Y</label><input id="COLUMN-cenLegY" type="number"></div>
+          <div class="field"><label for="COLUMN-cenLegZ" data-i18n="common.legZ">leg Z</label><input id="COLUMN-cenLegZ" type="number"></div>
+          <div class="field"><label for="COLUMN-cenDist" data-i18n="common.dist">간격</label><input id="COLUMN-cenDist" type="number" step="any"></div>
         </div>
 
-        <div class="subhead">기타</div>
+        <div class="subhead" data-i18n="common.etcTitle">기타</div>
         <div class="row3">
-          <div class="field"><label for="COLUMN-DO">피복 DO</label><input id="COLUMN-DO" type="number" step="any"></div>
-          <div class="field"><label for="COLUMN-hoopType">후프 형식</label>
+          <div class="field"><label for="COLUMN-DO" data-i18n="common.coverDO">피복 DO</label><input id="COLUMN-DO" type="number" step="any"></div>
+          <div class="field"><label for="COLUMN-hoopType" data-i18n="common.hoopType">후프 형식</label>
             <select id="COLUMN-hoopType"><option value="Ties">Ties</option><option value="Spirals">Spirals</option></select>
           </div>
-          <div class="field"><label for="COLUMN-hookType">후크 형식</label>
-            <select id="COLUMN-hookType"><option value="0">90°+135/180°</option><option value="1">양단 135/180°</option></select>
+          <div class="field"><label for="COLUMN-hookType" data-i18n="column.hookType">후크 형식</label>
+            <select id="COLUMN-hookType"><option value="0" data-i18n="column.hookType90">90°+135/180°</option><option value="1" data-i18n="column.hookTypeBoth">양단 135/180°</option></select>
           </div>
         </div>
 
-        <div class="subhead">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
+        <div class="subhead" data-i18n="common.dimsHintTitle">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
         <div class="row2">
-          <div class="field"><label for="COLUMN-B">폭 B (mm)</label><input id="COLUMN-B" type="number" value="500"></div>
-          <div class="field"><label for="COLUMN-H">춤 H (mm)</label><input id="COLUMN-H" type="number" value="500"></div>
+          <div class="field"><label for="COLUMN-B" data-i18n="common.widthB">폭 B (mm)</label><input id="COLUMN-B" type="number" value="500"></div>
+          <div class="field"><label for="COLUMN-H" data-i18n="common.heightH">춤 H (mm)</label><input id="COLUMN-H" type="number" value="500"></div>
         </div>
 
         <div class="btn-row">
-          <button class="btn primary" data-action="save" data-type="COLUMN">저장 (Gen NX에 반영)</button>
+          <button class="btn primary" data-action="save" data-type="COLUMN" data-i18n="common.saveBtn">저장 (Gen NX에 반영)</button>
         </div>
         <div class="status" id="COLUMN-status"></div>
       </div>
 
       <div class="panel">
-        <h2>단면 미리보기</h2>
+        <h2 data-i18n="common.previewTitleSimple">단면 미리보기</h2>
         <div class="diagrams">
-          <div class="diagram-box"><div class="cap">불러온 값</div><div id="COLUMN-svg-before" class="sec-empty">불러오기 전</div></div>
-          <div class="diagram-box"><div class="cap">현재 입력값</div><div id="COLUMN-svg-after" class="sec-empty">-</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.loadedCap">불러온 값</div><div id="COLUMN-svg-before" class="sec-empty" data-i18n="common.beforeLoad">불러오기 전</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.currentCap">현재 입력값</div><div id="COLUMN-svg-after" class="sec-empty">-</div></div>
         </div>
         <div class="legend">
-          <span><i class="dot" style="background:var(--main-bar)"></i>주철근</span>
-          <span><i class="dot" style="background:var(--corner)"></i>코너철근</span>
-          <span><i class="dot" style="background:var(--hoop)"></i>후프</span>
+          <span><i class="dot" style="background:var(--main-bar)"></i><span data-i18n="common.mainBar">주철근</span></span>
+          <span><i class="dot" style="background:var(--corner)"></i><span data-i18n="column.cornerBar">코너철근</span></span>
+          <span><i class="dot" style="background:var(--hoop)"></i><span data-i18n="common.hoop">후프</span></span>
         </div>
       </div>
     </div>
@@ -182,82 +186,82 @@
   <div class="tab-panel" id="panel-WALL">
     <div class="editor-grid">
       <div class="panel">
-        <h2>대상 &amp; 불러오기</h2>
+        <h2 data-i18n="common.targetTitle">대상 &amp; 불러오기</h2>
         <div class="select-row">
           <div class="field">
-            <label for="WALL-key">Wall ID (key)</label>
-            <input id="WALL-key" type="text" placeholder="예: 1">
+            <label for="WALL-key" data-i18n="wall.keyLabel">Wall ID (key)</label>
+            <input id="WALL-key" type="text" data-i18n-placeholder="common.keyPlaceholderGeneric" placeholder="예: 1">
           </div>
-          <button class="btn" data-action="list" data-type="WALL">목록 불러오기</button>
+          <button class="btn" data-action="list" data-type="WALL" data-i18n="common.loadListBtn">목록 불러오기</button>
         </div>
         <div class="field">
-          <label for="WALL-existing">기존 벽체 선택</label>
-          <select id="WALL-existing"><option value="">-- 목록 불러오기 후 선택 --</option></select>
+          <label for="WALL-existing" data-i18n="wall.existingLabel">기존 벽체 선택</label>
+          <select id="WALL-existing"><option value="" data-i18n="common.existingDefaultOption">-- 목록 불러오기 후 선택 --</option></select>
         </div>
         <div class="keylist" id="WALL-keylist"></div>
 
-        <div class="checkline"><input id="WALL-createSub" type="checkbox"><label for="WALL-createSub" style="margin:0">Sub Wall ID 생성 (층 범위 지정)</label></div>
+        <div class="checkline"><input id="WALL-createSub" type="checkbox"><label for="WALL-createSub" style="margin:0" data-i18n="wall.createSub">Sub Wall ID 생성 (층 범위 지정)</label></div>
         <div class="row3" id="WALL-subWrap">
-          <div class="field"><label for="WALL-subId">Sub Wall ID</label><input id="WALL-subId" type="number"></div>
-          <div class="field"><label for="WALL-storyFrom">층 범위(FROM)</label><input id="WALL-storyFrom"></div>
-          <div class="field"><label for="WALL-storyTo">층 범위(TO)</label><input id="WALL-storyTo"></div>
+          <div class="field"><label for="WALL-subId" data-i18n="wall.subId">Sub Wall ID</label><input id="WALL-subId" type="number"></div>
+          <div class="field"><label for="WALL-storyFrom" data-i18n="wall.storyFrom">층 범위(FROM)</label><input id="WALL-storyFrom"></div>
+          <div class="field"><label for="WALL-storyTo" data-i18n="wall.storyTo">층 범위(TO)</label><input id="WALL-storyTo"></div>
         </div>
 
-        <div class="subhead">수직 / 수평 철근</div>
+        <div class="subhead" data-i18n="wall.vhRebarTitle">수직 / 수평 철근</div>
         <div class="row2">
-          <div class="field"><label for="WALL-vName">수직철근 규격</label><input id="WALL-vName" placeholder="D16"></div>
-          <div class="field"><label for="WALL-vDist">수직철근 간격</label><input id="WALL-vDist" type="number" step="any"></div>
+          <div class="field"><label for="WALL-vName" data-i18n="wall.vSpec">수직철근 규격</label><input id="WALL-vName" placeholder="D16"></div>
+          <div class="field"><label for="WALL-vDist" data-i18n="wall.vDistLabel">수직철근 간격</label><input id="WALL-vDist" type="number" step="any"></div>
         </div>
         <div class="row2">
-          <div class="field"><label for="WALL-hName">수평철근 규격</label><input id="WALL-hName" placeholder="D13"></div>
-          <div class="field"><label for="WALL-hDist">수평철근 간격</label><input id="WALL-hDist" type="number" step="any"></div>
+          <div class="field"><label for="WALL-hName" data-i18n="wall.hSpec">수평철근 규격</label><input id="WALL-hName" placeholder="D13"></div>
+          <div class="field"><label for="WALL-hDist" data-i18n="wall.hDistLabel">수평철근 간격</label><input id="WALL-hDist" type="number" step="any"></div>
         </div>
 
-        <div class="checkline"><input id="WALL-useEnd" type="checkbox"><label for="WALL-useEnd" style="margin:0">단부철근 사용</label></div>
+        <div class="checkline"><input id="WALL-useEnd" type="checkbox"><label for="WALL-useEnd" style="margin:0" data-i18n="wall.useEndRebar">단부철근 사용</label></div>
         <div class="row3" id="WALL-endWrap">
-          <div class="field"><label for="WALL-endName">규격</label><input id="WALL-endName" placeholder="D22"></div>
-          <div class="field"><label for="WALL-endNum">개수</label><input id="WALL-endNum" type="number"></div>
-          <div class="field"><label for="WALL-endDist">간격</label><input id="WALL-endDist" type="number" step="any"></div>
+          <div class="field"><label for="WALL-endName" data-i18n="common.spec">규격</label><input id="WALL-endName" placeholder="D22"></div>
+          <div class="field"><label for="WALL-endNum" data-i18n="common.count">개수</label><input id="WALL-endNum" type="number"></div>
+          <div class="field"><label for="WALL-endDist" data-i18n="common.dist">간격</label><input id="WALL-endDist" type="number" step="any"></div>
         </div>
 
-        <div class="subhead">경계요소(BE)</div>
+        <div class="subhead" data-i18n="wall.beTitle">경계요소(BE)</div>
         <div class="row3">
-          <div class="field"><label for="WALL-beName">수평철근 규격</label><input id="WALL-beName" placeholder="D13"></div>
-          <div class="field"><label for="WALL-beDist">수평철근 간격</label><input id="WALL-beDist" type="number" step="any"></div>
-          <div class="field"><label for="WALL-beLen">BE 길이</label><input id="WALL-beLen" type="number" step="any"></div>
+          <div class="field"><label for="WALL-beName" data-i18n="wall.hSpec">수평철근 규격</label><input id="WALL-beName" placeholder="D13"></div>
+          <div class="field"><label for="WALL-beDist" data-i18n="wall.hDistLabel">수평철근 간격</label><input id="WALL-beDist" type="number" step="any"></div>
+          <div class="field"><label for="WALL-beLen" data-i18n="wall.beLen">BE 길이</label><input id="WALL-beLen" type="number" step="any"></div>
         </div>
 
-        <div class="subhead">피복 / 두께</div>
+        <div class="subhead" data-i18n="wall.coverThkTitle">피복 / 두께</div>
         <div class="row2">
-          <div class="field"><label for="WALL-dw">벽면 피복 DW</label><input id="WALL-dw" type="number" step="any"></div>
-          <div class="field"><label for="WALL-de">단부 피복 DE</label><input id="WALL-de" type="number" step="any"></div>
+          <div class="field"><label for="WALL-dw" data-i18n="wall.dw">벽면 피복 DW</label><input id="WALL-dw" type="number" step="any"></div>
+          <div class="field"><label for="WALL-de" data-i18n="wall.de">단부 피복 DE</label><input id="WALL-de" type="number" step="any"></div>
         </div>
-        <div class="checkline"><input id="WALL-useModelThk" type="checkbox" checked><label for="WALL-useModelThk" style="margin:0">모델 두께 사용</label></div>
-        <div class="field" id="WALL-thkWrap"><label for="WALL-thickness">두께 (직접 지정)</label><input id="WALL-thickness" type="number" step="any"></div>
+        <div class="checkline"><input id="WALL-useModelThk" type="checkbox" checked><label for="WALL-useModelThk" style="margin:0" data-i18n="wall.useModelThk">모델 두께 사용</label></div>
+        <div class="field" id="WALL-thkWrap"><label for="WALL-thickness" data-i18n="wall.thickness">두께 (직접 지정)</label><input id="WALL-thickness" type="number" step="any"></div>
 
-        <div class="subhead">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
+        <div class="subhead" data-i18n="common.dimsHintTitle">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
         <div class="row2">
-          <div class="field"><label for="WALL-dispThk">두께 (mm)</label><input id="WALL-dispThk" type="number" value="300"></div>
-          <div class="field"><label for="WALL-dispLen">표시 길이 (mm)</label><input id="WALL-dispLen" type="number" value="3000"></div>
+          <div class="field"><label for="WALL-dispThk" data-i18n="wall.dispThk">두께 (mm)</label><input id="WALL-dispThk" type="number" value="300"></div>
+          <div class="field"><label for="WALL-dispLen" data-i18n="wall.dispLen">표시 길이 (mm)</label><input id="WALL-dispLen" type="number" value="3000"></div>
         </div>
 
         <div class="btn-row">
-          <button class="btn primary" data-action="save" data-type="WALL">저장 (Gen NX에 반영)</button>
+          <button class="btn primary" data-action="save" data-type="WALL" data-i18n="common.saveBtn">저장 (Gen NX에 반영)</button>
         </div>
         <div class="status" id="WALL-status"></div>
       </div>
 
       <div class="panel">
-        <h2>단면 미리보기 (평면도)</h2>
+        <h2 data-i18n="wall.previewTitle">단면 미리보기 (평면도)</h2>
         <div class="diagrams" style="grid-template-columns:1fr">
-          <div class="diagram-box"><div class="cap">불러온 값</div><div id="WALL-svg-before" class="sec-empty">불러오기 전</div></div>
-          <div class="diagram-box"><div class="cap">현재 입력값</div><div id="WALL-svg-after" class="sec-empty">-</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.loadedCap">불러온 값</div><div id="WALL-svg-before" class="sec-empty" data-i18n="common.beforeLoad">불러오기 전</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.currentCap">현재 입력값</div><div id="WALL-svg-after" class="sec-empty">-</div></div>
         </div>
         <div class="legend">
-          <span><i class="dot" style="background:var(--main-bar)"></i>수직철근</span>
-          <span><i class="dot" style="background:var(--endbar)"></i>단부철근</span>
-          <span><i class="dot" style="background:var(--hoop)"></i>수평철근</span>
-          <span><i class="dot" style="background:var(--be-zone)"></i>경계요소(BE)</span>
+          <span><i class="dot" style="background:var(--main-bar)"></i><span data-i18n="wall.legendV">수직철근</span></span>
+          <span><i class="dot" style="background:var(--endbar)"></i><span data-i18n="wall.legendEnd">단부철근</span></span>
+          <span><i class="dot" style="background:var(--hoop)"></i><span data-i18n="wall.legendH">수평철근</span></span>
+          <span><i class="dot" style="background:var(--be-zone)"></i><span data-i18n="wall.legendBE">경계요소(BE)</span></span>
         </div>
       </div>
     </div>
@@ -267,82 +271,83 @@
   <div class="tab-panel" id="panel-BRACE">
     <div class="editor-grid">
       <div class="panel">
-        <h2>대상 &amp; 불러오기</h2>
+        <h2 data-i18n="common.targetTitle">대상 &amp; 불러오기</h2>
         <div class="select-row">
           <div class="field">
-            <label for="BRACE-key">단면번호 (key)</label>
-            <input id="BRACE-key" type="text" placeholder="예: 1">
+            <label for="BRACE-key" data-i18n="common.sectionKeyLabel">단면번호 (key)</label>
+            <input id="BRACE-key" type="text" data-i18n-placeholder="common.keyPlaceholderGeneric" placeholder="예: 1">
           </div>
-          <button class="btn" data-action="list" data-type="BRACE">목록 불러오기</button>
+          <button class="btn" data-action="list" data-type="BRACE" data-i18n="common.loadListBtn">목록 불러오기</button>
         </div>
         <div class="field">
-          <label for="BRACE-existing">기존 단면 선택</label>
-          <select id="BRACE-existing"><option value="">-- 목록 불러오기 후 선택 --</option></select>
+          <label for="BRACE-existing" data-i18n="common.existingSectionLabel">기존 단면 선택</label>
+          <select id="BRACE-existing"><option value="" data-i18n="common.existingDefaultOption">-- 목록 불러오기 후 선택 --</option></select>
         </div>
         <div class="keylist" id="BRACE-keylist"></div>
 
-        <div class="subhead">주철근 (MAIN_BAR)</div>
+        <div class="subhead" data-i18n="common.mainBarTitle">주철근 (MAIN_BAR)</div>
         <div class="row3">
-          <div class="field"><label for="BRACE-mainName">규격</label><input id="BRACE-mainName" placeholder="D22"></div>
-          <div class="field"><label for="BRACE-mainNum">총 개수</label><input id="BRACE-mainNum" type="number"></div>
-          <div class="field"><label for="BRACE-mainRow">열수</label><input id="BRACE-mainRow" type="number"></div>
+          <div class="field"><label for="BRACE-mainName" data-i18n="common.spec">규격</label><input id="BRACE-mainName" placeholder="D22"></div>
+          <div class="field"><label for="BRACE-mainNum" data-i18n="common.totalCount">총 개수</label><input id="BRACE-mainNum" type="number"></div>
+          <div class="field"><label for="BRACE-mainRow" data-i18n="common.rowCount">열수</label><input id="BRACE-mainRow" type="number"></div>
         </div>
 
-        <div class="subhead">단부 후프 (SHEAR_BAR_END)</div>
+        <div class="subhead" data-i18n="common.endHoopTitle">단부 후프 (SHEAR_BAR_END)</div>
         <div class="row4">
-          <div class="field"><label for="BRACE-endName">규격</label><input id="BRACE-endName" placeholder="D10"></div>
-          <div class="field"><label for="BRACE-endLegY">leg Y</label><input id="BRACE-endLegY" type="number"></div>
-          <div class="field"><label for="BRACE-endLegZ">leg Z</label><input id="BRACE-endLegZ" type="number"></div>
-          <div class="field"><label for="BRACE-endDist">간격</label><input id="BRACE-endDist" type="number" step="any"></div>
+          <div class="field"><label for="BRACE-endName" data-i18n="common.spec">규격</label><input id="BRACE-endName" placeholder="D10"></div>
+          <div class="field"><label for="BRACE-endLegY" data-i18n="common.legY">leg Y</label><input id="BRACE-endLegY" type="number"></div>
+          <div class="field"><label for="BRACE-endLegZ" data-i18n="common.legZ">leg Z</label><input id="BRACE-endLegZ" type="number"></div>
+          <div class="field"><label for="BRACE-endDist" data-i18n="common.dist">간격</label><input id="BRACE-endDist" type="number" step="any"></div>
         </div>
 
-        <div class="subhead">중앙 후프 (SHEAR_BAR_CEN)</div>
+        <div class="subhead" data-i18n="common.cenHoopTitle">중앙 후프 (SHEAR_BAR_CEN)</div>
         <div class="row4">
-          <div class="field"><label for="BRACE-cenName">규격</label><input id="BRACE-cenName" placeholder="D10"></div>
-          <div class="field"><label for="BRACE-cenLegY">leg Y</label><input id="BRACE-cenLegY" type="number"></div>
-          <div class="field"><label for="BRACE-cenLegZ">leg Z</label><input id="BRACE-cenLegZ" type="number"></div>
-          <div class="field"><label for="BRACE-cenDist">간격</label><input id="BRACE-cenDist" type="number" step="any"></div>
+          <div class="field"><label for="BRACE-cenName" data-i18n="common.spec">규격</label><input id="BRACE-cenName" placeholder="D10"></div>
+          <div class="field"><label for="BRACE-cenLegY" data-i18n="common.legY">leg Y</label><input id="BRACE-cenLegY" type="number"></div>
+          <div class="field"><label for="BRACE-cenLegZ" data-i18n="common.legZ">leg Z</label><input id="BRACE-cenLegZ" type="number"></div>
+          <div class="field"><label for="BRACE-cenDist" data-i18n="common.dist">간격</label><input id="BRACE-cenDist" type="number" step="any"></div>
         </div>
 
-        <div class="subhead">기타</div>
+        <div class="subhead" data-i18n="common.etcTitle">기타</div>
         <div class="row2">
-          <div class="field"><label for="BRACE-DO">피복 DO</label><input id="BRACE-DO" type="number" step="any"></div>
-          <div class="field"><label for="BRACE-hoopType">후프 형식</label>
+          <div class="field"><label for="BRACE-DO" data-i18n="common.coverDO">피복 DO</label><input id="BRACE-DO" type="number" step="any"></div>
+          <div class="field"><label for="BRACE-hoopType" data-i18n="common.hoopType">후프 형식</label>
             <select id="BRACE-hoopType"><option value="Ties">Ties</option><option value="Spirals">Spirals</option></select>
           </div>
         </div>
 
-        <div class="subhead">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
+        <div class="subhead" data-i18n="common.dimsHintTitle">다이어그램 표시용 치수 (저장 안 됨, 미리보기 전용)</div>
         <div class="row2">
-          <div class="field"><label for="BRACE-B">폭 B (mm)</label><input id="BRACE-B" type="number" value="400"></div>
-          <div class="field"><label for="BRACE-H">춤 H (mm)</label><input id="BRACE-H" type="number" value="400"></div>
+          <div class="field"><label for="BRACE-B" data-i18n="common.widthB">폭 B (mm)</label><input id="BRACE-B" type="number" value="400"></div>
+          <div class="field"><label for="BRACE-H" data-i18n="common.heightH">춤 H (mm)</label><input id="BRACE-H" type="number" value="400"></div>
         </div>
 
         <div class="btn-row">
-          <button class="btn primary" data-action="save" data-type="BRACE">저장 (Gen NX에 반영)</button>
+          <button class="btn primary" data-action="save" data-type="BRACE" data-i18n="common.saveBtn">저장 (Gen NX에 반영)</button>
         </div>
         <div class="status" id="BRACE-status"></div>
       </div>
 
       <div class="panel">
-        <h2>단면 미리보기</h2>
+        <h2 data-i18n="common.previewTitleSimple">단면 미리보기</h2>
         <div class="diagrams">
-          <div class="diagram-box"><div class="cap">불러온 값</div><div id="BRACE-svg-before" class="sec-empty">불러오기 전</div></div>
-          <div class="diagram-box"><div class="cap">현재 입력값</div><div id="BRACE-svg-after" class="sec-empty">-</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.loadedCap">불러온 값</div><div id="BRACE-svg-before" class="sec-empty" data-i18n="common.beforeLoad">불러오기 전</div></div>
+          <div class="diagram-box"><div class="cap" data-i18n="common.currentCap">현재 입력값</div><div id="BRACE-svg-after" class="sec-empty">-</div></div>
         </div>
         <div class="legend">
-          <span><i class="dot" style="background:var(--main-bar)"></i>주철근</span>
-          <span><i class="dot" style="background:var(--hoop)"></i>후프</span>
+          <span><i class="dot" style="background:var(--main-bar)"></i><span data-i18n="common.mainBar">주철근</span></span>
+          <span><i class="dot" style="background:var(--hoop)"></i><span data-i18n="common.hoop">후프</span></span>
         </div>
       </div>
     </div>
   </div>
 
-  <p class="hint" style="margin-top:24px">
+  <p class="hint" style="margin-top:24px" data-i18n="app.footerHint">
     치수·간격·피복 값의 단위는 MIDAS 모델에서 사용 중인 활성 길이단위를 따릅니다.
     단면 미리보기는 개략도이며 실제 배치·간격과 다를 수 있습니다 (보/기둥/가새는 중앙 단면, 벽체는 평면 단면 기준).
   </p>
 </div>
+<script src="/js/i18n.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

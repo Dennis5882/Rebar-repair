@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
   const { product, apiKey, baseUrl } = req.body || {};
   const base = (baseUrl || '').trim().replace(/\/$/, '') || MIDAS_BASE[product];
   const key = (apiKey || '').trim();
-  if (!base || !key) return res.status(400).json({ ok: false, error: 'MAPI Key를 입력하세요.' });
+  if (!base || !key) return res.status(400).json({ ok: false, code: 'missing_key' });
 
   try {
     const r = await fetch(`${mapiRoot(base)}/mapikey/verify`, { headers: { 'MAPI-Key': key } });

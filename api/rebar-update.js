@@ -26,12 +26,12 @@ module.exports = async function handler(req, res) {
   const endpoint = ENDPOINTS[memberType];
   const itemKey = String(key || '').trim();
 
-  if (!apiKey)   return res.status(400).json({ ok: false, error: 'MAPI Key를 입력하세요.' });
-  if (!base)     return res.status(400).json({ ok: false, error: `알 수 없는 product: ${product}` });
-  if (!endpoint) return res.status(400).json({ ok: false, error: `알 수 없는 부재 유형: ${memberType}` });
-  if (!itemKey)  return res.status(400).json({ ok: false, error: 'Element/단면/Wall ID를 입력하세요.' });
+  if (!apiKey)   return res.status(400).json({ ok: false, code: 'missing_key' });
+  if (!base)     return res.status(400).json({ ok: false, code: 'unknown_product', product });
+  if (!endpoint) return res.status(400).json({ ok: false, code: 'unknown_member_type', memberType });
+  if (!itemKey)  return res.status(400).json({ ok: false, code: 'missing_key_id' });
   if (!payload || typeof payload !== 'object') {
-    return res.status(400).json({ ok: false, error: '배근 값이 비어 있습니다.' });
+    return res.status(400).json({ ok: false, code: 'empty_payload' });
   }
 
   try {

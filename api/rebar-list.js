@@ -28,9 +28,9 @@ module.exports = async function handler(req, res) {
   const { product, apiKey, baseUrl, memberType } = req.body || {};
   const base = (baseUrl || '').trim().replace(/\/$/, '') || MIDAS_BASE[product];
   const endpoint = ENDPOINTS[memberType];
-  if (!apiKey)   return res.status(400).json({ ok: false, error: 'MAPI Key를 입력하세요.' });
-  if (!base)     return res.status(400).json({ ok: false, error: `알 수 없는 product: ${product}` });
-  if (!endpoint) return res.status(400).json({ ok: false, error: `알 수 없는 부재 유형: ${memberType}` });
+  if (!apiKey)   return res.status(400).json({ ok: false, code: 'missing_key' });
+  if (!base)     return res.status(400).json({ ok: false, code: 'unknown_product', product });
+  if (!endpoint) return res.status(400).json({ ok: false, code: 'unknown_member_type', memberType });
 
   try {
     const r = await fetch(`${base}${endpoint}`, { headers: { 'MAPI-Key': apiKey } });
