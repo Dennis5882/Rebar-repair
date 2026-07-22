@@ -57,7 +57,7 @@ function toStr(v: unknown): string {
   return v === undefined || v === null ? "" : String(v);
 }
 
-function buildWallPayload(form: FormState): WallPayload {
+function buildWallItem(form: FormState): WallItem {
   const item: WallItem = {
     CREATE_SUB_WALL_ID: form.createSub,
     VERTICAL_REBAR: { NAME: form.vName, DIST: num(form.vDist) },
@@ -77,11 +77,19 @@ function buildWallPayload(form: FormState): WallPayload {
   const beLen = num(form.beLen);
   if (beLen !== undefined) item.BOUNDARY_ELEMENT_LENGTH = beLen;
   if (!item.USE_MODEL_THICKNESS) item.THICKNESS = num(form.thickness);
-  return { ITEMS: [item] };
+  return item;
 }
 
-function fillWallForm(payload: WallPayload): FormState {
-  const it: WallItem = payload.ITEMS?.[0] || {};
+function segmentLabel(item: WallItem, index: number): string {
+  const parts = [`#${index + 1}`];
+  if (item.SUB_WALL_ID !== undefined) parts.push(`ID ${item.SUB_WALL_ID}`);
+  const from = item.STORY?.FROM;
+  const to = item.STORY?.TO;
+  if (from || to) parts.push(`${from || "?"}~${to || "?"}`);
+  return parts.join(" · ");
+}
+
+function fillWallForm(it: WallItem): FormState {
   const vr = it.VERTICAL_REBAR || {};
   const hr = it.HORIZONTAL_REBAR || {};
   const er = it.END_REBAR || {};
@@ -118,7 +126,12 @@ export function WallForm() {
   const [list, setList] = useState<Record<string, WallPayload>>({});
   const [existingKey, setExistingKey] = useState("");
   const [keylistText, setKeylistText] = useState("");
-  const [loaded, setLoaded] = useState<WallPayload | null>(null);
+  const [loaded, setLoaded] = useState<WallItem | null>(null);
+  // Full ITEMS array for the loaded key — a wall can have multiple segments
+  // (one per SUB_WALL_ID/story range). Only `segmentIndex` is being edited;
+  // the rest must be preserved verbatim on save or they'd silently be lost.
+  const [allItems, setAllItems] = useState<WallItem[]>([]);
+  const [segmentIndex, setSegmentIndex] = useState(0);
   const [form, setForm] = useState<FormState>({ ...EMPTY });
   const [dispThk, setDispThk] = useState("300");
   const [dispLen, setDispLen] = useState("3000");
@@ -127,7 +140,9 @@ export function WallForm() {
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const afterPayload = useMemo(() => buildWallPayload(form), [form]);
+  const afterItem = useMemo(() => buildWallItem(form), [form]);
+  const afterPayload = useMemo(() => ({ ITEMS: [afterItem] }), [afterItem]);
+  const beforePayload = useMemo(() => (loaded ? { ITEMS: [loaded] } : null), [loaded]);
 
   function set<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -157,9 +172,18 @@ export function WallForm() {
     setExistingKey(key);
     if (!key) return;
     setKeyInput(key);
-    const payload = list[key];
-    setLoaded(payload);
-    setForm(fillWallForm(payload));
+    const items = list[key]?.ITEMS || [];
+    setAllItems(items);
+    setSegmentIndex(0);
+    setLoaded(items[0] || null);
+    setForm(fillWallForm(items[0] || {}));
+  }
+
+  function handleSelectSegment(index: number) {
+    setSegmentIndex(index);
+    const item = allItems[index] || {};
+    setLoaded(item);
+    setForm(fillWallForm(item));
   }
 
   async function handleSave() {
@@ -167,7 +191,12 @@ export function WallForm() {
       setStatus({ ok: false, msg: t("js.keyRequired") });
       return;
     }
-    const payload = buildWallPayload(form);
+    const item = buildWallItem(form);
+    // Preserve the other segments of a multi-segment wall (sub-wall
+    // ID / story range) untouched — only the one being edited changes.
+    const items = allItems.length ? [...allItems] : [item];
+    if (allItems.length) items[segmentIndex] = item;
+    const payload: WallPayload = { ITEMS: items };
     setSaving(true);
     setStatus({ ok: true, msg: t("js.saving") });
     try {
@@ -177,7 +206,8 @@ export function WallForm() {
         return;
       }
       setStatus({ ok: true, msg: t("js.saveDone") });
-      setLoaded(payload);
+      setAllItems(items);
+      setLoaded(item);
     } catch (e) {
       setStatus({ ok: false, msg: t("js.saveError", { error: String(e) }) });
     } finally {
@@ -210,6 +240,22 @@ export function WallForm() {
           </select>
         </div>
         <div className="keylist">{keylistText}</div>
+
+        {allItems.length > 1 && (
+          <div className="field">
+            <label>{t("wall.segmentLabel")}</label>
+            <select value={segmentIndex} onChange={(e) => handleSelectSegment(Number(e.target.value))}>
+              {allItems.map((it, idx) => (
+                <option key={idx} value={idx}>
+                  {segmentLabel(it, idx)}
+                </option>
+              ))}
+            </select>
+            <div className="hint" style={{ marginTop: 4, marginBottom: 0 }}>
+              {t("wall.segmentHint", { count: allItems.length })}
+            </div>
+          </div>
+        )}
 
         <div className="checkline">
           <input id="WALL-createSub" type="checkbox" checked={form.createSub} onChange={(e) => set("createSub", e.target.checked)} />
@@ -342,7 +388,7 @@ export function WallForm() {
       <SectionPreview
         type="WALL"
         titleKey="wall.previewTitle"
-        before={loaded}
+        before={beforePayload}
         after={afterPayload}
         dims={{ THICKNESS: dispThk, LENGTH: dispLen }}
         singleColumn

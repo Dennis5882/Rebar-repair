@@ -93,6 +93,8 @@
   "wall.legendEnd": "端部钢筋",
   "wall.legendH": "水平钢筋",
   "wall.legendBE": "边缘构件 (BE)",
+  "wall.segmentLabel": "选择区段 (Sub Wall ID / 楼层范围)",
+  "wall.segmentHint": "此墙体共有 {count} 个区段。仅编辑所选区段，保存时其余区段将保持不变。",
 
   "js.checking": "正在确认...",
   "js.connOk": "连接成功 ({program}{user})",

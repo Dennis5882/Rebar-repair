@@ -93,6 +93,8 @@
   "wall.legendEnd": "End Rebar",
   "wall.legendH": "Horizontal Rebar",
   "wall.legendBE": "Boundary Element (BE)",
+  "wall.segmentLabel": "Segment (sub wall ID / story range)",
+  "wall.segmentHint": "This wall has {count} segments. Only the selected one is edited — the others are kept unchanged on save.",
 
   "js.checking": "Checking...",
   "js.connOk": "Connected ({program}{user})",

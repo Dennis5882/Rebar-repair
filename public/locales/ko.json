@@ -93,6 +93,8 @@
   "wall.legendEnd": "단부철근",
   "wall.legendH": "수평철근",
   "wall.legendBE": "경계요소(BE)",
+  "wall.segmentLabel": "구간 선택 (Sub Wall ID / 층 범위)",
+  "wall.segmentHint": "이 벽체는 {count}개 구간이 있습니다. 선택한 구간만 수정되며, 저장 시 나머지 구간은 그대로 유지됩니다.",
 
   "js.checking": "확인 중...",
   "js.connOk": "연결 확인됨 ({program}{user})",
