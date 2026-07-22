@@ -15,6 +15,10 @@
   "conn.baseUrlPlaceholder": "留空則使用 MIDASIT 雲端 API（建議）",
   "conn.testBtn": "測試連線",
   "conn.hint": "MAPI Key 僅保存在此瀏覽器工作階段中（sessionStorage），不會儲存於伺服器，僅在每次要求時原樣轉發。請確認 Gen NX 已啟動且 API 已啟用。",
+  "conn.openBtn": "開啟連線設定",
+  "conn.closeBtn": "關閉",
+  "conn.pillConnected": "已連線",
+  "conn.pillDisconnected": "未連線",
 
   "tab.beam": "梁 (Beam)",
   "tab.column": "柱 (Column)",

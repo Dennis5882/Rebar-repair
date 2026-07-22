@@ -15,6 +15,10 @@
   "conn.baseUrlPlaceholder": "Leave blank to use the MIDASIT cloud API (recommended)",
   "conn.testBtn": "Test Connection",
   "conn.hint": "The MAPI Key is kept only in this browser session (sessionStorage), is never stored on the server, and is simply forwarded as-is with each request. Gen NX must be running with the API enabled.",
+  "conn.openBtn": "Open connection settings",
+  "conn.closeBtn": "Close",
+  "conn.pillConnected": "Connected",
+  "conn.pillDisconnected": "Not connected",
 
   "tab.beam": "Beam",
   "tab.column": "Column",

@@ -5,7 +5,7 @@ import { useI18n } from "./i18n/useI18n";
 import { ConnProvider } from "./context/ConnContext";
 import { DesignCodeProvider } from "./context/DesignCodeContext";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import { ConnectionPanel } from "./components/ConnectionPanel";
+import { ConnDrawer } from "./components/ConnDrawer";
 import { DesignCodeSelector } from "./components/DesignCodeSelector";
 import { Tabs, type TabKey } from "./components/Tabs";
 import { BeamForm } from "./components/BeamForm";
@@ -23,11 +23,13 @@ function AppShell() {
   return (
     <div className="wrap">
       <GuideDrawer />
-      <LanguageSwitcher />
+      <div className="topbar">
+        <ConnDrawer />
+        <LanguageSwitcher />
+      </div>
       <h1>{t("app.title")}</h1>
       <div className="subtitle">{t("app.subtitle")}</div>
 
-      <ConnectionPanel />
       <DesignCodeSelector />
       <Tabs active={active} onChange={setActive} />
 
