@@ -72,22 +72,12 @@ export function buildGeometryTraces(geo: ModelGeometry, t: TFn): any[] {
     }
   }
 
+  // Regular (non-support) node markers are deliberately omitted — with a
+  // real model's node count they clutter the view; only supports (a much
+  // sparser, meaningful set) are marked.
   const baseSet = new Set(geo.baseNodes);
-  const regular = geo.nodes.filter((n) => !baseSet.has(n.id));
   const supports = geo.nodes.filter((n) => baseSet.has(n.id));
 
-  if (regular.length) {
-    traces.push({
-      type: "scatter3d",
-      mode: "markers",
-      name: t("geo3d.legendNode"),
-      x: regular.map((n) => n.x),
-      y: regular.map((n) => n.y),
-      z: regular.map((n) => n.z),
-      marker: { size: 2.5, color: "#7a7a76", opacity: 0.8 },
-      hoverinfo: "skip",
-    });
-  }
   if (supports.length) {
     traces.push({
       type: "scatter3d",

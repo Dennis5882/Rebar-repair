@@ -45,7 +45,10 @@ export function ProjectReview() {
     <section className="panel">
       <h2>{t("project.title")}</h2>
       <div className="hint">{t("project.hint")}</div>
-      <div className="btn-row" style={{ marginTop: 0 }}>
+
+      <Geometry3DSection />
+
+      <div className="btn-row" style={{ marginTop: 14 }}>
         <button className="btn primary" type="button" onClick={handleLoad} disabled={loading}>
           {t("project.loadBtn")}
         </button>
@@ -71,7 +74,6 @@ export function ProjectReview() {
           />
           <LoadCombinationSection summary={summary} t={t} />
           <ConstraintSection summary={summary} t={t} />
-          <Geometry3DSection />
         </>
       )}
     </section>
