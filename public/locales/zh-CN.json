@@ -163,5 +163,19 @@
   "project.colNodeId": "节点 ID",
   "project.colGroup": "组",
   "project.colConstraint": "约束条件（DX DY DZ RX RY RZ RW）",
-  "project.moreHidden": "...另有 {count} 项未显示"
+  "project.moreHidden": "...另有 {count} 项未显示",
+
+  "geo3d.title": "3D 形状视图",
+  "geo3d.hint": "渲染模型的节点与构件（基于 /db/NODE + /db/ELEM；柱/梁/斜撑根据构件方向判断，墙体基于板单元）。",
+  "geo3d.loadBtn": "载入 3D 形状",
+  "geo3d.loading": "正在载入形状信息...",
+  "geo3d.loadFail": "载入形状信息失败：{error}",
+  "geo3d.loadError": "载入形状信息时发生错误：{error}",
+  "geo3d.plotlyLoadError": "载入 3D 查看器库失败：{error}",
+  "geo3d.legendCol": "柱",
+  "geo3d.legendBeam": "梁",
+  "geo3d.legendBrace": "斜撑",
+  "geo3d.legendWall": "墙体",
+  "geo3d.legendNode": "节点",
+  "geo3d.legendSupport": "支座"
 }

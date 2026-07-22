@@ -5,6 +5,7 @@ import { getProjectSummary } from "../lib/api";
 import { errText } from "../lib/errText";
 import type { ProjectSummary, NamedItem, LoadCombinationItem, ConstraintItem } from "../types/project";
 import type { TFn } from "../i18n/types";
+import { Geometry3DSection } from "./Geometry3DSection";
 
 const LIST_CAP = 30;
 
@@ -70,6 +71,7 @@ export function ProjectReview() {
           />
           <LoadCombinationSection summary={summary} t={t} />
           <ConstraintSection summary={summary} t={t} />
+          <Geometry3DSection />
         </>
       )}
     </section>

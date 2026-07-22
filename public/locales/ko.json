@@ -163,5 +163,19 @@
   "project.colNodeId": "절점 ID",
   "project.colGroup": "그룹",
   "project.colConstraint": "구속조건 (DX DY DZ RX RY RZ RW)",
-  "project.moreHidden": "...외 {count}개 더 있음"
+  "project.moreHidden": "...외 {count}개 더 있음",
+
+  "geo3d.title": "3D 형상 보기",
+  "geo3d.hint": "모델의 절점·부재를 렌더링합니다 (/db/NODE + /db/ELEM 기반, 기둥/보/가새는 부재 방향으로 판별, 벽체는 판(plate) 요소 기준).",
+  "geo3d.loadBtn": "3D 형상 불러오기",
+  "geo3d.loading": "형상 정보를 불러오는 중...",
+  "geo3d.loadFail": "형상 정보 불러오기 실패: {error}",
+  "geo3d.loadError": "형상 정보 불러오는 중 오류: {error}",
+  "geo3d.plotlyLoadError": "3D 뷰어 라이브러리 로드 실패: {error}",
+  "geo3d.legendCol": "기둥",
+  "geo3d.legendBeam": "보",
+  "geo3d.legendBrace": "가새",
+  "geo3d.legendWall": "벽체",
+  "geo3d.legendNode": "절점",
+  "geo3d.legendSupport": "지지점"
 }

@@ -115,3 +115,4 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .summary-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .summary-table th, .summary-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); }
 .summary-table th { color: var(--ink-2); font-weight: 600; }
+.geo3d-plot { width: 100%; height: 520px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }

@@ -163,5 +163,19 @@
   "project.colNodeId": "Node ID",
   "project.colGroup": "Group",
   "project.colConstraint": "Constraint (DX DY DZ RX RY RZ RW)",
-  "project.moreHidden": "...and {count} more"
+  "project.moreHidden": "...and {count} more",
+
+  "geo3d.title": "3D Geometry View",
+  "geo3d.hint": "Renders the model's nodes and members (built from /db/NODE + /db/ELEM; columns/beams/braces are inferred from member orientation, walls from plate elements).",
+  "geo3d.loadBtn": "Load 3D View",
+  "geo3d.loading": "Loading geometry...",
+  "geo3d.loadFail": "Failed to load geometry: {error}",
+  "geo3d.loadError": "Error while loading geometry: {error}",
+  "geo3d.plotlyLoadError": "Failed to load the 3D viewer library: {error}",
+  "geo3d.legendCol": "Column",
+  "geo3d.legendBeam": "Beam",
+  "geo3d.legendBrace": "Brace",
+  "geo3d.legendWall": "Wall",
+  "geo3d.legendNode": "Node",
+  "geo3d.legendSupport": "Support"
 }

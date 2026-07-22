@@ -163,5 +163,19 @@
   "project.colNodeId": "節點 ID",
   "project.colGroup": "群組",
   "project.colConstraint": "束制條件（DX DY DZ RX RY RZ RW）",
-  "project.moreHidden": "...另有 {count} 項未顯示"
+  "project.moreHidden": "...另有 {count} 項未顯示",
+
+  "geo3d.title": "3D 形狀檢視",
+  "geo3d.hint": "渲染模型的節點與構件（基於 /db/NODE + /db/ELEM；柱/梁/斜撐依構件方向判斷，牆體依板元素判斷）。",
+  "geo3d.loadBtn": "載入 3D 形狀",
+  "geo3d.loading": "正在載入形狀資訊...",
+  "geo3d.loadFail": "載入形狀資訊失敗：{error}",
+  "geo3d.loadError": "載入形狀資訊時發生錯誤：{error}",
+  "geo3d.plotlyLoadError": "載入 3D 檢視器函式庫失敗：{error}",
+  "geo3d.legendCol": "柱",
+  "geo3d.legendBeam": "梁",
+  "geo3d.legendBrace": "斜撐",
+  "geo3d.legendWall": "牆體",
+  "geo3d.legendNode": "節點",
+  "geo3d.legendSupport": "支座"
 }
