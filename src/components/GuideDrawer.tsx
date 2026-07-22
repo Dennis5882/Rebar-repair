@@ -1,29 +1,11 @@
 import { useState } from "react";
 import { useI18n } from "../i18n/useI18n";
-import type { LangCode } from "../i18n/types";
-
-// Rough default so the code-reference country selector starts on something
-// sensible without a second IP lookup — reuses the language already detected
-// via IP in I18nProvider (see [[i18n-multilingual-system]] in memory).
-const COUNTRY_BY_LANG: Record<LangCode, string> = {
-  en: "US",
-  ko: "KR",
-  "zh-CN": "CN",
-  "zh-TW": "TW",
-};
-
-const COUNTRIES: { code: string; labelKey: string }[] = [
-  { code: "KR", labelKey: "guide.country.kr" },
-  { code: "US", labelKey: "guide.country.us" },
-  { code: "CN", labelKey: "guide.country.cn" },
-  { code: "TW", labelKey: "guide.country.tw" },
-];
+import { CodeReferenceSection } from "./CodeReferenceSection";
 
 export function GuideDrawer() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<"guide" | "release">("guide");
-  const [country, setCountry] = useState(() => COUNTRY_BY_LANG[lang] || "KR");
 
   return (
     <>
@@ -65,19 +47,7 @@ export function GuideDrawer() {
                   <div className="subhead" style={{ marginTop: 4 }}>
                     {t("guide.codeTableTitle")}
                   </div>
-                  <div className="field">
-                    <label htmlFor="guideCountry">{t("guide.codeTableCountryLabel")}</label>
-                    <select id="guideCountry" value={country} onChange={(e) => setCountry(e.target.value)}>
-                      {COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {t(c.labelKey)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="hint" style={{ marginTop: 0 }}>
-                    {t("guide.codeTablePlaceholder")}
-                  </p>
+                  <CodeReferenceSection />
                 </>
               ) : (
                 <div className="release-notes">
@@ -89,6 +59,7 @@ export function GuideDrawer() {
                       <li>{t("guide.release.d260722.item3")}</li>
                       <li>{t("guide.release.d260722.item4")}</li>
                       <li>{t("guide.release.d260722.item5")}</li>
+                      <li>{t("guide.release.d260722.item6")}</li>
                     </ul>
                   </div>
                   <div className="release-entry">
