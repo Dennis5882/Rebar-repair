@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { ConnInfo } from "../lib/api";
 import { DEFAULT_BASE_URL } from "../lib/constants";
 
@@ -40,38 +40,49 @@ export function ConnProvider({ children }: { children: ReactNode }) {
     readSession("baseUrl", DEFAULT_BASE_URL[readSession("product", "gen")])
   );
 
-  const setMapiKey = (v: string) => {
+  // Stable (empty-dep) callbacks + a memoized context value, so components
+  // that only read `t`/other context and not ConnContext don't re-render on
+  // every keystroke here — mirrors I18nProvider's memoized value. setProduct
+  // reads the latest product/baseUrl via functional state updates instead
+  // of closing over them, so it can stay referentially stable too.
+  const setMapiKey = useCallback((v: string) => {
     setMapiKeyState(v);
     writeSession("mapiKey", v);
-  };
-  const setProduct = (v: string) => {
-    // If the user hasn't customized baseUrl (still on the previous product's
-    // default, e.g. for on-premise use), follow the product switch so the
-    // field keeps showing a valid default instead of the wrong product's URL.
-    if (baseUrl === DEFAULT_BASE_URL[product]) {
-      const nextDefault = DEFAULT_BASE_URL[v];
-      if (nextDefault) {
-        setBaseUrlState(nextDefault);
+  }, []);
+  const setProduct = useCallback((v: string) => {
+    setProductState((prevProduct) => {
+      // If the user hasn't customized baseUrl (still on the previous
+      // product's default, e.g. for on-premise use), follow the product
+      // switch so the field keeps showing a valid default instead of the
+      // wrong product's URL.
+      setBaseUrlState((prevBaseUrl) => {
+        if (prevBaseUrl !== DEFAULT_BASE_URL[prevProduct]) return prevBaseUrl;
+        const nextDefault = DEFAULT_BASE_URL[v];
+        if (!nextDefault) return prevBaseUrl;
         writeSession("baseUrl", nextDefault);
-      }
-    }
-    setProductState(v);
-    writeSession("product", v);
-  };
-  const setBaseUrl = (v: string) => {
+        return nextDefault;
+      });
+      writeSession("product", v);
+      return v;
+    });
+  }, []);
+  const setBaseUrl = useCallback((v: string) => {
     setBaseUrlState(v);
     writeSession("baseUrl", v);
-  };
+  }, []);
 
-  const value: ConnContextValue = {
-    mapiKey,
-    product,
-    baseUrl,
-    setMapiKey,
-    setProduct,
-    setBaseUrl,
-    payload: { apiKey: mapiKey, product, baseUrl },
-  };
+  const value = useMemo<ConnContextValue>(
+    () => ({
+      mapiKey,
+      product,
+      baseUrl,
+      setMapiKey,
+      setProduct,
+      setBaseUrl,
+      payload: { apiKey: mapiKey, product, baseUrl },
+    }),
+    [mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl]
+  );
 
   return <ConnContext.Provider value={value}>{children}</ConnContext.Provider>;
 }

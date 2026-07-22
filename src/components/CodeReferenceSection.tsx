@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import type { LangCode } from "../i18n/types";
 import {
@@ -24,7 +24,21 @@ const DEFAULT_DESIGN_CODE_BY_LANG: Record<LangCode, string> = {
 
 export function CodeReferenceSection() {
   const { t, lang } = useI18n();
-  const [designCode, setDesignCode] = useState(() => DEFAULT_DESIGN_CODE_BY_LANG[lang] || "KDS 41 20 : 2022");
+  const [designCode, setDesignCodeState] = useState(() => DEFAULT_DESIGN_CODE_BY_LANG[lang] || "KDS 41 20 : 2022");
+  // `lang` starts at a default and updates asynchronously once IP/localStorage
+  // detection resolves (see I18nProvider) — if this section mounts before
+  // that happens, keep following lang's default until the user actually
+  // picks a design code themselves.
+  const [userChanged, setUserChanged] = useState(false);
+
+  useEffect(() => {
+    if (!userChanged) setDesignCodeState(DEFAULT_DESIGN_CODE_BY_LANG[lang] || "KDS 41 20 : 2022");
+  }, [lang, userChanged]);
+
+  function setDesignCode(code: string) {
+    setUserChanged(true);
+    setDesignCodeState(code);
+  }
 
   const entry = DESIGN_CODES[designCode];
   const materialDB = defaultMaterialDB(designCode);

@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
-import { listRebar, saveRebar } from "../lib/api";
+import { saveRebar } from "../lib/api";
 import { errText } from "../lib/errText";
+import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import type { WallItem, WallPayload } from "../types/rebar";
 
@@ -121,11 +122,11 @@ function fillWallForm(it: WallItem): FormState {
 export function WallForm() {
   const { t } = useI18n();
   const { payload: conn } = useConn();
+  const { list, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } =
+    useRebarList<WallPayload>("WALL", conn);
 
   const [keyInput, setKeyInput] = useState("");
-  const [list, setList] = useState<Record<string, WallPayload>>({});
   const [existingKey, setExistingKey] = useState("");
-  const [keylistText, setKeylistText] = useState("");
   const [loaded, setLoaded] = useState<WallItem | null>(null);
   // Full ITEMS array for the loaded key — a wall can have multiple segments
   // (one per SUB_WALL_ID/story range). Only `segmentIndex` is being edited;
@@ -135,9 +136,6 @@ export function WallForm() {
   const [form, setForm] = useState<FormState>({ ...EMPTY });
   const [dispThk, setDispThk] = useState("300");
   const [dispLen, setDispLen] = useState("3000");
-  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [listLoading, setListLoading] = useState(false);
-  const [listLoadedOnce, setListLoadedOnce] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const afterItem = useMemo(() => buildWallItem(form), [form]);
@@ -146,26 +144,6 @@ export function WallForm() {
 
   function set<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleList() {
-    setListLoading(true);
-    try {
-      const res = await listRebar<WallPayload>("WALL", conn);
-      if (!res.ok) {
-        setStatus({ ok: false, msg: t("js.listFail", { error: errText(t, res) }) });
-        return;
-      }
-      setList(res.data);
-      setListLoadedOnce(true);
-      const keys = Object.keys(res.data);
-      setKeylistText(keys.length ? t("js.itemsFound", { count: keys.length, keys: keys.join(", ") }) : t("js.noItems"));
-      setStatus({ ok: true, msg: t("js.listLoaded", { count: keys.length }) });
-    } catch (e) {
-      setStatus({ ok: false, msg: t("js.listError", { error: String(e) }) });
-    } finally {
-      setListLoading(false);
-    }
   }
 
   function handleSelectExisting(key: string) {
@@ -226,16 +204,16 @@ export function WallForm() {
         <h2>{t("common.targetTitle")}</h2>
         <div className="select-row">
           <div className="field">
-            <label>{t("wall.keyLabel")}</label>
-            <input type="text" placeholder={t("common.keyPlaceholderGeneric")} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} />
+            <label htmlFor="WALL-key">{t("wall.keyLabel")}</label>
+            <input id="WALL-key" type="text" placeholder={t("common.keyPlaceholderGeneric")} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} />
           </div>
           <button className="btn" type="button" onClick={handleList} disabled={listLoading}>
             {t("common.loadListBtn")}
           </button>
         </div>
         <div className="field">
-          <label>{t("wall.existingLabel")}</label>
-          <select value={existingKey} onChange={(e) => handleSelectExisting(e.target.value)}>
+          <label htmlFor="WALL-existing">{t("wall.existingLabel")}</label>
+          <select id="WALL-existing" value={existingKey} onChange={(e) => handleSelectExisting(e.target.value)}>
             <option value="">{listLoadedOnce ? t("js.selectDefault") : t("common.existingDefaultOption")}</option>
             {Object.keys(list).map((k) => (
               <option key={k} value={k}>
@@ -248,8 +226,8 @@ export function WallForm() {
 
         {keyInput === existingKey && allItems.length > 1 && (
           <div className="field">
-            <label>{t("wall.segmentLabel")}</label>
-            <select value={segmentIndex} onChange={(e) => handleSelectSegment(Number(e.target.value))}>
+            <label htmlFor="WALL-segment">{t("wall.segmentLabel")}</label>
+            <select id="WALL-segment" value={segmentIndex} onChange={(e) => handleSelectSegment(Number(e.target.value))}>
               {allItems.map((it, idx) => (
                 <option key={idx} value={idx}>
                   {segmentLabel(it, idx)}
@@ -271,16 +249,16 @@ export function WallForm() {
         {form.createSub && (
           <div className="row3">
             <div className="field">
-              <label>{t("wall.subId")}</label>
-              <input type="number" value={form.subId} onChange={(e) => set("subId", e.target.value)} />
+              <label htmlFor="WALL-subId">{t("wall.subId")}</label>
+              <input id="WALL-subId" type="number" value={form.subId} onChange={(e) => set("subId", e.target.value)} />
             </div>
             <div className="field">
-              <label>{t("wall.storyFrom")}</label>
-              <input value={form.storyFrom} onChange={(e) => set("storyFrom", e.target.value)} />
+              <label htmlFor="WALL-storyFrom">{t("wall.storyFrom")}</label>
+              <input id="WALL-storyFrom" value={form.storyFrom} onChange={(e) => set("storyFrom", e.target.value)} />
             </div>
             <div className="field">
-              <label>{t("wall.storyTo")}</label>
-              <input value={form.storyTo} onChange={(e) => set("storyTo", e.target.value)} />
+              <label htmlFor="WALL-storyTo">{t("wall.storyTo")}</label>
+              <input id="WALL-storyTo" value={form.storyTo} onChange={(e) => set("storyTo", e.target.value)} />
             </div>
           </div>
         )}
@@ -288,22 +266,22 @@ export function WallForm() {
         <div className="subhead">{t("wall.vhRebarTitle")}</div>
         <div className="row2">
           <div className="field">
-            <label>{t("wall.vSpec")}</label>
-            <input placeholder="D16" value={form.vName} onChange={(e) => set("vName", e.target.value)} />
+            <label htmlFor="WALL-vName">{t("wall.vSpec")}</label>
+            <input id="WALL-vName" placeholder="D16" value={form.vName} onChange={(e) => set("vName", e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("wall.vDistLabel")}</label>
-            <input type="number" step="any" value={form.vDist} onChange={(e) => set("vDist", e.target.value)} />
+            <label htmlFor="WALL-vDist">{t("wall.vDistLabel")}</label>
+            <input id="WALL-vDist" type="number" step="any" value={form.vDist} onChange={(e) => set("vDist", e.target.value)} />
           </div>
         </div>
         <div className="row2">
           <div className="field">
-            <label>{t("wall.hSpec")}</label>
-            <input placeholder="D13" value={form.hName} onChange={(e) => set("hName", e.target.value)} />
+            <label htmlFor="WALL-hName">{t("wall.hSpec")}</label>
+            <input id="WALL-hName" placeholder="D13" value={form.hName} onChange={(e) => set("hName", e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("wall.hDistLabel")}</label>
-            <input type="number" step="any" value={form.hDist} onChange={(e) => set("hDist", e.target.value)} />
+            <label htmlFor="WALL-hDist">{t("wall.hDistLabel")}</label>
+            <input id="WALL-hDist" type="number" step="any" value={form.hDist} onChange={(e) => set("hDist", e.target.value)} />
           </div>
         </div>
 
@@ -316,16 +294,16 @@ export function WallForm() {
         {form.useEnd && (
           <div className="row3">
             <div className="field">
-              <label>{t("common.spec")}</label>
-              <input placeholder="D22" value={form.endName} onChange={(e) => set("endName", e.target.value)} />
+              <label htmlFor="WALL-endName">{t("common.spec")}</label>
+              <input id="WALL-endName" placeholder="D22" value={form.endName} onChange={(e) => set("endName", e.target.value)} />
             </div>
             <div className="field">
-              <label>{t("common.count")}</label>
-              <input type="number" value={form.endNum} onChange={(e) => set("endNum", e.target.value)} />
+              <label htmlFor="WALL-endNum">{t("common.count")}</label>
+              <input id="WALL-endNum" type="number" value={form.endNum} onChange={(e) => set("endNum", e.target.value)} />
             </div>
             <div className="field">
-              <label>{t("common.dist")}</label>
-              <input type="number" step="any" value={form.endDist} onChange={(e) => set("endDist", e.target.value)} />
+              <label htmlFor="WALL-endDist">{t("common.dist")}</label>
+              <input id="WALL-endDist" type="number" step="any" value={form.endDist} onChange={(e) => set("endDist", e.target.value)} />
             </div>
           </div>
         )}
@@ -333,28 +311,28 @@ export function WallForm() {
         <div className="subhead">{t("wall.beTitle")}</div>
         <div className="row3">
           <div className="field">
-            <label>{t("wall.hSpec")}</label>
-            <input placeholder="D13" value={form.beName} onChange={(e) => set("beName", e.target.value)} />
+            <label htmlFor="WALL-beName">{t("wall.hSpec")}</label>
+            <input id="WALL-beName" placeholder="D13" value={form.beName} onChange={(e) => set("beName", e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("wall.hDistLabel")}</label>
-            <input type="number" step="any" value={form.beDist} onChange={(e) => set("beDist", e.target.value)} />
+            <label htmlFor="WALL-beDist">{t("wall.hDistLabel")}</label>
+            <input id="WALL-beDist" type="number" step="any" value={form.beDist} onChange={(e) => set("beDist", e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("wall.beLen")}</label>
-            <input type="number" step="any" value={form.beLen} onChange={(e) => set("beLen", e.target.value)} />
+            <label htmlFor="WALL-beLen">{t("wall.beLen")}</label>
+            <input id="WALL-beLen" type="number" step="any" value={form.beLen} onChange={(e) => set("beLen", e.target.value)} />
           </div>
         </div>
 
         <div className="subhead">{t("wall.coverThkTitle")}</div>
         <div className="row2">
           <div className="field">
-            <label>{t("wall.dw")}</label>
-            <input type="number" step="any" value={form.dw} onChange={(e) => set("dw", e.target.value)} />
+            <label htmlFor="WALL-dw">{t("wall.dw")}</label>
+            <input id="WALL-dw" type="number" step="any" value={form.dw} onChange={(e) => set("dw", e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("wall.de")}</label>
-            <input type="number" step="any" value={form.de} onChange={(e) => set("de", e.target.value)} />
+            <label htmlFor="WALL-de">{t("wall.de")}</label>
+            <input id="WALL-de" type="number" step="any" value={form.de} onChange={(e) => set("de", e.target.value)} />
           </div>
         </div>
         <div className="checkline">
@@ -365,20 +343,20 @@ export function WallForm() {
         </div>
         {!form.useModelThk && (
           <div className="field">
-            <label>{t("wall.thickness")}</label>
-            <input type="number" step="any" value={form.thickness} onChange={(e) => set("thickness", e.target.value)} />
+            <label htmlFor="WALL-thickness">{t("wall.thickness")}</label>
+            <input id="WALL-thickness" type="number" step="any" value={form.thickness} onChange={(e) => set("thickness", e.target.value)} />
           </div>
         )}
 
         <div className="subhead">{t("common.dimsHintTitle")}</div>
         <div className="row2">
           <div className="field">
-            <label>{t("wall.dispThk")}</label>
-            <input type="number" value={dispThk} onChange={(e) => setDispThk(e.target.value)} />
+            <label htmlFor="WALL-dispThk">{t("wall.dispThk")}</label>
+            <input id="WALL-dispThk" type="number" value={dispThk} onChange={(e) => setDispThk(e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("wall.dispLen")}</label>
-            <input type="number" value={dispLen} onChange={(e) => setDispLen(e.target.value)} />
+            <label htmlFor="WALL-dispLen">{t("wall.dispLen")}</label>
+            <input id="WALL-dispLen" type="number" value={dispLen} onChange={(e) => setDispLen(e.target.value)} />
           </div>
         </div>
 

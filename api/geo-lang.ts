@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { setCorsGet } from "./_lib/midas";
 
 // Vercel populates x-vercel-ip-country on deployed requests based on the
 // client's IP (GeoIP). Not available in local `vercel dev` / plain static
@@ -11,14 +12,8 @@ const COUNTRY_LANG: Record<string, string> = {
   MO: "zh-TW",
 };
 
-function setCors(res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res);
+  setCorsGet(res);
   if (req.method === "OPTIONS") return res.status(204).end();
 
   const country = String(req.headers["x-vercel-ip-country"] || "").toUpperCase();

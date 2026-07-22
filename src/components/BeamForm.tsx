@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
-import { listRebar, saveRebar } from "../lib/api";
+import { saveRebar } from "../lib/api";
 import { errText } from "../lib/errText";
+import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import {
   SECTORS,
@@ -150,20 +151,19 @@ function toWritePayload(payload: BeamPayload): BeamWritePayload {
 export function BeamForm() {
   const { t } = useI18n();
   const { payload: conn } = useConn();
+  const { list, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } = useRebarList<BeamPayload>(
+    "BEAM",
+    conn
+  );
 
   const [keyInput, setKeyInput] = useState("");
-  const [list, setList] = useState<Record<string, BeamPayload>>({});
   const [existingKey, setExistingKey] = useState("");
-  const [keylistText, setKeylistText] = useState("");
   const [loaded, setLoaded] = useState<BeamPayload | null>(null);
   const [sectors, setSectors] = useState<Record<SectorKey, SectorFormValues>>(emptySectors());
   const [dt, setDt] = useState("");
   const [db, setDb] = useState("");
   const [dimB, setDimB] = useState("300");
   const [dimH, setDimH] = useState("600");
-  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [listLoading, setListLoading] = useState(false);
-  const [listLoadedOnce, setListLoadedOnce] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const afterPayload = useMemo(() => buildBeamPayload(sectors, dt, db), [sectors, dt, db]);
@@ -174,26 +174,6 @@ export function BeamForm() {
 
   function copyMtoIJ() {
     setSectors((prev) => ({ I: { ...prev.M }, M: prev.M, J: { ...prev.M } }));
-  }
-
-  async function handleList() {
-    setListLoading(true);
-    try {
-      const res = await listRebar<BeamPayload>("BEAM", conn);
-      if (!res.ok) {
-        setStatus({ ok: false, msg: t("js.listFail", { error: errText(t, res) }) });
-        return;
-      }
-      setList(res.data);
-      setListLoadedOnce(true);
-      const keys = Object.keys(res.data);
-      setKeylistText(keys.length ? t("js.itemsFound", { count: keys.length, keys: keys.join(", ") }) : t("js.noItems"));
-      setStatus({ ok: true, msg: t("js.listLoaded", { count: keys.length }) });
-    } catch (e) {
-      setStatus({ ok: false, msg: t("js.listError", { error: String(e) }) });
-    } finally {
-      setListLoading(false);
-    }
   }
 
   function handleSelectExisting(key: string) {
@@ -233,6 +213,7 @@ export function BeamForm() {
 
   const sectorField = (key: SectorKey, field: keyof SectorFormValues, type: "text" | "number" = "text", placeholder?: string) => (
     <input
+      id={`BEAM-${key}-${field}`}
       type={type}
       step={type === "number" ? "any" : undefined}
       placeholder={placeholder}
@@ -286,45 +267,45 @@ export function BeamForm() {
               </div>
               <div className="row2">
                 <div className="field">
-                  <label>{t("js.topSpec")}</label>
+                  <label htmlFor={`BEAM-${key}-topName`}>{t("js.topSpec")}</label>
                   {sectorField(key, "topName", "text", "D25")}
                 </div>
                 <div className="field">
-                  <label>{t("js.topCount")}</label>
+                  <label htmlFor={`BEAM-${key}-topNum`}>{t("js.topCount")}</label>
                   {sectorField(key, "topNum", "number")}
                 </div>
               </div>
               <div className="row2">
                 <div className="field">
-                  <label>{t("js.botSpec")}</label>
+                  <label htmlFor={`BEAM-${key}-botName`}>{t("js.botSpec")}</label>
                   {sectorField(key, "botName", "text", "D22")}
                 </div>
                 <div className="field">
-                  <label>{t("js.botCount")}</label>
+                  <label htmlFor={`BEAM-${key}-botNum`}>{t("js.botCount")}</label>
                   {sectorField(key, "botNum", "number")}
                 </div>
               </div>
               <div className="row3">
                 <div className="field">
-                  <label>{t("js.stirrupSpec")}</label>
+                  <label htmlFor={`BEAM-${key}-shearName`}>{t("js.stirrupSpec")}</label>
                   {sectorField(key, "shearName", "text", "D13")}
                 </div>
                 <div className="field">
-                  <label>{t("js.legCount")}</label>
+                  <label htmlFor={`BEAM-${key}-shearLeg`}>{t("js.legCount")}</label>
                   {sectorField(key, "shearLeg", "number")}
                 </div>
                 <div className="field">
-                  <label>{t("common.dist")}</label>
+                  <label htmlFor={`BEAM-${key}-shearDist`}>{t("common.dist")}</label>
                   {sectorField(key, "shearDist", "number")}
                 </div>
               </div>
               <div className="row2">
                 <div className="field">
-                  <label>{t("js.skinSpec")}</label>
+                  <label htmlFor={`BEAM-${key}-skinName`}>{t("js.skinSpec")}</label>
                   {sectorField(key, "skinName", "text", "D13")}
                 </div>
                 <div className="field">
-                  <label>{t("js.skinCount")}</label>
+                  <label htmlFor={`BEAM-${key}-skinNum`}>{t("js.skinCount")}</label>
                   {sectorField(key, "skinNum", "number")}
                 </div>
               </div>
@@ -335,24 +316,24 @@ export function BeamForm() {
         <div className="subhead">{t("beam.coverTitle")}</div>
         <div className="row2">
           <div className="field">
-            <label>{t("beam.dtLabel")}</label>
-            <input type="number" step="any" value={dt} onChange={(e) => setDt(e.target.value)} />
+            <label htmlFor="BEAM-dt">{t("beam.dtLabel")}</label>
+            <input id="BEAM-dt" type="number" step="any" value={dt} onChange={(e) => setDt(e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("beam.dbLabel")}</label>
-            <input type="number" step="any" value={db} onChange={(e) => setDb(e.target.value)} />
+            <label htmlFor="BEAM-db">{t("beam.dbLabel")}</label>
+            <input id="BEAM-db" type="number" step="any" value={db} onChange={(e) => setDb(e.target.value)} />
           </div>
         </div>
 
         <div className="subhead">{t("common.dimsHintTitle")}</div>
         <div className="row2">
           <div className="field">
-            <label>{t("common.widthB")}</label>
-            <input type="number" value={dimB} onChange={(e) => setDimB(e.target.value)} />
+            <label htmlFor="BEAM-dimB">{t("common.widthB")}</label>
+            <input id="BEAM-dimB" type="number" value={dimB} onChange={(e) => setDimB(e.target.value)} />
           </div>
           <div className="field">
-            <label>{t("common.heightH")}</label>
-            <input type="number" value={dimH} onChange={(e) => setDimH(e.target.value)} />
+            <label htmlFor="BEAM-dimH">{t("common.heightH")}</label>
+            <input id="BEAM-dimH" type="number" value={dimH} onChange={(e) => setDimH(e.target.value)} />
           </div>
         </div>
 

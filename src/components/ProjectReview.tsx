@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { getProjectSummary } from "../lib/api";
 import { errText } from "../lib/errText";
-import type { ProjectSummary, NamedItem, LoadCombinationItem, ConstraintItem } from "../types/project";
+import type { ProjectSummary } from "../types/project";
 import type { TFn } from "../i18n/types";
 import { Geometry3DSection } from "./Geometry3DSection";
 
@@ -60,20 +60,54 @@ export function ProjectReview() {
       {summary && (
         <>
           <ElementsSection summary={summary} t={t} />
-          <NamedListSection
+          <SummaryTable
             titleKey="project.sectionsTitle"
             total={summary.sections.total}
             items={summary.sections.items}
+            rowKey={(it) => it.id}
+            columns={[
+              { header: t("project.colId"), cell: (it) => it.id },
+              { header: t("project.colName"), cell: (it) => it.name },
+              { header: t("project.colType"), cell: (it) => it.type },
+            ]}
             t={t}
           />
-          <NamedListSection
+          <SummaryTable
             titleKey="project.materialsTitle"
             total={summary.materials.total}
             items={summary.materials.items}
+            rowKey={(it) => it.id}
+            columns={[
+              { header: t("project.colId"), cell: (it) => it.id },
+              { header: t("project.colName"), cell: (it) => it.name },
+              { header: t("project.colType"), cell: (it) => it.type },
+            ]}
             t={t}
           />
-          <LoadCombinationSection summary={summary} t={t} />
-          <ConstraintSection summary={summary} t={t} />
+          <SummaryTable
+            titleKey="project.loadCombosTitle"
+            total={summary.loadCombinations.total}
+            items={summary.loadCombinations.items}
+            rowKey={(it) => it.id}
+            columns={[
+              { header: t("project.colId"), cell: (it) => it.id },
+              { header: t("project.colName"), cell: (it) => it.name },
+              { header: t("project.colActive"), cell: (it) => it.active },
+            ]}
+            t={t}
+          />
+          <SummaryTable
+            titleKey="project.constraintsTitle"
+            total={summary.constraints.total}
+            items={summary.constraints.items}
+            rowKey={(it) => it.nodeId}
+            columns={[
+              { header: t("project.colNodeId"), cell: (it) => it.nodeId },
+              { header: t("project.colGroup"), cell: (it) => it.groupName },
+              { header: t("project.colConstraint"), cell: (it) => it.constraint },
+            ]}
+            t={t}
+          />
         </>
       )}
     </section>
@@ -114,15 +148,24 @@ function ElementsSection({ summary, t }: { summary: ProjectSummary; t: TFn }) {
   );
 }
 
-function NamedListSection({
+interface Column<T> {
+  header: string;
+  cell: (item: T) => ReactNode;
+}
+
+function SummaryTable<T>({
   titleKey,
   total,
   items,
+  rowKey,
+  columns,
   t,
 }: {
   titleKey: string;
   total: number;
-  items: NamedItem[];
+  items: T[];
+  rowKey: (item: T) => string;
+  columns: Column<T>[];
   t: TFn;
 }) {
   const { shown, hiddenCount } = capped(items);
@@ -141,103 +184,17 @@ function NamedListSection({
           <table className="summary-table">
             <thead>
               <tr>
-                <th>{t("project.colId")}</th>
-                <th>{t("project.colName")}</th>
-                <th>{t("project.colType")}</th>
+                {columns.map((c) => (
+                  <th key={c.header}>{c.header}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {shown.map((it) => (
-                <tr key={it.id}>
-                  <td>{it.id}</td>
-                  <td>{it.name}</td>
-                  <td>{it.type}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {hiddenCount > 0 && (
-            <div className="hint" style={{ margin: "4px 0 0" }}>
-              {t("project.moreHidden", { count: hiddenCount })}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function ConstraintSection({ summary, t }: { summary: ProjectSummary; t: TFn }) {
-  const { shown, hiddenCount } = capped<ConstraintItem>(summary.constraints.items);
-  return (
-    <div className="subhead-block">
-      <div className="subhead">{t("project.constraintsTitle")}</div>
-      <div className="hint" style={{ margin: "0 0 8px" }}>
-        {t("project.totalCount", { count: summary.constraints.total })}
-      </div>
-      {shown.length === 0 ? (
-        <div className="hint" style={{ margin: 0 }}>
-          {t("project.emptyList")}
-        </div>
-      ) : (
-        <>
-          <table className="summary-table">
-            <thead>
-              <tr>
-                <th>{t("project.colNodeId")}</th>
-                <th>{t("project.colGroup")}</th>
-                <th>{t("project.colConstraint")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((it) => (
-                <tr key={it.nodeId}>
-                  <td>{it.nodeId}</td>
-                  <td>{it.groupName}</td>
-                  <td>{it.constraint}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {hiddenCount > 0 && (
-            <div className="hint" style={{ margin: "4px 0 0" }}>
-              {t("project.moreHidden", { count: hiddenCount })}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function LoadCombinationSection({ summary, t }: { summary: ProjectSummary; t: TFn }) {
-  const { shown, hiddenCount } = capped<LoadCombinationItem>(summary.loadCombinations.items);
-  return (
-    <div className="subhead-block">
-      <div className="subhead">{t("project.loadCombosTitle")}</div>
-      <div className="hint" style={{ margin: "0 0 8px" }}>
-        {t("project.totalCount", { count: summary.loadCombinations.total })}
-      </div>
-      {shown.length === 0 ? (
-        <div className="hint" style={{ margin: 0 }}>
-          {t("project.emptyList")}
-        </div>
-      ) : (
-        <>
-          <table className="summary-table">
-            <thead>
-              <tr>
-                <th>{t("project.colId")}</th>
-                <th>{t("project.colName")}</th>
-                <th>{t("project.colActive")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((it) => (
-                <tr key={it.id}>
-                  <td>{it.id}</td>
-                  <td>{it.name}</td>
-                  <td>{it.active}</td>
+              {shown.map((item) => (
+                <tr key={rowKey(item)}>
+                  {columns.map((c) => (
+                    <td key={c.header}>{c.cell(item)}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>

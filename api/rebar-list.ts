@@ -1,32 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-const MIDAS_BASE: Record<string, string> = {
-  gen: "https://moa-engineers.midasit.com:443/gen",
-  civil: "https://moa-engineers.midasit.com:443/civil",
-};
-
-// KDS 41 20:2022 배근수정 엔드포인트 (부재 유형별). 응답은 엔드포인트 자신의
-// 키(REBB/REBC/REBW/REBR) 아래에 { "<key>": {...} } 형태로 중첩되어 온다.
-const ENDPOINTS: Record<string, string> = {
-  BEAM: "/DESIGN/RC/KDS-41-20-2022/REBB",
-  COLUMN: "/DESIGN/RC/KDS-41-20-2022/REBC",
-  WALL: "/DESIGN/RC/KDS-41-20-2022/REBW",
-  BRACE: "/DESIGN/RC/KDS-41-20-2022/REBR",
-};
-
-function setCors(res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
+import { ENDPOINTS, resolveBase, setCorsPost } from "./_lib/midas";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res);
+  setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
   const { product, apiKey, baseUrl, memberType } = req.body || {};
-  const base = (baseUrl || "").trim().replace(/\/$/, "") || MIDAS_BASE[product];
+  const base = resolveBase(product, baseUrl);
   const endpoint = ENDPOINTS[memberType];
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });

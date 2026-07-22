@@ -1,4 +1,5 @@
-// Must match the MIDAS_BASE fallback in api/verify.ts, api/rebar-list.ts, api/rebar-update.ts.
+// Must match MIDAS_BASE in api/_lib/midas.ts (the single source of truth for
+// every api/*.ts handler's product-URL fallback).
 export const DEFAULT_BASE_URL: Record<string, string> = {
   gen: "https://moa-engineers.midasit.com:443/gen",
   civil: "https://moa-engineers.midasit.com:443/civil",

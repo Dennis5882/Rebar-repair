@@ -1,4 +1,4 @@
-import type { MemberPayload, MemberType } from "../types/rebar";
+import type { BeamWritePayload, MemberPayload, MemberType } from "../types/rebar";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
 
@@ -90,10 +90,25 @@ export function getProjectGeometry(conn: ConnInfo): Promise<ProjectGeometryResul
   return post<ProjectGeometryResult>("/api/project-geometry", conn);
 }
 
+// BEAM's write endpoint needs the legacy BeamWritePayload shape (see
+// toWritePayload() in BeamForm.tsx and the doc comment on BeamWriteItem).
+// Overloading on memberType catches a wrong-member-type payload (e.g.
+// accidentally passing a WallPayload for "BEAM"). It does NOT catch passing
+// BEAM's own canonical BeamPayload where BeamWritePayload is expected —
+// both are structurally "weak types" (every field optional) with enough
+// overlapping field names that TypeScript accepts the substitution anyway.
+// Always call toWritePayload() explicitly at the BEAM save call site.
+export function saveRebar(memberType: "BEAM", key: string, payload: BeamWritePayload, conn: ConnInfo): Promise<SaveResult>;
+export function saveRebar(
+  memberType: Exclude<MemberType, "BEAM">,
+  key: string,
+  payload: MemberPayload,
+  conn: ConnInfo
+): Promise<SaveResult>;
 export function saveRebar(
   memberType: MemberType,
   key: string,
-  payload: MemberPayload,
+  payload: MemberPayload | BeamWritePayload,
   conn: ConnInfo
 ): Promise<SaveResult> {
   return post<SaveResult>("/api/rebar-update", { memberType, key, payload, ...conn });

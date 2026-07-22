@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { drawSectionSvg, type SectionDims } from "../lib/svg";
 import type { MemberPayload, MemberType } from "../types/rebar";
@@ -15,13 +15,22 @@ interface SectionPreviewProps {
 
 export function SectionPreview({ type, titleKey, before, after, dims, legend, singleColumn }: SectionPreviewProps) {
   const { t } = useI18n();
+  // dims is a fresh object literal from the caller every render; compare it
+  // by value (cheap — a couple of numeric-ish fields) so `before` (which is
+  // static once loaded) doesn't get re-rendered into a fresh SVG string on
+  // every unrelated re-render (e.g. a keystroke in an unrelated field).
+  const dimsKey = JSON.stringify(dims);
 
-  const beforeHtml = before
-    ? drawSectionSvg(t, type, before, dims, `${type} ${t("common.loadedCap")} ${t("js.sectionWord")}`)
-    : null;
-  const afterHtml = after
-    ? drawSectionSvg(t, type, after, dims, `${type} ${t("common.currentCap")} ${t("js.sectionWord")}`)
-    : null;
+  const beforeHtml = useMemo(
+    () => (before ? drawSectionSvg(t, type, before, dims, `${type} ${t("common.loadedCap")} ${t("js.sectionWord")}`) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [type, before, dimsKey, t]
+  );
+  const afterHtml = useMemo(
+    () => (after ? drawSectionSvg(t, type, after, dims, `${type} ${t("common.currentCap")} ${t("js.sectionWord")}`) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [type, after, dimsKey, t]
+  );
 
   return (
     <div className="panel">

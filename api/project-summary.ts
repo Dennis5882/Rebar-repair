@@ -1,35 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-const MIDAS_BASE: Record<string, string> = {
-  gen: "https://moa-engineers.midasit.com:443/gen",
-  civil: "https://moa-engineers.midasit.com:443/civil",
-};
-
-function setCors(res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
-
-async function getJson(base: string, path: string, apiKey: string): Promise<any> {
-  try {
-    const r = await fetch(`${base}${path}`, { headers: { "MAPI-Key": apiKey } });
-    if (!r.ok) return {};
-    return (await r.json()) || {};
-  } catch {
-    // A single missing/unsupported endpoint (e.g. no load combos defined
-    // yet) shouldn't fail the whole summary — it just reads as empty.
-    return {};
-  }
-}
+import { getJson, resolveBase, setCorsPost } from "./_lib/midas";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res);
+  setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
   const { product, apiKey, baseUrl } = req.body || {};
-  const base = (baseUrl || "").trim().replace(/\/$/, "") || MIDAS_BASE[product];
+  const base = resolveBase(product, baseUrl);
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
 

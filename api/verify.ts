@@ -1,28 +1,18 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-const MIDAS_BASE: Record<string, string> = {
-  gen: "https://moa-engineers.midasit.com:443/gen",
-  civil: "https://moa-engineers.midasit.com:443/civil",
-};
+import { resolveBase, setCorsPost } from "./_lib/midas";
 
 // 연결 검증은 product 접두어를 뗀 루트의 /mapikey/verify (GET).
 function mapiRoot(base: string): string {
   return base.replace(/\/(gen|civil)\/?$/i, "");
 }
 
-function setCors(res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res);
+  setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
   const { product, apiKey, baseUrl } = req.body || {};
-  const base = (baseUrl || "").trim().replace(/\/$/, "") || MIDAS_BASE[product];
+  const base = resolveBase(product, baseUrl);
   const key = (apiKey || "").trim();
   if (!base || !key) return res.status(400).json({ ok: false, code: "missing_key" });
 

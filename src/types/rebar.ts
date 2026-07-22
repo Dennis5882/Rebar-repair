@@ -140,4 +140,8 @@ export interface WallItem {
 }
 export type WallPayload = ItemsPayload<WallItem>;
 
-export type MemberPayload = BeamPayload | BeamWritePayload | ColumnLikePayload | WallPayload;
+// Canonical (read/preview) shapes only — deliberately excludes
+// BeamWritePayload so this can't be used where a caller might accidentally
+// accept BEAM's write-only shape (see saveRebar's BEAM-specific overload in
+// src/lib/api.ts, which is the only place BeamWritePayload should appear).
+export type MemberPayload = BeamPayload | ColumnLikePayload | WallPayload;
