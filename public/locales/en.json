@@ -189,6 +189,8 @@
   "guide.codeTableTitle": "Code Reference Table",
   "guide.codeDesignLabel": "Design Code",
   "designCode.hint": "The rebar sizes offered in the BEAM/COLUMN/WALL/BRACE input dropdowns follow the design code picked here.",
+  "designCode.overrideHint": "Material standard differs from this design code's default (e.g. Eurocode design with Korean rebar).",
+  "designCode.resetBtn": "Reset to default",
   "guide.codeMaterialLabel": "Material Standard",
   "guide.codeRebarLabel": "Gen NX Rebar Code",
   "guide.codeGradesLabel": "Grades",

@@ -189,6 +189,8 @@
   "guide.codeTableTitle": "规范代码对照表",
   "guide.codeDesignLabel": "设计规范",
   "designCode.hint": "这里选择的设计规范决定了 BEAM/COLUMN/WALL/BRACE 输入框下拉菜单中出现的钢筋规格。",
+  "designCode.overrideHint": "材料规格与该设计规范的默认值不同（例如欧洲规范设计 + 韩国钢筋组合）。",
+  "designCode.resetBtn": "恢复默认值",
   "guide.codeMaterialLabel": "材料规格",
   "guide.codeRebarLabel": "Gen NX Rebar Code",
   "guide.codeGradesLabel": "钢筋等级",

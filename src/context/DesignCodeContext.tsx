@@ -2,12 +2,17 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useI18n } from "../i18n/useI18n";
 import type { LangCode } from "../i18n/types";
 import { DEFAULT_LANG } from "../i18n/types";
-import { defaultMaterialDB, getBars, type RebarSize } from "../data/rcCodePresets";
+import { defaultMaterialDB, getBars, isOverride as isOverrideFn, type RebarSize } from "../data/rcCodePresets";
 
 interface DesignCodeContextValue {
   designCode: string;
   setDesignCode: (code: string) => void;
-  materialDB: string | null;
+  materialDB: string;
+  setMaterialDB: (db: string) => void;
+  // True once materialDB has been pointed away from designCode's own
+  // default — e.g. a Eurocode design using Korean (KS D 3504) rebar, a real
+  // combination in practice, not just a hypothetical.
+  isOverride: boolean;
   bars: RebarSize[];
 }
 
@@ -23,24 +28,24 @@ const DEFAULT_DESIGN_CODE_BY_LANG: Record<LangCode, string> = {
   "zh-TW": "TWN-USD112",
 };
 
-function readSession(fallback: string): string {
+function readSession(field: string, fallback: string): string {
   try {
-    const v = sessionStorage.getItem("designCode");
+    const v = sessionStorage.getItem("dcode_" + field);
     return v === null ? fallback : v;
   } catch {
     return fallback;
   }
 }
-function writeSession(value: string) {
+function writeSession(field: string, value: string) {
   try {
-    sessionStorage.setItem("designCode", value);
+    sessionStorage.setItem("dcode_" + field, value);
   } catch {
     /* ignore (private mode etc.) */
   }
 }
-function hasSavedSession(): boolean {
+function hasSavedSession(field: string): boolean {
   try {
-    return sessionStorage.getItem("designCode") !== null;
+    return sessionStorage.getItem("dcode_" + field) !== null;
   } catch {
     return false;
   }
@@ -48,28 +53,58 @@ function hasSavedSession(): boolean {
 
 export function DesignCodeProvider({ children }: { children: ReactNode }) {
   const { lang } = useI18n();
-  const [designCode, setDesignCodeState] = useState(() => readSession(DEFAULT_DESIGN_CODE_BY_LANG[DEFAULT_LANG]));
-  // Once the user picks explicitly (or a saved session value exists), stop
-  // following language changes — mirrors CodeReferenceSection's original
-  // per-component version of this same rule, now shared app-wide.
-  const [userChanged, setUserChanged] = useState(hasSavedSession);
+  const [designCode, setDesignCodeState] = useState(() => readSession("designCode", DEFAULT_DESIGN_CODE_BY_LANG[DEFAULT_LANG]));
+  const [materialDB, setMaterialDBState] = useState(
+    () => readSession("materialDB", defaultMaterialDB(readSession("designCode", DEFAULT_DESIGN_CODE_BY_LANG[DEFAULT_LANG])) || "")
+  );
+  // Once the user picks a design code explicitly (or a saved session value
+  // exists), stop following language changes for its default.
+  const [userChangedCode, setUserChangedCode] = useState(() => hasSavedSession("designCode"));
 
   useEffect(() => {
-    if (!userChanged) setDesignCodeState(DEFAULT_DESIGN_CODE_BY_LANG[lang] || "KDS 41 20 : 2022");
-  }, [lang, userChanged]);
+    if (userChangedCode) return;
+    const next = DEFAULT_DESIGN_CODE_BY_LANG[lang] || "KDS 41 20 : 2022";
+    setDesignCodeState((prevCode) => {
+      // Same "follow only if not customized" rule as setDesignCode below —
+      // this only runs pre-first-interaction, but a user could still have
+      // touched materialDB alone before IP detection resolves.
+      setMaterialDBState((prevDB) => {
+        if (prevDB !== defaultMaterialDB(prevCode)) return prevDB;
+        return defaultMaterialDB(next) || prevDB;
+      });
+      return next;
+    });
+  }, [lang, userChangedCode]);
 
+  // Mirrors ConnContext's product->baseUrl relationship: switching design
+  // code follows materialDB to the new default UNLESS the user already
+  // overrode it away from the *previous* code's default.
   const setDesignCode = useCallback((code: string) => {
-    setUserChanged(true);
-    setDesignCodeState(code);
-    writeSession(code);
+    setUserChangedCode(true);
+    setDesignCodeState((prevCode) => {
+      setMaterialDBState((prevDB) => {
+        if (prevDB !== defaultMaterialDB(prevCode)) return prevDB;
+        const nextDefault = defaultMaterialDB(code);
+        if (!nextDefault) return prevDB;
+        writeSession("materialDB", nextDefault);
+        return nextDefault;
+      });
+      writeSession("designCode", code);
+      return code;
+    });
   }, []);
 
-  const materialDB = useMemo(() => defaultMaterialDB(designCode), [designCode]);
+  const setMaterialDB = useCallback((db: string) => {
+    setMaterialDBState(db);
+    writeSession("materialDB", db);
+  }, []);
+
   const bars = useMemo(() => (materialDB ? getBars(materialDB) : []), [materialDB]);
+  const overridden = useMemo(() => isOverrideFn(designCode, materialDB), [designCode, materialDB]);
 
   const value = useMemo<DesignCodeContextValue>(
-    () => ({ designCode, setDesignCode, materialDB, bars }),
-    [designCode, setDesignCode, materialDB, bars]
+    () => ({ designCode, setDesignCode, materialDB, setMaterialDB, isOverride: overridden, bars }),
+    [designCode, setDesignCode, materialDB, setMaterialDB, overridden, bars]
   );
 
   return <DesignCodeContext.Provider value={value}>{children}</DesignCodeContext.Provider>;
