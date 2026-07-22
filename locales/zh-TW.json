@@ -4,6 +4,7 @@
   "app.footerHint": "尺寸、間距、保護層數值的單位依照 MIDAS 模型目前使用的長度單位。斷面預覽為示意圖，可能與實際配置/間距有所不同（梁/柱/斜撐以中央斷面為準，牆體以平面斷面為準）。",
   "lang.label": "語言",
   "app.developerLabel": "開發者",
+  "app.plannerLabel": "策劃",
 
   "conn.title": "連線資訊",
   "conn.mapiKey": "MAPI Key",

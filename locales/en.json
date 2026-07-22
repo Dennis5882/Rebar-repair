@@ -4,6 +4,7 @@
   "app.footerHint": "Dimension, spacing, and cover values follow the active length unit currently used in the MIDAS model. Section previews are schematic and may differ from the actual layout/spacing (beam/column/brace use the center section, wall uses the plan section).",
   "lang.label": "Language",
   "app.developerLabel": "Developer",
+  "app.plannerLabel": "Planner",
 
   "conn.title": "Connection",
   "conn.mapiKey": "MAPI Key",
