@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { setCorsGet } from "./_lib/midas";
+import { setCorsGet } from "./lib/midas";
 
 // Vercel populates x-vercel-ip-country on deployed requests based on the
 // client's IP (GeoIP). Not available in local `vercel dev` / plain static

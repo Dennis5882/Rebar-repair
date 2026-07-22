@@ -1,8 +1,11 @@
 import type { VercelResponse } from "@vercel/node";
 
 // Shared by every api/*.ts handler that talks to the MIDAS Open API.
-// Files under api/_lib are not turned into routes by Vercel (leading
-// underscore), so this is safe to keep alongside the actual endpoints.
+// No default export here, so Vercel doesn't turn this into its own route —
+// but do NOT prefix this directory with `_`: Vercel excludes underscore-
+// prefixed paths from the deployed function output entirely, which breaks
+// every handler's relative import at runtime (confirmed live 2026-07-22 —
+// every function failed with ERR_MODULE_NOT_FOUND for api/_lib/midas).
 
 export const MIDAS_BASE: Record<string, string> = {
   gen: "https://moa-engineers.midasit.com:443/gen",

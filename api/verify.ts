@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { resolveBase, setCorsPost } from "./_lib/midas";
+import { resolveBase, setCorsPost } from "./lib/midas";
 
 // 연결 검증은 product 접두어를 뗀 루트의 /mapikey/verify (GET).
 function mapiRoot(base: string): string {

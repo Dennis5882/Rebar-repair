@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getJson, resolveBase, setCorsPost } from "./_lib/midas";
+import { getJson, resolveBase, setCorsPost } from "./lib/midas";
 
 const EPS = 1e-6;
 
