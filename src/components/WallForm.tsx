@@ -192,10 +192,13 @@ export function WallForm() {
       return;
     }
     const item = buildWallItem(form);
-    // Preserve the other segments of a multi-segment wall (sub-wall
-    // ID / story range) untouched — only the one being edited changes.
-    const items = allItems.length ? [...allItems] : [item];
-    if (allItems.length) items[segmentIndex] = item;
+    // allItems only reflects the segments of whichever key was last loaded
+    // via the dropdown — if the user has since retyped keyInput to a
+    // different key, those segments belong to that OTHER wall and must not
+    // be merged in here, or they'd get written onto the wrong key.
+    const keyMatchesLoaded = keyInput === existingKey && allItems.length > 0;
+    const items = keyMatchesLoaded ? [...allItems] : [item];
+    if (keyMatchesLoaded) items[segmentIndex] = item;
     const payload: WallPayload = { ITEMS: items };
     setSaving(true);
     setStatus({ ok: true, msg: t("js.saving") });
@@ -206,7 +209,9 @@ export function WallForm() {
         return;
       }
       setStatus({ ok: true, msg: t("js.saveDone") });
+      setExistingKey(keyInput);
       setAllItems(items);
+      setSegmentIndex(keyMatchesLoaded ? segmentIndex : 0);
       setLoaded(item);
     } catch (e) {
       setStatus({ ok: false, msg: t("js.saveError", { error: String(e) }) });
@@ -241,7 +246,7 @@ export function WallForm() {
         </div>
         <div className="keylist">{keylistText}</div>
 
-        {allItems.length > 1 && (
+        {keyInput === existingKey && allItems.length > 1 && (
           <div className="field">
             <label>{t("wall.segmentLabel")}</label>
             <select value={segmentIndex} onChange={(e) => handleSelectSegment(Number(e.target.value))}>
