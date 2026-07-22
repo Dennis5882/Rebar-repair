@@ -10,7 +10,7 @@
   "conn.mapiKey": "MAPI Key",
   "conn.mapiKeyPlaceholder": "从您自己的 Gen NX 中获取的 MAPI Key",
   "conn.product": "产品",
-  "conn.baseUrl": "Base URL（仅限本地部署，通常留空）",
+  "conn.baseUrl": "Base URL（非本地部署请保留默认值）",
   "conn.baseUrlPlaceholder": "留空则使用 MIDASIT 云端 API（推荐）",
   "conn.testBtn": "测试连接",
   "conn.hint": "MAPI Key 仅保存在此浏览器会话中（sessionStorage），不会存储在服务器上，仅在每次请求时原样转发。请确保 Gen NX 已启动且 API 已启用。",

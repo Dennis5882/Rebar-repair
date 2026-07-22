@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { ConnInfo } from "../lib/api";
+import { DEFAULT_BASE_URL } from "../lib/constants";
 
 interface ConnContextValue {
   mapiKey: string;
@@ -35,13 +36,25 @@ function writeSession(field: string, value: string) {
 export function ConnProvider({ children }: { children: ReactNode }) {
   const [mapiKey, setMapiKeyState] = useState(() => readSession("mapiKey", ""));
   const [product, setProductState] = useState(() => readSession("product", "gen"));
-  const [baseUrl, setBaseUrlState] = useState(() => readSession("baseUrl", ""));
+  const [baseUrl, setBaseUrlState] = useState(() =>
+    readSession("baseUrl", DEFAULT_BASE_URL[readSession("product", "gen")])
+  );
 
   const setMapiKey = (v: string) => {
     setMapiKeyState(v);
     writeSession("mapiKey", v);
   };
   const setProduct = (v: string) => {
+    // If the user hasn't customized baseUrl (still on the previous product's
+    // default, e.g. for on-premise use), follow the product switch so the
+    // field keeps showing a valid default instead of the wrong product's URL.
+    if (baseUrl === DEFAULT_BASE_URL[product]) {
+      const nextDefault = DEFAULT_BASE_URL[v];
+      if (nextDefault) {
+        setBaseUrlState(nextDefault);
+        writeSession("baseUrl", nextDefault);
+      }
+    }
     setProductState(v);
     writeSession("product", v);
   };

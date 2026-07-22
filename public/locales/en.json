@@ -10,7 +10,7 @@
   "conn.mapiKey": "MAPI Key",
   "conn.mapiKeyPlaceholder": "MAPI Key issued from your own Gen NX",
   "conn.product": "Product",
-  "conn.baseUrl": "Base URL (on-premise only, usually left blank)",
+  "conn.baseUrl": "Base URL (keep the default unless you're on-premise)",
   "conn.baseUrlPlaceholder": "Leave blank to use the MIDASIT cloud API (recommended)",
   "conn.testBtn": "Test Connection",
   "conn.hint": "The MAPI Key is kept only in this browser session (sessionStorage), is never stored on the server, and is simply forwarded as-is with each request. Gen NX must be running with the API enabled.",
