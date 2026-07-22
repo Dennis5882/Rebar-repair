@@ -55,6 +55,8 @@ export interface DesignCodeEntry {
 export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   "KS D 3504": {
     label: "KS D 3504 (한국)", system: "D", unit: "mm",
+    // "KS19(RC)" (dbName[0]) live-confirmed against real Gen NX Rebar
+    // Selection > Code data 2026-07-23 — see [[genxn-api-schema-findings]].
     dbName: ["KS19(RC)", "KS01(RC)", "KS(RC)"],
     grades: ["SD300", "SD400", "SD500", "SD600", "SD700", "SD400S", "SD500S", "SD600S"],
     bars: [
@@ -69,6 +71,8 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
 
   "ASTM A615/A706": {
     label: "ASTM A615/A706 (미국, imperial)", system: "#", unit: "inch",
+    // "ASTM19(RC)" (dbName[0]) live-confirmed against real Gen NX data —
+    // see the KS D 3504 entry's note above.
     dbName: ["ASTM19(RC)", "ASTM(RC)", "U.S.C(US)(RC)"],
     grades: ["Grade 40", "Grade 60", "Grade 80", "Grade 100"],
     bars: [
@@ -97,6 +101,8 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
 
   "CNS 560": {
     label: "CNS 560 (대만)", system: "D", unit: "mm",
+    // "CNS560-18(RC)" (dbName[0]) live-confirmed against real Gen NX data —
+    // see the KS D 3504 entry's note above.
     dbName: ["CNS560-18(RC)", "CNS560(RC)", "CNS(RC)"],
     grades: ["SD280", "SD280W", "SD420", "SD420W", "SD490W", "SD550W", "SD690"],
     bars: [
