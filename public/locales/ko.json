@@ -5,6 +5,7 @@
   "lang.label": "언어",
   "app.developerLabel": "개발자",
   "app.plannerLabel": "기획자",
+  "app.lastUpdateLabel": "최신업데이트 날짜",
 
   "conn.title": "연결 정보",
   "conn.mapiKey": "MAPI Key",
@@ -19,6 +20,7 @@
   "tab.column": "기둥 (Column)",
   "tab.wall": "벽체 (Wall)",
   "tab.brace": "가새 (Brace)",
+  "tab.project": "프로젝트 리뷰",
 
   "common.targetTitle": "대상 & 불러오기",
   "common.sectionKeyLabel": "단면번호 (key)",
@@ -138,5 +140,28 @@
   "js.err.unknownProduct": "알 수 없는 product: {product}",
   "js.err.unknownMemberType": "알 수 없는 부재 유형: {memberType}",
   "js.err.missingKeyId": "Element/단면/Wall ID를 입력하세요.",
-  "js.err.emptyPayload": "배근 값이 비어 있습니다."
+  "js.err.emptyPayload": "배근 값이 비어 있습니다.",
+
+  "project.title": "프로젝트 리뷰",
+  "project.hint": "현재 열려있는 Gen NX 모델의 기본정보(요소 수, 단면, 재료, 하중조합, 경계조건)를 읽어옵니다.",
+  "project.loadBtn": "모델 정보 읽기",
+  "project.loading": "모델 정보를 읽는 중...",
+  "project.loadFail": "모델 정보 읽기 실패: {error}",
+  "project.loadError": "모델 정보 읽기 중 오류: {error}",
+  "project.elementsTitle": "요소 (Element)",
+  "project.sectionsTitle": "단면 (Section)",
+  "project.materialsTitle": "재료 (Material)",
+  "project.loadCombosTitle": "하중조합 (일반)",
+  "project.constraintsTitle": "경계조건 (절점 지지조건)",
+  "project.totalCount": "총 {count}개",
+  "project.emptyList": "없음",
+  "project.colType": "유형",
+  "project.colCount": "개수",
+  "project.colId": "ID",
+  "project.colName": "이름",
+  "project.colActive": "활성 타입",
+  "project.colNodeId": "절점 ID",
+  "project.colGroup": "그룹",
+  "project.colConstraint": "구속조건 (DX DY DZ RX RY RZ RW)",
+  "project.moreHidden": "...외 {count}개 더 있음"
 }

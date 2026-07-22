@@ -4,7 +4,10 @@ export function Byline() {
   const { t } = useI18n();
   return (
     <p className="hint byline">
-      {t("app.developerLabel")}: Dennis v260716 · {t("app.plannerLabel")}: Gavi
+      <span>
+        {t("app.plannerLabel")}: Gavi · {t("app.developerLabel")}: Dennis
+      </span>
+      <span>{t("app.lastUpdateLabel")}: 260716</span>
     </p>
   );
 }

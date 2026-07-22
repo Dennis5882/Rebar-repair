@@ -5,6 +5,7 @@
   "lang.label": "Language",
   "app.developerLabel": "Developer",
   "app.plannerLabel": "Planner",
+  "app.lastUpdateLabel": "Last Updated",
 
   "conn.title": "Connection",
   "conn.mapiKey": "MAPI Key",
@@ -19,6 +20,7 @@
   "tab.column": "Column",
   "tab.wall": "Wall",
   "tab.brace": "Brace",
+  "tab.project": "Project Review",
 
   "common.targetTitle": "Target & Load",
   "common.sectionKeyLabel": "Section Number (key)",
@@ -138,5 +140,28 @@
   "js.err.unknownProduct": "Unknown product: {product}",
   "js.err.unknownMemberType": "Unknown member type: {memberType}",
   "js.err.missingKeyId": "Please enter an Element/Section/Wall ID.",
-  "js.err.emptyPayload": "Rebar values are empty."
+  "js.err.emptyPayload": "Rebar values are empty.",
+
+  "project.title": "Project Review",
+  "project.hint": "Reads basic info from the currently open Gen NX model: element counts, sections, materials, load combinations, and boundary conditions.",
+  "project.loadBtn": "Read Model Summary",
+  "project.loading": "Reading model info...",
+  "project.loadFail": "Failed to read model info: {error}",
+  "project.loadError": "Error while reading model info: {error}",
+  "project.elementsTitle": "Elements",
+  "project.sectionsTitle": "Sections",
+  "project.materialsTitle": "Materials",
+  "project.loadCombosTitle": "Load Combinations (General)",
+  "project.constraintsTitle": "Boundary Conditions (Node Constraints)",
+  "project.totalCount": "Total: {count}",
+  "project.emptyList": "None",
+  "project.colType": "Type",
+  "project.colCount": "Count",
+  "project.colId": "ID",
+  "project.colName": "Name",
+  "project.colActive": "Active",
+  "project.colNodeId": "Node ID",
+  "project.colGroup": "Group",
+  "project.colConstraint": "Constraint (DX DY DZ RX RY RZ RW)",
+  "project.moreHidden": "...and {count} more"
 }

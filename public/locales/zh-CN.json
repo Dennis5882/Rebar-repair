@@ -5,6 +5,7 @@
   "lang.label": "语言",
   "app.developerLabel": "开发者",
   "app.plannerLabel": "策划",
+  "app.lastUpdateLabel": "最近更新日期",
 
   "conn.title": "连接信息",
   "conn.mapiKey": "MAPI Key",
@@ -19,6 +20,7 @@
   "tab.column": "柱 (Column)",
   "tab.wall": "墙体 (Wall)",
   "tab.brace": "斜撑 (Brace)",
+  "tab.project": "项目概览",
 
   "common.targetTitle": "对象与载入",
   "common.sectionKeyLabel": "断面编号 (key)",
@@ -138,5 +140,28 @@
   "js.err.unknownProduct": "未知的 product：{product}",
   "js.err.unknownMemberType": "未知的构件类型：{memberType}",
   "js.err.missingKeyId": "请输入 Element/断面/Wall ID。",
-  "js.err.emptyPayload": "配筋值为空。"
+  "js.err.emptyPayload": "配筋值为空。",
+
+  "project.title": "项目概览",
+  "project.hint": "读取当前打开的 Gen NX 模型的基本信息：单元数量、断面、材料、荷载组合和边界条件。",
+  "project.loadBtn": "读取模型信息",
+  "project.loading": "正在读取模型信息...",
+  "project.loadFail": "读取模型信息失败：{error}",
+  "project.loadError": "读取模型信息时发生错误：{error}",
+  "project.elementsTitle": "单元 (Element)",
+  "project.sectionsTitle": "断面 (Section)",
+  "project.materialsTitle": "材料 (Material)",
+  "project.loadCombosTitle": "荷载组合（通用）",
+  "project.constraintsTitle": "边界条件（节点约束）",
+  "project.totalCount": "共 {count} 项",
+  "project.emptyList": "无",
+  "project.colType": "类型",
+  "project.colCount": "数量",
+  "project.colId": "ID",
+  "project.colName": "名称",
+  "project.colActive": "激活类型",
+  "project.colNodeId": "节点 ID",
+  "project.colGroup": "组",
+  "project.colConstraint": "约束条件（DX DY DZ RX RY RZ RW）",
+  "project.moreHidden": "...另有 {count} 项未显示"
 }

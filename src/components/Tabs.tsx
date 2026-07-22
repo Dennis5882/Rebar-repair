@@ -1,14 +1,17 @@
 import type { MemberType } from "../types/rebar";
 import { useI18n } from "../i18n/useI18n";
 
-const TABS: { type: MemberType; key: string }[] = [
+export type TabKey = MemberType | "PROJECT";
+
+const TABS: { type: TabKey; key: string }[] = [
   { type: "BEAM", key: "tab.beam" },
   { type: "COLUMN", key: "tab.column" },
   { type: "WALL", key: "tab.wall" },
   { type: "BRACE", key: "tab.brace" },
+  { type: "PROJECT", key: "tab.project" },
 ];
 
-export function Tabs({ active, onChange }: { active: MemberType; onChange: (type: MemberType) => void }) {
+export function Tabs({ active, onChange }: { active: TabKey; onChange: (type: TabKey) => void }) {
   const { t } = useI18n();
   return (
     <div className="tabs">

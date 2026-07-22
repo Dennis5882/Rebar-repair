@@ -1,4 +1,5 @@
 import type { MemberPayload, MemberType } from "../types/rebar";
+import type { ProjectSummary } from "../types/project";
 
 export interface ConnInfo {
   apiKey: string;
@@ -47,6 +48,12 @@ export interface SaveOk {
 }
 export type SaveResult = SaveOk | ApiError;
 
+export interface ProjectSummaryOk {
+  ok: true;
+  data: ProjectSummary;
+}
+export type ProjectSummaryResult = ProjectSummaryOk | ApiError;
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
@@ -66,6 +73,10 @@ export function verifyConnection(conn: ConnInfo): Promise<VerifyResult> {
 
 export function listRebar<T = unknown>(memberType: MemberType, conn: ConnInfo): Promise<ListResult<T>> {
   return post<ListResult<T>>("/api/rebar-list", { memberType, ...conn });
+}
+
+export function getProjectSummary(conn: ConnInfo): Promise<ProjectSummaryResult> {
+  return post<ProjectSummaryResult>("/api/project-summary", conn);
 }
 
 export function saveRebar(

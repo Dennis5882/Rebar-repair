@@ -5,17 +5,17 @@ import { useI18n } from "./i18n/useI18n";
 import { ConnProvider } from "./context/ConnContext";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ConnectionPanel } from "./components/ConnectionPanel";
-import { Tabs } from "./components/Tabs";
+import { Tabs, type TabKey } from "./components/Tabs";
 import { BeamForm } from "./components/BeamForm";
 import { ColumnLikeForm } from "./components/ColumnLikeForm";
 import { WallForm } from "./components/WallForm";
+import { ProjectReview } from "./components/ProjectReview";
 import { FooterHint } from "./components/FooterHint";
 import { Byline } from "./components/Byline";
-import type { MemberType } from "./types/rebar";
 
 function AppShell() {
   const { t } = useI18n();
-  const [active, setActive] = useState<MemberType>("BEAM");
+  const [active, setActive] = useState<TabKey>("BEAM");
 
   return (
     <div className="wrap">
@@ -37,6 +37,9 @@ function AppShell() {
       </div>
       <div className={"tab-panel" + (active === "BRACE" ? " active" : "")}>
         <ColumnLikeForm type="BRACE" isColumn={false} defaultB="400" defaultH="400" mainPlaceholder="D22" hoopPlaceholder="D10" />
+      </div>
+      <div className={"tab-panel" + (active === "PROJECT" ? " active" : "")}>
+        <ProjectReview />
       </div>
 
       <FooterHint />
