@@ -164,10 +164,10 @@
     const sector = {};
     const topName = v(`BEAM-${key}-topName`);
     const topNum = num(`BEAM-${key}-topNum`);
-    if (topName && topNum) sector.vMAIN_BAR_TOP = [{ LAYER: 1, NAME: topName, NUM: topNum }];
+    if (topName && topNum) sector.MAIN_BAR_TOP = { LAYER1: { NAME: topName, NUM: topNum } };
     const botName = v(`BEAM-${key}-botName`);
     const botNum = num(`BEAM-${key}-botNum`);
-    if (botName && botNum) sector.vMAIN_BAR_BOT = [{ LAYER: 1, NAME: botName, NUM: botNum }];
+    if (botName && botNum) sector.MAIN_BAR_BOT = { LAYER1: { NAME: botName, NUM: botNum } };
     const shearName = v(`BEAM-${key}-shearName`);
     if (shearName) sector.SHEAR_BAR = { NAME: shearName, LEG: num(`BEAM-${key}-shearLeg`), DIST: num(`BEAM-${key}-shearDist`) };
     const skinName = v(`BEAM-${key}-skinName`);
@@ -185,8 +185,8 @@
           BAR_SECTOR_I: buildBeamSector("I"),
           BAR_SECTOR_M: buildBeamSector("M"),
           BAR_SECTOR_J: buildBeamSector("J"),
-          MAIN_BAR_DC_TOP: num("BEAM-DT"),
-          MAIN_BAR_DC_BOT: num("BEAM-DB"),
+          DT: num("BEAM-DT"),
+          DB: num("BEAM-DB"),
         },
       ],
     };
@@ -261,12 +261,20 @@
     return payload.ITEMS[0];
   }
 
+  // MAIN_BAR_TOP/BOT come back keyed by layer (LAYER1, LAYER2, ...); this
+  // form only edits a single layer, so take the first one.
+  function firstLayer(obj) {
+    if (!obj) return {};
+    const keys = Object.keys(obj);
+    return keys.length ? obj[keys[0]] : {};
+  }
+
   function fillBeamForm(payload) {
     const it = firstItem(payload);
     for (const key of SECTORS) {
       const sector = it[`BAR_SECTOR_${key}`] || {};
-      const top = (sector.vMAIN_BAR_TOP || [])[0] || {};
-      const bot = (sector.vMAIN_BAR_BOT || [])[0] || {};
+      const top = firstLayer(sector.MAIN_BAR_TOP);
+      const bot = firstLayer(sector.MAIN_BAR_BOT);
       const shear = sector.SHEAR_BAR || {};
       setV(`BEAM-${key}-topName`, top.NAME);
       setV(`BEAM-${key}-topNum`, top.NUM);
@@ -278,8 +286,8 @@
       setV(`BEAM-${key}-skinName`, sector.SKIN_BAR_NAME);
       setV(`BEAM-${key}-skinNum`, sector.SKIN_BAR_NUM);
     }
-    setV("BEAM-DT", it.MAIN_BAR_DC_TOP);
-    setV("BEAM-DB", it.MAIN_BAR_DC_BOT);
+    setV("BEAM-DT", it.DT);
+    setV("BEAM-DB", it.DB);
   }
 
   function fillColumnLikeForm(prefix, payload, isColumn) {
@@ -489,10 +497,10 @@
     const H = Number(dims.H) || 600;
     const it = firstItem(payload);
     const sector = it.BAR_SECTOR_M || {};
-    const dt = it.MAIN_BAR_DC_TOP || 40;
-    const db = it.MAIN_BAR_DC_BOT || 40;
-    const topLayers = sector.vMAIN_BAR_TOP || [];
-    const botLayers = sector.vMAIN_BAR_BOT || [];
+    const dt = it.DT || 40;
+    const db = it.DB || 40;
+    const topLayers = Object.values(sector.MAIN_BAR_TOP || {});
+    const botLayers = Object.values(sector.MAIN_BAR_BOT || {});
     const shear = sector.SHEAR_BAR || {};
 
     const canvas = 240, pad = 26;
