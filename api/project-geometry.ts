@@ -39,7 +39,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const v of Object.values<any>(elemItems)) {
       const nodeIds: string[] = (v?.NODE || []).map((n: number) => String(n));
-      if (v?.TYPE === "WALL" && nodeIds.length >= 3) {
+      // Real "Wall" elements (TYPE:"WALL") are one option, but models
+      // commonly represent walls as generic shell elements (TYPE:"PLATE")
+      // instead — this live model has zero WALL-typed elements and its
+      // walls are all PLATE. Both render as mesh panels.
+      if ((v?.TYPE === "WALL" || v?.TYPE === "PLATE") && nodeIds.length >= 3) {
         walls.push({ nodes: nodeIds });
         continue;
       }
