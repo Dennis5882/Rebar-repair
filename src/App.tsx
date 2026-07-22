@@ -12,6 +12,7 @@ import { WallForm } from "./components/WallForm";
 import { ProjectReview } from "./components/ProjectReview";
 import { FooterHint } from "./components/FooterHint";
 import { Byline } from "./components/Byline";
+import { GuideDrawer } from "./components/GuideDrawer";
 
 function AppShell() {
   const { t } = useI18n();
@@ -19,6 +20,7 @@ function AppShell() {
 
   return (
     <div className="wrap">
+      <GuideDrawer />
       <LanguageSwitcher />
       <h1>{t("app.title")}</h1>
       <div className="subtitle">{t("app.subtitle")}</div>

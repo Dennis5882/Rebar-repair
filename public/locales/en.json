@@ -177,5 +177,28 @@
   "geo3d.legendBrace": "Brace",
   "geo3d.legendWall": "Wall",
   "geo3d.legendNode": "Node",
-  "geo3d.legendSupport": "Support"
+  "geo3d.legendSupport": "Support",
+
+  "guide.title": "User Guide",
+  "guide.openBtn": "Open user guide",
+  "guide.closeBtn": "Close",
+  "guide.releaseTitle": "Release Notes",
+  "guide.intro": "Connect with your MAPI Key above, then edit rebar for Beam/Column/Wall/Brace in the tabs, or read a summary of the whole model in Project Review.",
+  "guide.codeTableTitle": "Code Reference Table",
+  "guide.codeTableCountryLabel": "Country",
+  "guide.codeTablePlaceholder": "Code reference content for the selected country will be added here later.",
+  "guide.country.kr": "Korea (KDS)",
+  "guide.country.us": "USA (ACI)",
+  "guide.country.cn": "China (GB)",
+  "guide.country.tw": "Taiwan (CNS)",
+
+  "guide.release.d260722.item1": "Fixed BEAM rebar saving to match the real Gen NX API's write field format (verified against a live model)",
+  "guide.release.d260722.item2": "Rebuilt the entire app in TypeScript + Vite + React",
+  "guide.release.d260722.item3": "Added a planner credit next to the developer byline",
+  "guide.release.d260722.item4": "Base URL now defaults to the correct address for the selected product",
+  "guide.release.d260722.item5": "Added a Project Review tab: model summary (elements/sections/materials/load combinations/boundary conditions) plus a 3D geometry view",
+  "guide.release.d260716.item1": "Initial MIDAS Gen NX rebar-editing UI (Beam/Column/Wall/Brace)",
+  "guide.release.d260716.item2": "Reworked into a Vercel-deployable app with serverless API functions",
+  "guide.release.d260716.item3": "Added multilingual UI support (English/Korean/Simplified Chinese/Traditional Chinese)",
+  "guide.release.d260716.item4": "Added IP-based automatic language detection and a developer byline"
 }

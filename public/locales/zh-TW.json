@@ -177,5 +177,28 @@
   "geo3d.legendBrace": "斜撐",
   "geo3d.legendWall": "牆體",
   "geo3d.legendNode": "節點",
-  "geo3d.legendSupport": "支座"
+  "geo3d.legendSupport": "支座",
+
+  "guide.title": "使用說明",
+  "guide.openBtn": "開啟使用說明",
+  "guide.closeBtn": "關閉",
+  "guide.releaseTitle": "更新日誌",
+  "guide.intro": "先在上方用 MAPI Key 連線，然後在各分頁編輯梁/柱/牆體/斜撐的配筋，或在專案概覽中查看整個模型的摘要資訊。",
+  "guide.codeTableTitle": "規範代碼對照表",
+  "guide.codeTableCountryLabel": "國家/地區",
+  "guide.codeTablePlaceholder": "所選國家/地區的規範代碼說明將於稍後補充。",
+  "guide.country.kr": "韓國 (KDS)",
+  "guide.country.us": "美國 (ACI)",
+  "guide.country.cn": "中國 (GB)",
+  "guide.country.tw": "臺灣 (CNS)",
+
+  "guide.release.d260722.item1": "修正 BEAM 配筋儲存，使其符合 Gen NX API 實際的寫入欄位格式（已用實際模型驗證）",
+  "guide.release.d260722.item2": "將整個應用程式重構為 TypeScript + Vite + React",
+  "guide.release.d260722.item3": "在開發者署名旁新增策劃署名",
+  "guide.release.d260722.item4": "Base URL 現在會自動填入與所選產品相符的預設地址",
+  "guide.release.d260722.item5": "新增專案概覽分頁：模型摘要（單元/斷面/材料/荷載組合/邊界條件）以及 3D 形狀檢視",
+  "guide.release.d260716.item1": "首次實作 MIDAS Gen NX 配筋編輯介面（梁/柱/牆體/斜撐）",
+  "guide.release.d260716.item2": "重構為使用無伺服器 API 函式的 Vercel 可部署應用程式",
+  "guide.release.d260716.item3": "新增多語言介面支援（英語/韓語/簡體中文/繁體中文）",
+  "guide.release.d260716.item4": "新增基於 IP 的自動語言偵測以及開發者署名"
 }

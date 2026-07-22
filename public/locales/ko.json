@@ -177,5 +177,28 @@
   "geo3d.legendBrace": "가새",
   "geo3d.legendWall": "벽체",
   "geo3d.legendNode": "절점",
-  "geo3d.legendSupport": "지지점"
+  "geo3d.legendSupport": "지지점",
+
+  "guide.title": "사용 설명서",
+  "guide.openBtn": "사용 설명서 열기",
+  "guide.closeBtn": "닫기",
+  "guide.releaseTitle": "릴리즈 노트",
+  "guide.intro": "위에서 MAPI Key로 연결한 뒤, 탭에서 보/기둥/벽체/가새 배근을 수정하거나 프로젝트 리뷰에서 모델 전체 요약을 확인할 수 있습니다.",
+  "guide.codeTableTitle": "코드표",
+  "guide.codeTableCountryLabel": "국가",
+  "guide.codeTablePlaceholder": "선택한 국가 기준 코드 설명은 추후 업데이트될 예정입니다.",
+  "guide.country.kr": "대한민국 (KDS)",
+  "guide.country.us": "미국 (ACI)",
+  "guide.country.cn": "중국 (GB)",
+  "guide.country.tw": "대만 (CNS)",
+
+  "guide.release.d260722.item1": "BEAM 배근 저장을 실제 Gen NX API의 write 필드 형식에 맞게 수정 (라이브 모델로 검증)",
+  "guide.release.d260722.item2": "전체 앱을 TypeScript + Vite + React로 재구축",
+  "guide.release.d260722.item3": "개발자 byline 옆에 기획자 크레딧 추가",
+  "guide.release.d260722.item4": "Base URL이 선택된 제품에 맞는 주소로 기본값 채워짐",
+  "guide.release.d260722.item5": "프로젝트 리뷰 탭 추가: 모델 요약(요소/단면/재료/하중조합/경계조건) + 3D 형상 뷰",
+  "guide.release.d260716.item1": "MIDAS Gen NX 배근수정 UI 최초 구현 (보/기둥/벽체/가새)",
+  "guide.release.d260716.item2": "서버리스 API 함수를 사용하는 Vercel 배포형 앱으로 재구성",
+  "guide.release.d260716.item3": "다국어 UI 지원 추가 (영어/한국어/중국어 간체/중국어 번체)",
+  "guide.release.d260716.item4": "IP 기반 자동 언어 감지 및 개발자 byline 추가"
 }
