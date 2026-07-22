@@ -39,6 +39,37 @@ export interface BeamItem {
 }
 export type BeamPayload = ItemsPayload<BeamItem>;
 
+// BEAM's write (POST/PUT) shape is NOT the same as what GET returns above.
+// The official manual's own JSON Schema for REBB matches the GET shape
+// (MAIN_BAR_TOP/BOT as LAYER1/LAYER2-keyed objects, DT/DB flat on the item —
+// confirmed live 2026-07-22), but the manual's own worked Request/Response
+// example — and the independently-authored midas-nx SDK, whose live write
+// test against this exact endpoint succeeded — both use this older,
+// differently-named shape instead, and the manual explicitly recommends
+// following the example for anything actually sent to the server. Treat
+// this as the confirmed-safe write shape until someone live-tests a PUT
+// with the new-style field names to see if the server accepts those too.
+export interface RcBeamMainBarLayerEntry {
+  LAYER: 1 | 2;
+  NAME: string;
+  NUM: number;
+}
+export interface BeamWriteSector {
+  vMAIN_BAR_TOP?: RcBeamMainBarLayerEntry[];
+  vMAIN_BAR_BOT?: RcBeamMainBarLayerEntry[];
+  SHEAR_BAR?: ShearBar;
+  SKIN_BAR_NAME?: string;
+  SKIN_BAR_NUM?: number;
+}
+export interface BeamWriteItem {
+  BAR_SECTOR_I?: BeamWriteSector;
+  BAR_SECTOR_M?: BeamWriteSector;
+  BAR_SECTOR_J?: BeamWriteSector;
+  MAIN_BAR_DC_TOP?: number;
+  MAIN_BAR_DC_BOT?: number;
+}
+export type BeamWritePayload = ItemsPayload<BeamWriteItem>;
+
 export interface MainBar {
   NAME?: string;
   NUM?: number;
@@ -54,6 +85,14 @@ export interface ShearBarLegs {
   DIST?: number;
 }
 
+// Shared by COLUMN (REBC) and BRACE (REBR) — confirmed identical field names
+// against both the official manual (REBR's own text: "구조는 기둥(REBC)과
+// 유사하나 MAIN_BAR에 USE_CORNER가 없고 HOOK_TYPE도 없음", i.e. same shape
+// minus USE_CORNER/NAME_CORNER/HOOK_TYPE) and the midas-nx SDK's
+// independently-typed RcBraceMainBarSpec. COLUMN's shape (with corner bar
+// and hook type) was additionally live-verified 2026-07-22; BRACE's was not
+// (no brace rebar data existed in the tested model) but is now
+// documentation-confirmed rather than a guess.
 export interface ColumnLikeItem {
   MAIN_BAR?: MainBar;
   SHEAR_BAR_END?: ShearBarLegs;
@@ -101,4 +140,4 @@ export interface WallItem {
 }
 export type WallPayload = ItemsPayload<WallItem>;
 
-export type MemberPayload = BeamPayload | ColumnLikePayload | WallPayload;
+export type MemberPayload = BeamPayload | BeamWritePayload | ColumnLikePayload | WallPayload;

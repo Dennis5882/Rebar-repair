@@ -4,7 +4,18 @@ import { useConn } from "../context/ConnContext";
 import { listRebar, saveRebar } from "../lib/api";
 import { errText } from "../lib/errText";
 import { SectionPreview } from "./SectionPreview";
-import { SECTORS, type BeamItem, type BeamPayload, type BeamSector, type RebarLayer, type SectorKey } from "../types/rebar";
+import {
+  SECTORS,
+  type BeamItem,
+  type BeamPayload,
+  type BeamSector,
+  type BeamWriteItem,
+  type BeamWritePayload,
+  type BeamWriteSector,
+  type RcBeamMainBarLayerEntry,
+  type RebarLayer,
+  type SectorKey,
+} from "../types/rebar";
 
 interface SectorFormValues {
   topName: string;
@@ -97,6 +108,45 @@ function fillFromPayload(payload: BeamPayload): { sectors: Record<SectorKey, Sec
   return { sectors, dt: toStr(it.DT), db: toStr(it.DB) };
 }
 
+// GET returns MAIN_BAR_TOP/BOT as LAYER-keyed objects with DT/DB flat on the
+// item (confirmed live). Writing back uses a different, older field-naming
+// convention that the manual's own worked example and the midas-nx SDK's
+// live-verified write test both use instead — see the BeamWriteItem doc
+// comment in types/rebar.ts. This converts the canonical (read-shape) form
+// state into that write shape only at the point of actually saving, so the
+// live preview diagram (which reads the canonical shape) is unaffected.
+function toWriteSector(sector: BeamSector): BeamWriteSector {
+  const write: BeamWriteSector = {};
+  if (sector.MAIN_BAR_TOP) {
+    write.vMAIN_BAR_TOP = Object.values(sector.MAIN_BAR_TOP).map(
+      (layer, i): RcBeamMainBarLayerEntry => ({ LAYER: (i + 1) as 1 | 2, NAME: layer.NAME || "", NUM: layer.NUM || 0 })
+    );
+  }
+  if (sector.MAIN_BAR_BOT) {
+    write.vMAIN_BAR_BOT = Object.values(sector.MAIN_BAR_BOT).map(
+      (layer, i): RcBeamMainBarLayerEntry => ({ LAYER: (i + 1) as 1 | 2, NAME: layer.NAME || "", NUM: layer.NUM || 0 })
+    );
+  }
+  if (sector.SHEAR_BAR) write.SHEAR_BAR = sector.SHEAR_BAR;
+  if (sector.SKIN_BAR_NAME) {
+    write.SKIN_BAR_NAME = sector.SKIN_BAR_NAME;
+    write.SKIN_BAR_NUM = sector.SKIN_BAR_NUM;
+  }
+  return write;
+}
+
+function toWritePayload(payload: BeamPayload): BeamWritePayload {
+  const it: Partial<BeamItem> = payload.ITEMS?.[0] || {};
+  const item: BeamWriteItem = {
+    BAR_SECTOR_I: toWriteSector(it.BAR_SECTOR_I || {}),
+    BAR_SECTOR_M: toWriteSector(it.BAR_SECTOR_M || {}),
+    BAR_SECTOR_J: toWriteSector(it.BAR_SECTOR_J || {}),
+    MAIN_BAR_DC_TOP: it.DT,
+    MAIN_BAR_DC_BOT: it.DB,
+  };
+  return { ITEMS: [item] };
+}
+
 export function BeamForm() {
   const { t } = useI18n();
   const { payload: conn } = useConn();
@@ -167,7 +217,7 @@ export function BeamForm() {
     setSaving(true);
     setStatus({ ok: true, msg: t("js.saving") });
     try {
-      const res = await saveRebar("BEAM", keyInput, payload, conn);
+      const res = await saveRebar("BEAM", keyInput, toWritePayload(payload), conn);
       if (!res.ok) {
         setStatus({ ok: false, msg: t("js.saveFail", { error: errText(t, res) }) });
         return;
