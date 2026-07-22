@@ -3,8 +3,10 @@ import "./style.css";
 import { I18nProvider } from "./i18n/I18nProvider";
 import { useI18n } from "./i18n/useI18n";
 import { ConnProvider } from "./context/ConnContext";
+import { DesignCodeProvider } from "./context/DesignCodeContext";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ConnectionPanel } from "./components/ConnectionPanel";
+import { DesignCodeSelector } from "./components/DesignCodeSelector";
 import { Tabs, type TabKey } from "./components/Tabs";
 import { BeamForm } from "./components/BeamForm";
 import { ColumnLikeForm } from "./components/ColumnLikeForm";
@@ -26,6 +28,7 @@ function AppShell() {
       <div className="subtitle">{t("app.subtitle")}</div>
 
       <ConnectionPanel />
+      <DesignCodeSelector />
       <Tabs active={active} onChange={setActive} />
 
       <div className={"tab-panel" + (active === "BEAM" ? " active" : "")}>
@@ -54,7 +57,9 @@ export default function App() {
   return (
     <I18nProvider>
       <ConnProvider>
-        <AppShell />
+        <DesignCodeProvider>
+          <AppShell />
+        </DesignCodeProvider>
       </ConnProvider>
     </I18nProvider>
   );

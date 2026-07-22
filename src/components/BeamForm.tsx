@@ -5,6 +5,7 @@ import { saveRebar } from "../lib/api";
 import { errText } from "../lib/errText";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
+import { BarSelect } from "./BarSelect";
 import {
   SECTORS,
   type BeamItem,
@@ -268,7 +269,12 @@ export function BeamForm() {
               <div className="row2">
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-topName`}>{t("js.topSpec")}</label>
-                  {sectorField(key, "topName", "text", "D25")}
+                  <BarSelect
+                    id={`BEAM-${key}-topName`}
+                    placeholder="D25"
+                    value={sectors[key].topName}
+                    onChange={(v) => updateSector(key, "topName", v)}
+                  />
                 </div>
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-topNum`}>{t("js.topCount")}</label>
@@ -278,7 +284,12 @@ export function BeamForm() {
               <div className="row2">
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-botName`}>{t("js.botSpec")}</label>
-                  {sectorField(key, "botName", "text", "D22")}
+                  <BarSelect
+                    id={`BEAM-${key}-botName`}
+                    placeholder="D22"
+                    value={sectors[key].botName}
+                    onChange={(v) => updateSector(key, "botName", v)}
+                  />
                 </div>
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-botNum`}>{t("js.botCount")}</label>
@@ -288,7 +299,12 @@ export function BeamForm() {
               <div className="row3">
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-shearName`}>{t("js.stirrupSpec")}</label>
-                  {sectorField(key, "shearName", "text", "D13")}
+                  <BarSelect
+                    id={`BEAM-${key}-shearName`}
+                    placeholder="D13"
+                    value={sectors[key].shearName}
+                    onChange={(v) => updateSector(key, "shearName", v)}
+                  />
                 </div>
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-shearLeg`}>{t("js.legCount")}</label>
@@ -302,7 +318,12 @@ export function BeamForm() {
               <div className="row2">
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-skinName`}>{t("js.skinSpec")}</label>
-                  {sectorField(key, "skinName", "text", "D13")}
+                  <BarSelect
+                    id={`BEAM-${key}-skinName`}
+                    placeholder="D13"
+                    value={sectors[key].skinName}
+                    onChange={(v) => updateSector(key, "skinName", v)}
+                  />
                 </div>
                 <div className="field">
                   <label htmlFor={`BEAM-${key}-skinNum`}>{t("js.skinCount")}</label>

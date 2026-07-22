@@ -1,51 +1,25 @@
-import { useEffect, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
-import type { LangCode } from "../i18n/types";
+import { useDesignCode } from "../context/DesignCodeContext";
 import {
   DESIGN_CODE_ORDER,
   DESIGN_CODES,
   MATERIAL_DBS,
-  defaultMaterialDB,
   defaultRebarCode,
   rebarCodeOptions,
-  getBars,
   getGrades,
 } from "../data/rcCodePresets";
 
-// Reuses the language already IP-detected in I18nProvider (see
-// [[i18n-multilingual-system]] in memory) to pick a sensible starting design
-// code, rather than doing a second IP lookup just for this selector.
-const DEFAULT_DESIGN_CODE_BY_LANG: Record<LangCode, string> = {
-  en: "ACI318-25",
-  ko: "KDS 41 20 : 2022",
-  "zh-CN": "GB/T50010-10",
-  "zh-TW": "TWN-USD112",
-};
-
+// Shares the same selection (and the same rebar-size data) as every
+// BarSelect dropdown in the BEAM/COLUMN/WALL/BRACE edit forms — see
+// DesignCodeContext. This section is just a read-only detail view of it.
 export function CodeReferenceSection() {
-  const { t, lang } = useI18n();
-  const [designCode, setDesignCodeState] = useState(() => DEFAULT_DESIGN_CODE_BY_LANG[lang] || "KDS 41 20 : 2022");
-  // `lang` starts at a default and updates asynchronously once IP/localStorage
-  // detection resolves (see I18nProvider) — if this section mounts before
-  // that happens, keep following lang's default until the user actually
-  // picks a design code themselves.
-  const [userChanged, setUserChanged] = useState(false);
-
-  useEffect(() => {
-    if (!userChanged) setDesignCodeState(DEFAULT_DESIGN_CODE_BY_LANG[lang] || "KDS 41 20 : 2022");
-  }, [lang, userChanged]);
-
-  function setDesignCode(code: string) {
-    setUserChanged(true);
-    setDesignCodeState(code);
-  }
+  const { t } = useI18n();
+  const { designCode, setDesignCode, materialDB, bars } = useDesignCode();
 
   const entry = DESIGN_CODES[designCode];
-  const materialDB = defaultMaterialDB(designCode);
   const rebarCode = defaultRebarCode(designCode);
   const rebarOptions = materialDB ? rebarCodeOptions(materialDB) : [];
   const grades = materialDB ? getGrades(materialDB) : [];
-  const bars = materialDB ? getBars(materialDB) : [];
   const hasIn = bars.some((b) => b.nominal_in != null);
   const hasXref = bars.some((b) => b.xref != null);
 

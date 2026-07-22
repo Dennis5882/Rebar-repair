@@ -5,6 +5,7 @@ import { saveRebar } from "../lib/api";
 import { errText } from "../lib/errText";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
+import { BarSelect } from "./BarSelect";
 import type { WallItem, WallPayload } from "../types/rebar";
 
 interface FormState {
@@ -267,7 +268,7 @@ export function WallForm() {
         <div className="row2">
           <div className="field">
             <label htmlFor="WALL-vName">{t("wall.vSpec")}</label>
-            <input id="WALL-vName" placeholder="D16" value={form.vName} onChange={(e) => set("vName", e.target.value)} />
+            <BarSelect id="WALL-vName" placeholder="D16" value={form.vName} onChange={(v) => set("vName", v)} />
           </div>
           <div className="field">
             <label htmlFor="WALL-vDist">{t("wall.vDistLabel")}</label>
@@ -277,7 +278,7 @@ export function WallForm() {
         <div className="row2">
           <div className="field">
             <label htmlFor="WALL-hName">{t("wall.hSpec")}</label>
-            <input id="WALL-hName" placeholder="D13" value={form.hName} onChange={(e) => set("hName", e.target.value)} />
+            <BarSelect id="WALL-hName" placeholder="D13" value={form.hName} onChange={(v) => set("hName", v)} />
           </div>
           <div className="field">
             <label htmlFor="WALL-hDist">{t("wall.hDistLabel")}</label>
@@ -295,7 +296,7 @@ export function WallForm() {
           <div className="row3">
             <div className="field">
               <label htmlFor="WALL-endName">{t("common.spec")}</label>
-              <input id="WALL-endName" placeholder="D22" value={form.endName} onChange={(e) => set("endName", e.target.value)} />
+              <BarSelect id="WALL-endName" placeholder="D22" value={form.endName} onChange={(v) => set("endName", v)} />
             </div>
             <div className="field">
               <label htmlFor="WALL-endNum">{t("common.count")}</label>
@@ -312,7 +313,7 @@ export function WallForm() {
         <div className="row3">
           <div className="field">
             <label htmlFor="WALL-beName">{t("wall.hSpec")}</label>
-            <input id="WALL-beName" placeholder="D13" value={form.beName} onChange={(e) => set("beName", e.target.value)} />
+            <BarSelect id="WALL-beName" placeholder="D13" value={form.beName} onChange={(v) => set("beName", v)} />
           </div>
           <div className="field">
             <label htmlFor="WALL-beDist">{t("wall.hDistLabel")}</label>

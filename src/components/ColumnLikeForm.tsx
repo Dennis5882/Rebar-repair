@@ -5,6 +5,7 @@ import { saveRebar } from "../lib/api";
 import { errText } from "../lib/errText";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
+import { BarSelect } from "./BarSelect";
 import type { ColumnLikeItem, ColumnLikePayload } from "../types/rebar";
 
 interface FormState {
@@ -187,7 +188,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
         <div className="row3">
           <div className="field">
             <label htmlFor={`${type}-mainName`}>{t("common.spec")}</label>
-            <input id={`${type}-mainName`} placeholder={mainPlaceholder} value={form.mainName} onChange={(e) => set("mainName", e.target.value)} />
+            <BarSelect id={`${type}-mainName`} placeholder={mainPlaceholder} value={form.mainName} onChange={(v) => set("mainName", v)} />
           </div>
           <div className="field">
             <label htmlFor={`${type}-mainNum`}>{t("common.totalCount")}</label>
@@ -215,7 +216,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
             {form.useCorner && (
               <div className="field">
                 <label htmlFor={`${type}-cornerName`}>{t("column.cornerSpec")}</label>
-                <input id={`${type}-cornerName`} placeholder="D29" value={form.cornerName} onChange={(e) => set("cornerName", e.target.value)} />
+                <BarSelect id={`${type}-cornerName`} placeholder="D29" value={form.cornerName} onChange={(v) => set("cornerName", v)} />
               </div>
             )}
           </>
@@ -225,7 +226,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
         <div className="row4">
           <div className="field">
             <label htmlFor={`${type}-endName`}>{t("common.spec")}</label>
-            <input id={`${type}-endName`} placeholder={hoopPlaceholder} value={form.endName} onChange={(e) => set("endName", e.target.value)} />
+            <BarSelect id={`${type}-endName`} placeholder={hoopPlaceholder} value={form.endName} onChange={(v) => set("endName", v)} />
           </div>
           <div className="field">
             <label htmlFor={`${type}-endLegY`}>{t("common.legY")}</label>
@@ -245,7 +246,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
         <div className="row4">
           <div className="field">
             <label htmlFor={`${type}-cenName`}>{t("common.spec")}</label>
-            <input id={`${type}-cenName`} placeholder={hoopPlaceholder} value={form.cenName} onChange={(e) => set("cenName", e.target.value)} />
+            <BarSelect id={`${type}-cenName`} placeholder={hoopPlaceholder} value={form.cenName} onChange={(v) => set("cenName", v)} />
           </div>
           <div className="field">
             <label htmlFor={`${type}-cenLegY`}>{t("common.legY")}</label>
