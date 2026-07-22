@@ -191,6 +191,8 @@
   "designCode.hint": "The rebar sizes offered in the BEAM/COLUMN/WALL/BRACE input dropdowns follow the design code picked here.",
   "designCode.overrideHint": "Material standard differs from this design code's default (e.g. Eurocode design with Korean rebar).",
   "designCode.resetBtn": "Reset to default",
+  "designCode.verifiedBadge": "Live-verified",
+  "designCode.unverifiedBadge": "From spec (unverified)",
   "guide.codeMaterialLabel": "Material Standard",
   "guide.codeRebarLabel": "Gen NX Rebar Code",
   "guide.codeGradesLabel": "Grades",

@@ -40,6 +40,10 @@ export interface MaterialDbEntry {
   // grades 는 Main/Sub 두 슬롯이 공유하는 단일 목록 (UI에서 gradeMain/gradeSub로 분리)
   grades: string[];
   bars: RebarSize[];
+  // true = 실제 Gen NX Rebar Selection 화면(Code/Grade 드롭다운)과 1:1 대조 완료.
+  // 현재 한국(KS D 3504)/대만(CNS 560)/미국(ASTM A615/A706) 세 곳만 해당 — 나머지는
+  // 매뉴얼·제공 데이터 기반 참고용. 다른 국가가 실제로 필요해지면 그때 화면 대조 후 승격.
+  verified?: boolean;
 }
 
 export interface DesignCodeEntry {
@@ -59,6 +63,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
     // Selection > Code data 2026-07-23 — see [[genxn-api-schema-findings]].
     dbName: ["KS19(RC)", "KS01(RC)", "KS(RC)"],
     grades: ["SD300", "SD400", "SD500", "SD600", "SD700", "SD400S", "SD500S", "SD600S"],
+    verified: true,
     bars: [
       { label: "D10", nominal_mm: 9.53 }, { label: "D13", nominal_mm: 12.7 },
       { label: "D16", nominal_mm: 15.9 }, { label: "D19", nominal_mm: 19.1 },
@@ -75,6 +80,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
     // see the KS D 3504 entry's note above.
     dbName: ["ASTM19(RC)", "ASTM(RC)", "U.S.C(US)(RC)"],
     grades: ["Grade 40", "Grade 60", "Grade 80", "Grade 100"],
+    verified: true,
     bars: [
       { label: "#3", nominal_mm: 9.5, nominal_in: 0.375 }, { label: "#4", nominal_mm: 12.7, nominal_in: 0.5 },
       { label: "#5", nominal_mm: 15.9, nominal_in: 0.625 }, { label: "#6", nominal_mm: 19.1, nominal_in: 0.75 },
@@ -105,6 +111,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
     // see the KS D 3504 entry's note above.
     dbName: ["CNS560-18(RC)", "CNS560(RC)", "CNS(RC)"],
     grades: ["SD280", "SD280W", "SD420", "SD420W", "SD490W", "SD550W", "SD690"],
+    verified: true,
     bars: [
       { label: "D10", nominal_mm: 9.53, xref: "#3" }, { label: "D13", nominal_mm: 12.7, xref: "#4" },
       { label: "D16", nominal_mm: 15.9, xref: "#5" }, { label: "D19", nominal_mm: 19.1, xref: "#6" },
@@ -278,6 +285,11 @@ export function getGrades(materialDB: string): string[] {
 /** 사용자가 고른 재료 DB가 설계기준 기본과 다른지(비표준 조합 표시용) */
 export function isOverride(designCode: string, materialDB: string): boolean {
   return defaultMaterialDB(designCode) !== materialDB;
+}
+
+/** 이 재료 DB가 실제 Gen NX 화면과 1:1 대조 검증됐는지 (현재 KS·CNS·ASTM만 해당) */
+export function isVerified(materialDB: string): boolean {
+  return MATERIAL_DBS[materialDB]?.verified === true;
 }
 
 /** 규격 라벨 -> 모델 활성단위 기준 지름값으로 변환 */

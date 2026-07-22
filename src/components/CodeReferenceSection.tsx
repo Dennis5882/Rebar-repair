@@ -7,6 +7,7 @@ import {
   defaultRebarCode,
   rebarCodeOptions,
   getGrades,
+  isVerified,
 } from "../data/rcCodePresets";
 
 // Shares the same selection (and the same rebar-size data) as every
@@ -45,7 +46,10 @@ export function CodeReferenceSection() {
       {materialDB && (
         <>
           <div className="hint" style={{ marginTop: 0 }}>
-            {t("guide.codeMaterialLabel")}: {MATERIAL_DBS[materialDB].label}
+            {t("guide.codeMaterialLabel")}: {MATERIAL_DBS[materialDB].label}{" "}
+            <span className={"badge " + (isVerified(materialDB) ? "verified" : "unverified")}>
+              {isVerified(materialDB) ? t("designCode.verifiedBadge") : t("designCode.unverifiedBadge")}
+            </span>
           </div>
           <div className="hint" style={{ marginTop: -6 }}>
             {t("guide.codeRebarLabel")}: {rebarOptions.join(" / ")}

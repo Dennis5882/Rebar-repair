@@ -191,6 +191,8 @@
   "designCode.hint": "此處選擇的設計規範決定了 BEAM/COLUMN/WALL/BRACE 輸入欄下拉選單中出現的鋼筋規格。",
   "designCode.overrideHint": "材料規格與此設計規範的預設值不同（例如歐規設計 + 韓國鋼筋組合）。",
   "designCode.resetBtn": "還原為預設值",
+  "designCode.verifiedBadge": "已實機核對",
+  "designCode.unverifiedBadge": "僅供參考（未核對）",
   "guide.codeMaterialLabel": "材料規格",
   "guide.codeRebarLabel": "Gen NX Rebar Code",
   "guide.codeGradesLabel": "鋼筋等級",

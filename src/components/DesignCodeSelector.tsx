@@ -1,6 +1,6 @@
 import { useI18n } from "../i18n/useI18n";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { DESIGN_CODE_ORDER, DESIGN_CODES, MATERIAL_DBS, defaultMaterialDB } from "../data/rcCodePresets";
+import { DESIGN_CODE_ORDER, DESIGN_CODES, MATERIAL_DBS, defaultMaterialDB, isVerified } from "../data/rcCodePresets";
 
 const MATERIAL_DB_KEYS = Object.keys(MATERIAL_DBS);
 
@@ -32,7 +32,12 @@ export function DesignCodeSelector() {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="materialDB">{t("guide.codeMaterialLabel")}</label>
+          <label htmlFor="materialDB">
+            {t("guide.codeMaterialLabel")}{" "}
+            <span className={"badge " + (isVerified(materialDB) ? "verified" : "unverified")}>
+              {isVerified(materialDB) ? t("designCode.verifiedBadge") : t("designCode.unverifiedBadge")}
+            </span>
+          </label>
           <select id="materialDB" value={materialDB} onChange={(e) => setMaterialDB(e.target.value)}>
             {MATERIAL_DB_KEYS.map((key) => (
               <option key={key} value={key}>

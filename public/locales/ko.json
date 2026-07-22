@@ -191,6 +191,8 @@
   "designCode.hint": "여기서 고른 설계기준의 철근 규격이 BEAM/COLUMN/WALL/BRACE 입력란의 선택 메뉴에 반영됩니다.",
   "designCode.overrideHint": "재료 규격이 이 설계기준의 기본값과 다릅니다 (예: 유로코드 설계 + 한국 철근 조합).",
   "designCode.resetBtn": "기본값으로",
+  "designCode.verifiedBadge": "1:1 검증 완료",
+  "designCode.unverifiedBadge": "표준 기반 (미검증)",
   "guide.codeMaterialLabel": "재료 규격",
   "guide.codeRebarLabel": "Gen NX Rebar Code",
   "guide.codeGradesLabel": "강종",
