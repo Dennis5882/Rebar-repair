@@ -7,4 +7,3 @@ dist/
 .vercel/
 *.local
 *.tsbuildinfo
-

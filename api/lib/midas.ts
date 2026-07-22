@@ -1,11 +1,19 @@
 import type { VercelResponse } from "@vercel/node";
 
 // Shared by every api/*.ts handler that talks to the MIDAS Open API.
-// No default export here, so Vercel doesn't turn this into its own route —
-// but do NOT prefix this directory with `_`: Vercel excludes underscore-
-// prefixed paths from the deployed function output entirely, which breaks
-// every handler's relative import at runtime (confirmed live 2026-07-22 —
-// every function failed with ERR_MODULE_NOT_FOUND for api/_lib/midas).
+// No default export here, so Vercel doesn't turn this into its own route.
+//
+// Two deployment gotchas hit live 2026-07-22 (both caused every handler to
+// fail with ERR_MODULE_NOT_FOUND in production, invisible locally since
+// `tsc --noEmit` with moduleResolution:"bundler" doesn't flag either):
+//   1. Don't prefix this directory with `_` (e.g. api/_lib) — Vercel
+//      excludes underscore-prefixed paths from the deployed function
+//      output entirely, so importers can't find it at runtime.
+//   2. Import it with an explicit .js extension (`./lib/midas.js`, even
+//      though the source file is .ts) — package.json has "type":"module",
+//      and Vercel runs each api/*.ts file as-compiled under Node's native
+//      ESM loader (no bundling), which requires explicit extensions on
+//      relative specifiers unlike a bundler or CommonJS require().
 
 export const MIDAS_BASE: Record<string, string> = {
   gen: "https://moa-engineers.midasit.com:443/gen",

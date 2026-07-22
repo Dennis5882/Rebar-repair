@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getJson, resolveBase, setCorsPost } from "./lib/midas";
+import { getJson, resolveBase, setCorsPost } from "./lib/midas.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
