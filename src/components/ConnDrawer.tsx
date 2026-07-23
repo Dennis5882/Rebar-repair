@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { getModelUnit, verifyConnection } from "../lib/api";
-import { connStatusText, type ConnStatus } from "../lib/statusMsg";
+import { connStatusClass, connStatusText, type ConnStatus } from "../lib/statusMsg";
 
 const PRODUCT_LABEL: Record<string, string> = { gen: "MIDAS GEN NX", civil: "MIDAS CIVIL NX" };
 
@@ -116,7 +116,7 @@ export function ConnDrawer() {
                 </div>
               )}
               {connStatus && connStatus.kind !== "checking" && (
-                <div className={"status show " + (connStatus.kind === "connOk" ? "ok" : "err")}>{connStatusText(t, connStatus)}</div>
+                <div className={"status show " + connStatusClass(connStatus)}>{connStatusText(t, connStatus)}</div>
               )}
 
               <div className="btn-row">

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ENDPOINTS, getJson, resolveBase, setCorsPost } from "./lib/midas.js";
+import { ENDPOINTS, fetchMidas, getJson, resolveBase, setCorsPost } from "./lib/midas.js";
 
 // ELEM/SECT are full-model collections (1000+ elements on a real project)
 // but don't change between the four member-type tabs' list-loads within one
@@ -39,18 +39,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!endpoint) return res.status(400).json({ ok: false, code: "unknown_member_type", memberType });
 
   try {
-    const r = await fetch(`${base}${endpoint}`, { headers: { "MAPI-Key": apiKey } });
-    let data: any = null;
-    try {
-      data = await r.json();
-    } catch {
-      /* non-JSON response */
-    }
-
-    if (!r.ok) {
-      const msg = (data && (data.message || (data.error && data.error.message))) || `HTTP ${r.status}`;
-      return res.json({ ok: false, error: msg });
-    }
+    const result = await fetchMidas(`${base}${endpoint}`, apiKey);
+    if (!result.ok) return res.json({ ok: false, error: result.error });
+    const data = result.data;
     const topKey = data ? Object.keys(data)[0] : null;
     const items = topKey ? data[topKey] || {} : {};
 

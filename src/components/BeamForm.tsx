@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { saveRebar } from "../lib/api";
-import { isListStatus, keylistText, statusText } from "../lib/statusMsg";
+import { isListStatus, keylistText, statusClass, statusText } from "../lib/statusMsg";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
@@ -238,7 +238,7 @@ export function BeamForm() {
           </button>
         </div>
         {status && isListStatus(status) && (
-          <div className={"status show " + (status.ok ? "ok" : "err")} style={{ marginTop: 4 }}>
+          <div className={"status show " + statusClass(status)} style={{ marginTop: 4 }}>
             {statusText(t, status)}
           </div>
         )}
@@ -369,7 +369,7 @@ export function BeamForm() {
             {t("common.saveBtn")}
           </button>
         </div>
-        {status && !isListStatus(status) && <div className={"status show " + (status.ok ? "ok" : "err")}>{statusText(t, status)}</div>}
+        {status && !isListStatus(status) && <div className={"status show " + statusClass(status)}>{statusText(t, status)}</div>}
 
         <BeamCheckSection memberKey={existingKey} sectors={sectors} dimB={dimB} dimH={dimH} dt={dt} db={db} lengthUnit={lengthUnit} />
       </div>

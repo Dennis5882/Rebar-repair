@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
@@ -6,7 +6,7 @@ import { SECTORS, type SectorKey } from "../types/rebar";
 import { MM_PER_UNIT, toModelDiameter } from "../data/rcCodePresets";
 import { barArea_mm2, flexuralCapacity, formulaFamily, shearCapacity } from "../lib/rcBeamCheck";
 import { getBeamDesignResult, type BeamDemandPoint } from "../lib/api";
-import { beamResultStatusText, type BeamResultStatus } from "../lib/statusMsg";
+import { beamResultStatusClass, beamResultStatusText, type BeamResultStatus } from "../lib/statusMsg";
 import type { SectorFormValues } from "./BeamForm";
 
 interface DemandInputs {
@@ -40,6 +40,26 @@ function RatioBadge({ demand, capacity }: { demand: number; capacity: number }) 
   return <span className={"badge " + (ratio <= 1 ? "ratio-ok" : "ratio-ng")}>{ratio.toFixed(3)}</span>;
 }
 
+type SectorResult = {
+  neg: ReturnType<typeof flexuralCapacity>;
+  pos: ReturnType<typeof flexuralCapacity>;
+  shear: ReturnType<typeof shearCapacity>;
+};
+
+// Drives the three structurally-identical row-groups (input row / capacity
+// row / ratio row) in the check table below — was three ~30-line copies
+// differing only in these fields.
+const CHECK_ROWS: {
+  demandField: keyof DemandInputs;
+  rowLabelKey: string;
+  capLabelKey: string;
+  getCap: (r: SectorResult) => { value: number; unit: string } | null;
+}[] = [
+  { demandField: "muNeg", rowLabelKey: "beam.muNegRow", capLabelKey: "beam.checkNeg", getCap: (r) => (r.neg ? { value: r.neg.phiMn_kNm, unit: "kN·m" } : null) },
+  { demandField: "muPos", rowLabelKey: "beam.muPosRow", capLabelKey: "beam.checkPos", getCap: (r) => (r.pos ? { value: r.pos.phiMn_kNm, unit: "kN·m" } : null) },
+  { demandField: "vu", rowLabelKey: "beam.vuRow", capLabelKey: "beam.checkShear", getCap: (r) => (r.shear ? { value: r.shear.phiVn_kN, unit: "kN" } : null) },
+];
+
 interface Props {
   // Identifies which beam is currently loaded (e.g. the selected existing-
   // member key) — used only to reset manually-typed Mu/Vu demand when the
@@ -65,16 +85,31 @@ export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengt
   const [fetching, setFetching] = useState(false);
   const [fetchStatus, setFetchStatus] = useState<BeamResultStatus | null>(null);
 
+  // Always holds the LATEST memberKey/conn props, kept current every render
+  // (not just on change) — handleFetchResult reads it after its await to
+  // check whether the beam/connection it was fetching for is still the one
+  // on screen. Without this, switching beams (or reconnecting to a
+  // different Gen NX session) while a fetch is still pending would let a
+  // stale response silently overwrite whatever beam/model is now displayed.
+  const currentRef = useRef({ memberKey, conn });
+  currentRef.current = { memberKey, conn };
+
   useEffect(() => {
     setDemand(emptyDemandBySector());
     setFetchStatus(null);
-  }, [memberKey]);
+    setFetching(false);
+  }, [memberKey, conn]);
 
   async function handleFetchResult() {
+    const requestedKey = memberKey;
+    const requestedConn = conn;
+    const isStale = () => currentRef.current.memberKey !== requestedKey || currentRef.current.conn !== requestedConn;
+
     setFetching(true);
     setFetchStatus({ kind: "fetching" });
     try {
       const res = await getBeamDesignResult(memberKey, conn);
+      if (isStale()) return;
       if (!res.ok) {
         setFetchStatus({ kind: "fetchFail", res });
         return;
@@ -97,9 +132,10 @@ export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengt
       });
       setFetchStatus({ kind: "fetchOk", count: entries.length });
     } catch (e) {
+      if (isStale()) return;
       setFetchStatus({ kind: "fetchError", error: String(e) });
     } finally {
-      setFetching(false);
+      if (!isStale()) setFetching(false);
     }
   }
 
@@ -115,7 +151,7 @@ export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengt
 
   const results = useMemo(() => {
     if (!family) return null;
-    const out: Record<SectorKey, { neg: ReturnType<typeof flexuralCapacity>; pos: ReturnType<typeof flexuralCapacity>; shear: ReturnType<typeof shearCapacity> }> = {} as any;
+    const out: Record<SectorKey, SectorResult> = {} as any;
     for (const key of SECTORS) {
       const s = sectors[key];
       const dNeg = h_mm - dt_mm; // top bars resist negative (hogging) moment
@@ -169,7 +205,7 @@ export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengt
             </div>
           )}
           {fetchStatus && fetchStatus.kind !== "fetching" && fetchStatus.kind !== "fetchEmpty" && (
-            <div className={"status show " + (fetchStatus.kind === "fetchOk" ? "ok" : "err")} style={{ margin: "0 0 8px" }}>
+            <div className={"status show " + beamResultStatusClass(fetchStatus)} style={{ margin: "0 0 8px" }}>
               {beamResultStatusText(t, fetchStatus)}
             </div>
           )}
@@ -198,101 +234,45 @@ export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengt
                 </tr>
               </thead>
               <tbody>
-                <tr className="check-group-start">
-                  <td>{t("beam.muNegRow")}</td>
-                  {SECTORS.map((key) => (
-                    <td key={key}>
-                      <input
-                        type="number"
-                        step="any"
-                        value={demand[key].muNeg}
-                        onChange={(e) => setDemandField(key, "muNeg", e.target.value)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="check-subrow">{t("beam.checkNeg")}</td>
-                  {SECTORS.map((key) => {
-                    const r = results?.[key];
-                    return <td key={key} className="check-subrow">{r?.neg ? `${r.neg.phiMn_kNm.toFixed(2)} kN·m` : "—"}</td>;
-                  })}
-                </tr>
-                <tr>
-                  <td className="check-subrow">{t("beam.ratioRow")}</td>
-                  {SECTORS.map((key) => {
-                    const r = results?.[key];
-                    return (
-                      <td key={key} className="check-subrow">
-                        {r?.neg && <RatioBadge demand={num(demand[key].muNeg)} capacity={r.neg.phiMn_kNm} />}
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                <tr className="check-group-start">
-                  <td>{t("beam.muPosRow")}</td>
-                  {SECTORS.map((key) => (
-                    <td key={key}>
-                      <input
-                        type="number"
-                        step="any"
-                        value={demand[key].muPos}
-                        onChange={(e) => setDemandField(key, "muPos", e.target.value)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="check-subrow">{t("beam.checkPos")}</td>
-                  {SECTORS.map((key) => {
-                    const r = results?.[key];
-                    return <td key={key} className="check-subrow">{r?.pos ? `${r.pos.phiMn_kNm.toFixed(2)} kN·m` : "—"}</td>;
-                  })}
-                </tr>
-                <tr>
-                  <td className="check-subrow">{t("beam.ratioRow")}</td>
-                  {SECTORS.map((key) => {
-                    const r = results?.[key];
-                    return (
-                      <td key={key} className="check-subrow">
-                        {r?.pos && <RatioBadge demand={num(demand[key].muPos)} capacity={r.pos.phiMn_kNm} />}
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                <tr className="check-group-start">
-                  <td>{t("beam.vuRow")}</td>
-                  {SECTORS.map((key) => (
-                    <td key={key}>
-                      <input
-                        type="number"
-                        step="any"
-                        value={demand[key].vu}
-                        onChange={(e) => setDemandField(key, "vu", e.target.value)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="check-subrow">{t("beam.checkShear")}</td>
-                  {SECTORS.map((key) => {
-                    const r = results?.[key];
-                    return <td key={key} className="check-subrow">{r?.shear ? `${r.shear.phiVn_kN.toFixed(2)} kN` : "—"}</td>;
-                  })}
-                </tr>
-                <tr>
-                  <td className="check-subrow">{t("beam.ratioRow")}</td>
-                  {SECTORS.map((key) => {
-                    const r = results?.[key];
-                    return (
-                      <td key={key} className="check-subrow">
-                        {r?.shear && <RatioBadge demand={num(demand[key].vu)} capacity={r.shear.phiVn_kN} />}
-                      </td>
-                    );
-                  })}
-                </tr>
+                {CHECK_ROWS.map((rowDef) => (
+                  <Fragment key={rowDef.demandField}>
+                    <tr className="check-group-start">
+                      <td>{t(rowDef.rowLabelKey)}</td>
+                      {SECTORS.map((key) => (
+                        <td key={key}>
+                          <input
+                            type="number"
+                            step="any"
+                            value={demand[key][rowDef.demandField]}
+                            onChange={(e) => setDemandField(key, rowDef.demandField, e.target.value)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="check-subrow">{t(rowDef.capLabelKey)}</td>
+                      {SECTORS.map((key) => {
+                        const cap = results?.[key] ? rowDef.getCap(results[key]) : null;
+                        return (
+                          <td key={key} className="check-subrow">
+                            {cap ? `${cap.value.toFixed(2)} ${cap.unit}` : "—"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="check-subrow">{t("beam.ratioRow")}</td>
+                      {SECTORS.map((key) => {
+                        const cap = results?.[key] ? rowDef.getCap(results[key]) : null;
+                        return (
+                          <td key={key} className="check-subrow">
+                            {cap && <RatioBadge demand={num(demand[key][rowDef.demandField])} capacity={cap.value} />}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>

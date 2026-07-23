@@ -56,3 +56,37 @@ export async function getJson(base: string, path: string, apiKey: string): Promi
     return {};
   }
 }
+
+// Shared fetch + JSON-parse + error-unwrap for single-purpose handlers that
+// need to tell a real failure apart from genuinely empty data (unlike
+// getJson() above, which swallows every failure to {} for aggregated
+// multi-field endpoints — see api/project-summary.ts). Supports POST with a
+// JSON body (e.g. MIDAS's Argument-wrapped table/design endpoints) as well
+// as plain GET. Does not catch network/abort errors — callers that need an
+// AbortController still wrap this in their own try/catch.
+export async function fetchMidas(
+  url: string,
+  apiKey: string,
+  init?: { method?: string; body?: unknown; signal?: AbortSignal }
+): Promise<{ ok: true; data: any } | { ok: false; error: string }> {
+  const r = await fetch(url, {
+    method: init?.method || "GET",
+    headers: {
+      "MAPI-Key": apiKey,
+      ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    signal: init?.signal,
+    ...(init?.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+  });
+  let data: any = null;
+  try {
+    data = await r.json();
+  } catch {
+    /* non-JSON response */
+  }
+  if (!r.ok) {
+    const msg = (data && (data.message || (data.error && data.error.message))) || `HTTP ${r.status}`;
+    return { ok: false, error: msg };
+  }
+  return { ok: true, data };
+}

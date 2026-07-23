@@ -31,7 +31,7 @@ export function CodeReferenceSection() {
         <select id="guideDesignCode" value={designCode} onChange={(e) => setDesignCode(e.target.value)}>
           {DESIGN_CODE_ORDER.map((code) => (
             <option key={code} value={code}>
-              {code} ({DESIGN_CODES[code]?.country})
+              {code} {DESIGN_CODES[code]?.country ? `(${t(`country.${DESIGN_CODES[code]!.country}`)})` : ""}
             </option>
           ))}
         </select>

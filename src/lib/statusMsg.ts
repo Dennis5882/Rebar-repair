@@ -30,6 +30,15 @@ export function isListStatus(s: StatusMsg): boolean {
   return LIST_KINDS.has(s.kind);
 }
 
+// "status show ok"/"status show err" className logic used to be
+// hand-derived at every call site (7 near-identical copies across
+// BeamForm/WallForm/ColumnLikeForm/ConnDrawer/BeamCheckSection) — centralized
+// here alongside the text resolvers so a new status kind only has to teach
+// its ok/err-ness in one place.
+export function statusClass(s: StatusMsg): "ok" | "err" {
+  return s.ok ? "ok" : "err";
+}
+
 export function statusText(t: TFn, s: StatusMsg): string {
   switch (s.kind) {
     case "listLoaded":
@@ -68,6 +77,10 @@ export type ConnStatus =
   | { kind: "connFail"; res: ApiError }
   | { kind: "connError"; error: string };
 
+export function connStatusClass(s: ConnStatus): "ok" | "err" {
+  return s.kind === "connOk" ? "ok" : "err";
+}
+
 export function connStatusText(t: TFn, s: ConnStatus): string {
   switch (s.kind) {
     case "checking":
@@ -93,6 +106,10 @@ export type BeamResultStatus =
   | { kind: "fetchEmpty" }
   | { kind: "fetchFail"; res: ApiError }
   | { kind: "fetchError"; error: string };
+
+export function beamResultStatusClass(s: BeamResultStatus): "ok" | "err" {
+  return s.kind === "fetchOk" ? "ok" : "err";
+}
 
 export function beamResultStatusText(t: TFn, s: BeamResultStatus): string {
   switch (s.kind) {
