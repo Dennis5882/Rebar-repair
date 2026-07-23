@@ -242,7 +242,7 @@ export function BeamForm() {
             <option value="">{listLoadedOnce ? t("js.selectDefault") : t("common.existingDefaultOption")}</option>
             {Object.keys(list).map((k) => (
               <option key={k} value={k}>
-                {names[k] ? `${k} — ${names[k]}` : k}
+                {names[k] ? `${names[k]} — ${k}` : k}
               </option>
             ))}
           </select>
