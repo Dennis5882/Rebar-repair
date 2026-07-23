@@ -167,6 +167,10 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 .field-label-tech { letter-spacing: .06em; }
 
+.guide-steps { margin: 0 0 14px; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); }
+.guide-steps li { margin-bottom: 7px; }
+.guide-steps li:last-child { margin-bottom: 0; }
+
 .release-entry { margin-bottom: 16px; }
 .release-date { font-weight: 600; font-size: 12.5px; color: var(--ink); margin-bottom: 4px; }
 .release-entry ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); }

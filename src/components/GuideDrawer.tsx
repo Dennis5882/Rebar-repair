@@ -44,6 +44,13 @@ export function GuideDrawer() {
                   <p className="hint" style={{ marginTop: 0 }}>
                     {t("guide.intro")}
                   </p>
+                  <ol className="guide-steps">
+                    <li>{t("guide.step1")}</li>
+                    <li>{t("guide.step2")}</li>
+                    <li>{t("guide.step3")}</li>
+                    <li>{t("guide.step4")}</li>
+                    <li>{t("guide.step5")}</li>
+                  </ol>
                   <div className="subhead" style={{ marginTop: 4 }}>
                     {t("guide.codeTableTitle")}
                   </div>
