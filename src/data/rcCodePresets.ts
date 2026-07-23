@@ -33,6 +33,11 @@ export interface RebarSize {
 
 export interface MaterialDbEntry {
   label: string;
+  // 2-letter country code — the UI looks up `country.<code>` in the
+  // locale files to render a translated country name next to `label`.
+  // Kept separate from `label` itself so `label` (technical standard
+  // name) never has to be duplicated per-language.
+  country: string;
   system: string;
   unit: string;
   // Gen NX Rebar Selection > Code 실제 라벨 (첫 항목 = 기본/최신판)
@@ -67,7 +72,7 @@ export interface DesignCodeEntry {
 // ── 하위: 재료 DB ────────────────────────────────────────────────────────────
 export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   "KS D 3504": {
-    label: "KS D 3504 (한국)", system: "D", unit: "mm",
+    label: "KS D 3504", country: "KR", system: "D", unit: "mm",
     // "KS19(RC)" (dbName[0]) live-confirmed against real Gen NX Rebar
     // Selection > Code data 2026-07-23 — see [[genxn-api-schema-findings]].
     dbName: ["KS19(RC)", "KS01(RC)", "KS(RC)"],
@@ -84,7 +89,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   },
 
   "ASTM A615/A706": {
-    label: "ASTM A615/A706 (미국, imperial)", system: "#", unit: "inch",
+    label: "ASTM A615/A706 (imperial)", country: "US", system: "#", unit: "inch",
     // "ASTM19(RC)" (dbName[0]) live-confirmed against real Gen NX data —
     // see the KS D 3504 entry's note above.
     dbName: ["ASTM19(RC)", "ASTM(RC)", "U.S.C(US)(RC)"],
@@ -101,7 +106,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   },
 
   "ASTM A615M/A706M": {
-    label: "ASTM A615M/A706M (미국, soft-metric)", system: "#M", unit: "mm",
+    label: "ASTM A615M/A706M (soft-metric)", country: "US", system: "#M", unit: "mm",
     dbName: ["U.S.C(SI)(RC)"],
     grades: ["Gr280", "Gr420", "Gr520", "Gr550"],
     bars: [
@@ -115,7 +120,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   },
 
   "CNS 560": {
-    label: "CNS 560 (대만)", system: "D", unit: "mm",
+    label: "CNS 560", country: "TW", system: "D", unit: "mm",
     // "CNS560-18(RC)" (dbName[0]) live-confirmed against real Gen NX data —
     // see the KS D 3504 entry's note above.
     dbName: ["CNS560-18(RC)", "CNS560(RC)", "CNS(RC)"],
@@ -132,28 +137,28 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   },
 
   "EN 10080": {
-    label: "EN 10080 / Eurocode 2 (유럽)", system: "Ø", unit: "mm",
+    label: "EN 10080 / Eurocode 2", country: "EU", system: "Ø", unit: "mm",
     dbName: ["EN04(RC)", "EN(RC)"],
     grades: ["B500A", "B500B", "B500C"],
     bars: [6, 8, 10, 12, 14, 16, 20, 25, 28, 32, 40].map((d) => ({ label: `Ø${d}`, nominal_mm: d })),
   },
 
   "BS 4449": {
-    label: "BS 4449 (영국)", system: "Ø", unit: "mm",
+    label: "BS 4449", country: "UK", system: "Ø", unit: "mm",
     dbName: ["BS(RC)"],
     grades: ["B500A", "B500B", "B500C", "Gr460 (구)"],
     bars: [6, 8, 10, 12, 16, 20, 25, 32, 40].map((d) => ({ label: `Ø${d}`, nominal_mm: d })),
   },
 
   "GB/T 1499.2": {
-    label: "GB/T 1499.2 (중국)", system: "Ø", unit: "mm",
+    label: "GB/T 1499.2", country: "CN", system: "Ø", unit: "mm",
     dbName: ["GB 50917-13(RC)", "GB/T10(RC)", "GB(RC)"],
     grades: ["HPB300", "HRB335", "HRB400", "HRB500", "HRB600"],
     bars: [6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 28, 32, 36, 40, 50].map((d) => ({ label: `Ø${d}`, nominal_mm: d })),
   },
 
   "CSA G30.18": {
-    label: "CSA G30.18 (캐나다, metric)", system: "M", unit: "mm",
+    label: "CSA G30.18 (metric)", country: "CA", system: "M", unit: "mm",
     dbName: ["CSA(RC)"],
     grades: ["400W", "500W", "400R", "500R"],
     bars: [
@@ -165,7 +170,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   },
 
   "JIS G3112": {
-    label: "JIS G3112 (일본)", system: "D", unit: "mm",
+    label: "JIS G3112", country: "JP", system: "D", unit: "mm",
     dbName: ["JIS(RC)", "JIS-Civil(RC)"],
     grades: ["SD295A", "SD295B", "SD345", "SD390", "SD490"],
     bars: [
@@ -180,7 +185,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   },
 
   "IS 1786": {
-    label: "IS 1786 (인도)", system: "Ø", unit: "mm",
+    label: "IS 1786", country: "IN", system: "Ø", unit: "mm",
     dbName: ["IS(RC)", "IRC(RC)", "IRS(RC)"],
     grades: ["Fe415", "Fe500", "Fe500D", "Fe550", "Fe600"],
     bars: [6, 8, 10, 12, 16, 20, 25, 28, 32, 36, 40].map((d) => ({ label: `Ø${d}`, nominal_mm: d })),

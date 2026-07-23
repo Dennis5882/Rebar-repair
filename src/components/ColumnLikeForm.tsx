@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { saveRebar } from "../lib/api";
-import { errText } from "../lib/errText";
+import { keylistText, statusText } from "../lib/statusMsg";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
@@ -109,7 +109,7 @@ interface Props {
 export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceholder, hoopPlaceholder }: Props) {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
-  const { list, names, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } =
+  const { list, names, keylistMsg, listLoading, listLoadedOnce, status, setStatus, handleList } =
     useRebarList<ColumnLikePayload>(type, conn);
 
   const [keyInput, setKeyInput] = useState("");
@@ -137,22 +137,22 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
 
   async function handleSave() {
     if (!keyInput) {
-      setStatus({ ok: false, msg: t("js.keyRequired") });
+      setStatus({ ok: false, kind: "keyRequired" });
       return;
     }
     const payload = buildPayload(form, isColumn);
     setSaving(true);
-    setStatus({ ok: true, msg: t("js.saving") });
+    setStatus({ ok: true, kind: "saving" });
     try {
       const res = await saveRebar(type, keyInput, payload, conn);
       if (!res.ok) {
-        setStatus({ ok: false, msg: t("js.saveFail", { error: errText(t, res) }) });
+        setStatus({ ok: false, kind: "saveFail", res });
         return;
       }
-      setStatus({ ok: true, msg: t("js.saveDone") });
+      setStatus({ ok: true, kind: "saveDone" });
       setLoaded(payload);
     } catch (e) {
-      setStatus({ ok: false, msg: t("js.saveError", { error: String(e) }) });
+      setStatus({ ok: false, kind: "saveError", error: String(e) });
     } finally {
       setSaving(false);
     }
@@ -183,7 +183,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
             ))}
           </select>
         </div>
-        <div className="keylist">{keylistText}</div>
+        <div className="keylist">{keylistText(t, keylistMsg)}</div>
 
         <div className="subhead">{t("common.mainBarTitle")}</div>
         <div className="row3">
@@ -304,7 +304,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
             {t("common.saveBtn")}
           </button>
         </div>
-        {status && <div className={"status show " + (status.ok ? "ok" : "err")}>{status.msg}</div>}
+        {status && <div className={"status show " + (status.ok ? "ok" : "err")}>{statusText(t, status)}</div>}
       </div>
 
       <SectionPreview

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { getModelUnit, verifyConnection } from "../lib/api";
-import { errText } from "../lib/errText";
+import { connStatusText, type ConnStatus } from "../lib/statusMsg";
 
 const PRODUCT_LABEL: Record<string, string> = { gen: "MIDAS GEN NX", civil: "MIDAS CIVIL NX" };
 
@@ -15,13 +15,11 @@ export function ConnDrawer() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const { mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl, payload, setLengthUnit } = useConn();
-  const [result, setResult] = useState("");
-  const [resultOk, setResultOk] = useState<boolean | null>(null);
+  const [connStatus, setConnStatus] = useState<ConnStatus | null>(null);
   const [connected, setConnected] = useState(false);
 
   async function handleVerify() {
-    setResultOk(null);
-    setResult(t("js.checking"));
+    setConnStatus({ kind: "checking" });
     // Clear immediately, not just on failure — a slow/failed refetch below
     // must never leave a PREVIOUS model's unit silently applied to whatever
     // model this verify ends up connected to.
@@ -29,8 +27,7 @@ export function ConnDrawer() {
     try {
       const res = await verifyConnection(payload);
       if (res.ok) {
-        setResult(t("js.connOk", { program: res.program || product }));
-        setResultOk(true);
+        setConnStatus({ kind: "connOk", program: res.program || product });
         setConnected(true);
         getModelUnit(payload)
           .then((u) => {
@@ -40,21 +37,17 @@ export function ConnDrawer() {
             /* leave lengthUnit at "" — BeamCheckSection treats unknown unit as no result, not as mm */
           });
       } else if (res.code === "disconnected") {
-        setResult(t("js.connDisconnected"));
-        setResultOk(false);
+        setConnStatus({ kind: "connDisconnected" });
         setConnected(false);
       } else if (res.code === "mismatch") {
-        setResult(t("js.connMismatch", { program: res.program }));
-        setResultOk(false);
+        setConnStatus({ kind: "connMismatch", program: res.program });
         setConnected(false);
       } else {
-        setResult(t("js.connFail", { error: errText(t, res) || `HTTP ${res.httpStatus || "?"}` }));
-        setResultOk(false);
+        setConnStatus({ kind: "connFail", res });
         setConnected(false);
       }
     } catch (e) {
-      setResult(t("js.connError", { error: String(e) }));
-      setResultOk(false);
+      setConnStatus({ kind: "connError", error: String(e) });
       setConnected(false);
     }
   }
@@ -117,12 +110,14 @@ export function ConnDrawer() {
                   {t("conn.testBtn")}
                 </button>
               </div>
-              {result && resultOk === null && (
+              {connStatus && connStatus.kind === "checking" && (
                 <div className="hint" style={{ margin: "8px 0 0" }}>
-                  {result}
+                  {connStatusText(t, connStatus)}
                 </div>
               )}
-              {result && resultOk !== null && <div className={"status show " + (resultOk ? "ok" : "err")}>{result}</div>}
+              {connStatus && connStatus.kind !== "checking" && (
+                <div className={"status show " + (connStatus.kind === "connOk" ? "ok" : "err")}>{connStatusText(t, connStatus)}</div>
+              )}
 
               <div className="btn-row">
                 <button className="btn primary" type="button" onClick={() => setOpen(false)}>

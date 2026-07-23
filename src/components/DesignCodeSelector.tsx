@@ -41,7 +41,7 @@ export function DesignCodeSelector() {
           <select id="materialDB" value={materialDB} onChange={(e) => setMaterialDB(e.target.value)}>
             {MATERIAL_DB_KEYS.map((key) => (
               <option key={key} value={key}>
-                {MATERIAL_DBS[key].label}
+                {MATERIAL_DBS[key].label} ({t(`country.${MATERIAL_DBS[key].country}`)})
               </option>
             ))}
           </select>

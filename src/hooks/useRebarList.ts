@@ -1,23 +1,18 @@
 import { useState } from "react";
-import { useI18n } from "../i18n/useI18n";
 import { listRebar, type ConnInfo } from "../lib/api";
-import { errText } from "../lib/errText";
+import type { KeylistMsg, StatusMsg } from "../lib/statusMsg";
 import type { MemberType } from "../types/rebar";
 
-export interface StatusMsg {
-  ok: boolean;
-  msg: string;
-}
+export type { StatusMsg };
 
 // Shared by BeamForm/ColumnLikeForm/WallForm — each rebar-editing tab lists
 // its member type's saved records the same way (fetch, build a summary
 // line, surface a status message). Per-tab specifics (which key is
 // selected, how the form gets filled, save handling) stay in each form.
 export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
-  const { t } = useI18n();
   const [list, setList] = useState<Record<string, T>>({});
   const [names, setNames] = useState<Record<string, string>>({});
-  const [keylistText, setKeylistText] = useState("");
+  const [keylistMsg, setKeylistMsg] = useState<KeylistMsg>(null);
   const [listLoading, setListLoading] = useState(false);
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
   const [status, setStatus] = useState<StatusMsg | null>(null);
@@ -27,21 +22,21 @@ export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
     try {
       const res = await listRebar<T>(memberType, conn);
       if (!res.ok) {
-        setStatus({ ok: false, msg: t("js.listFail", { error: errText(t, res) }) });
+        setStatus({ ok: false, kind: "listFail", res });
         return;
       }
       setList(res.data);
       setNames(res.names || {});
       setListLoadedOnce(true);
       const keys = Object.keys(res.data);
-      setKeylistText(keys.length ? t("js.itemsFound", { count: keys.length, keys: keys.join(", ") }) : t("js.noItems"));
-      setStatus({ ok: true, msg: t("js.listLoaded", { count: keys.length }) });
+      setKeylistMsg(keys.length ? { kind: "itemsFound", count: keys.length, keys } : { kind: "noItems" });
+      setStatus({ ok: true, kind: "listLoaded", count: keys.length });
     } catch (e) {
-      setStatus({ ok: false, msg: t("js.listError", { error: String(e) }) });
+      setStatus({ ok: false, kind: "listError", error: String(e) });
     } finally {
       setListLoading(false);
     }
   }
 
-  return { list, names, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList };
+  return { list, names, keylistMsg, listLoading, listLoadedOnce, status, setStatus, handleList };
 }

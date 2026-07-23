@@ -46,7 +46,7 @@ export function CodeReferenceSection() {
       {materialDB && (
         <>
           <div className="hint" style={{ marginTop: 0 }}>
-            {t("guide.codeMaterialLabel")}: {MATERIAL_DBS[materialDB].label}{" "}
+            {t("guide.codeMaterialLabel")}: {MATERIAL_DBS[materialDB].label} ({t(`country.${MATERIAL_DBS[materialDB].country}`)}){" "}
             <span className={"badge " + (isVerified(materialDB) ? "verified" : "unverified")}>
               {isVerified(materialDB) ? t("designCode.verifiedBadge") : t("designCode.unverifiedBadge")}
             </span>

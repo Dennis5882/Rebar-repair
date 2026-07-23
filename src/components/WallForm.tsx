@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { saveRebar } from "../lib/api";
-import { errText } from "../lib/errText";
+import { keylistText, statusText } from "../lib/statusMsg";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
@@ -123,7 +123,7 @@ function fillWallForm(it: WallItem): FormState {
 export function WallForm() {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
-  const { list, names, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } =
+  const { list, names, keylistMsg, listLoading, listLoadedOnce, status, setStatus, handleList } =
     useRebarList<WallPayload>("WALL", conn);
 
   const [keyInput, setKeyInput] = useState("");
@@ -167,7 +167,7 @@ export function WallForm() {
 
   async function handleSave() {
     if (!keyInput) {
-      setStatus({ ok: false, msg: t("js.keyRequired") });
+      setStatus({ ok: false, kind: "keyRequired" });
       return;
     }
     const item = buildWallItem(form);
@@ -180,20 +180,20 @@ export function WallForm() {
     if (keyMatchesLoaded) items[segmentIndex] = item;
     const payload: WallPayload = { ITEMS: items };
     setSaving(true);
-    setStatus({ ok: true, msg: t("js.saving") });
+    setStatus({ ok: true, kind: "saving" });
     try {
       const res = await saveRebar("WALL", keyInput, payload, conn);
       if (!res.ok) {
-        setStatus({ ok: false, msg: t("js.saveFail", { error: errText(t, res) }) });
+        setStatus({ ok: false, kind: "saveFail", res });
         return;
       }
-      setStatus({ ok: true, msg: t("js.saveDone") });
+      setStatus({ ok: true, kind: "saveDone" });
       setExistingKey(keyInput);
       setAllItems(items);
       setSegmentIndex(keyMatchesLoaded ? segmentIndex : 0);
       setLoaded(item);
     } catch (e) {
-      setStatus({ ok: false, msg: t("js.saveError", { error: String(e) }) });
+      setStatus({ ok: false, kind: "saveError", error: String(e) });
     } finally {
       setSaving(false);
     }
@@ -224,7 +224,7 @@ export function WallForm() {
             ))}
           </select>
         </div>
-        <div className="keylist">{keylistText}</div>
+        <div className="keylist">{keylistText(t, keylistMsg)}</div>
 
         {keyInput === existingKey && allItems.length > 1 && (
           <div className="field">
@@ -367,7 +367,7 @@ export function WallForm() {
             {t("common.saveBtn")}
           </button>
         </div>
-        {status && <div className={"status show " + (status.ok ? "ok" : "err")}>{status.msg}</div>}
+        {status && <div className={"status show " + (status.ok ? "ok" : "err")}>{statusText(t, status)}</div>}
       </div>
 
       <SectionPreview
