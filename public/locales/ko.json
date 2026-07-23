@@ -206,6 +206,10 @@
   "guide.codeBarsHeaderXref": "대응 규격 (미국)",
   "guide.codeConfirmWarning": "이 설계기준의 재료규격 매핑은 지역 편차가 있을 수 있습니다 — 실제 프로젝트에서는 재확인을 권장합니다.",
 
+  "guide.release.d260723.item1": "배근 입력란에 철근 규격 빠른 선택 드롭다운 추가 (D/#/Ø/M 표기 지원)",
+  "guide.release.d260723.item2": "설계기준과 철근 재료규격을 독립적으로 선택할 수 있도록 개선, 실제 Gen NX 데이터로 검증된 규격에 배지 표시",
+  "guide.release.d260723.item3": "API 연결 설정을 \"API 설정\" 버튼과 상태 표시로 재정비",
+  "guide.release.d260723.item4": "3D 형상 뷰를 React Three Fiber 기반으로 전면 재구축 (벽체 미표시 문제 수정, 절점은 클릭 시에만 표시)",
   "guide.release.d260722.item1": "BEAM 배근 저장을 실제 Gen NX API의 write 필드 형식에 맞게 수정 (라이브 모델로 검증)",
   "guide.release.d260722.item2": "전체 앱을 TypeScript + Vite + React로 재구축",
   "guide.release.d260722.item3": "개발자 byline 옆에 기획자 크레딧 추가",

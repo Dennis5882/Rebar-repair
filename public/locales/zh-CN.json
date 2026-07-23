@@ -206,6 +206,10 @@
   "guide.codeBarsHeaderXref": "对应规格（美国）",
   "guide.codeConfirmWarning": "该设计规范的材料规格对应关系可能存在地区差异 — 建议在实际项目中再次确认。",
 
+  "guide.release.d260723.item1": "在所有钢筋规格输入栏新增快速选择下拉菜单（支持 D/#/Ø/M 标记）",
+  "guide.release.d260723.item2": "设计规范与钢筋材料规格现在可以独立选择，并为已用实际 Gen NX 数据验证的规格标注徽章",
+  "guide.release.d260723.item3": "将连接设置改为「API 设置」按钮并显示连接状态",
+  "guide.release.d260723.item4": "将 3D 形状视图全面重构为 React Three Fiber（修复墙体不显示的问题，节点默认隐藏，点击后显示）",
   "guide.release.d260722.item1": "修正 BEAM 配筋保存，使其符合 Gen NX API 实际的写入字段格式（已用实际模型验证）",
   "guide.release.d260722.item2": "将整个应用重构为 TypeScript + Vite + React",
   "guide.release.d260722.item3": "在开发者署名旁新增策划署名",

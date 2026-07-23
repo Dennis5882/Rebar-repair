@@ -7,7 +7,7 @@ export function Byline() {
       <span>
         {t("app.plannerLabel")}: Gavi · {t("app.developerLabel")}: Dennis
       </span>
-      <span>{t("app.lastUpdateLabel")}: 260716</span>
+      <span>{t("app.lastUpdateLabel")}: {__BUILD_DATE__}</span>
     </p>
   );
 }

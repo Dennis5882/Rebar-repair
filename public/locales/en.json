@@ -206,6 +206,10 @@
   "guide.codeBarsHeaderXref": "US Cross-ref",
   "guide.codeConfirmWarning": "This design code's material mapping has regional variation — please double-check for your actual project.",
 
+  "guide.release.d260723.item1": "Added a quick-pick rebar size dropdown to every bar-name field (supports D/#/Ø/M notations)",
+  "guide.release.d260723.item2": "Design code and rebar material standard can now be selected independently, with a verified badge on standards checked against real Gen NX data",
+  "guide.release.d260723.item3": "Reworked the connection settings into an \"API Settings\" button with a status indicator",
+  "guide.release.d260723.item4": "Rebuilt the 3D geometry view on React Three Fiber (fixed walls not rendering, nodes now hidden by default and shown on click)",
   "guide.release.d260722.item1": "Fixed BEAM rebar saving to match the real Gen NX API's write field format (verified against a live model)",
   "guide.release.d260722.item2": "Rebuilt the entire app in TypeScript + Vite + React",
   "guide.release.d260722.item3": "Added a planner credit next to the developer byline",
