@@ -177,7 +177,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
             <option value="">{listLoadedOnce ? t("js.selectDefault") : t("common.existingDefaultOption")}</option>
             {Object.keys(list).map((k) => (
               <option key={k} value={k}>
-                {names[k] ? `${names[k]} — ${k}` : k}
+                {names[k] ? `${k}: ${names[k]}` : k}
               </option>
             ))}
           </select>

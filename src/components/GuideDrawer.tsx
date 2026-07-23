@@ -50,6 +50,7 @@ export function GuideDrawer() {
                     <li>{t("guide.step3")}</li>
                     <li>{t("guide.step4")}</li>
                     <li>{t("guide.step5")}</li>
+                    <li>{t("guide.step6")}</li>
                   </ol>
                   <div className="subhead" style={{ marginTop: 4 }}>
                     {t("guide.codeTableTitle")}
@@ -67,6 +68,7 @@ export function GuideDrawer() {
                       <li>{t("guide.release.d260723.item4")}</li>
                       <li>{t("guide.release.d260723.item5")}</li>
                       <li>{t("guide.release.d260723.item6")}</li>
+                      <li>{t("guide.release.d260723.item7")}</li>
                     </ul>
                   </div>
                   <div className="release-entry">
