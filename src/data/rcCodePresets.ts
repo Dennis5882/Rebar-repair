@@ -46,6 +46,9 @@ export interface MaterialDbEntry {
   verified?: boolean;
 }
 
+// src/lib/rcBeamCheck.ts's set of verified phi/beta1/Vc coefficient tables.
+export type RcFormulaFamily = "KDS" | "TWN_ACI";
+
 export interface DesignCodeEntry {
   country: string;
   materialDB: string;
@@ -53,6 +56,12 @@ export interface DesignCodeEntry {
   confirm?: boolean;
   // rebarCode: MATERIAL_DBS 기본 dbName 대신 보낼 로컬 라벨(확인된 값)
   rebarCode?: string;
+  // 이 설계기준의 phi/beta1/Vc 계수가 1차 출처(코드 원문)로 검증되어
+  // src/lib/rcBeamCheck.ts의 즉석 설계검토 패널에 연결된 경우에만 설정.
+  // 이 필드가 이 데이터의 유일한 출처이며, rcBeamCheck.ts는 별도 매핑을
+  // 유지하지 않고 이 값을 그대로 읽는다 — 라벨을 고치면 검토 패널도
+  // 자동으로 따라오고, 검증되지 않은 코드에 실수로 계수가 붙는 일이 없다.
+  rcCheckFamily?: RcFormulaFamily;
 }
 
 // ── 하위: 재료 DB ────────────────────────────────────────────────────────────
@@ -182,7 +191,7 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
 // materialDB 는 MATERIAL_DBS 의 키. confirm:true 는 지역 편차로 재확인 권장.
 export const DESIGN_CODES: Record<string, DesignCodeEntry> = {
   // 대만
-  "TWN-USD112": { country: "TW", materialDB: "CNS 560" },
+  "TWN-USD112": { country: "TW", materialDB: "CNS 560", rcCheckFamily: "TWN_ACI" },
   "TWN-USD100": { country: "TW", materialDB: "CNS 560" },
   "TWN-USD92":  { country: "TW", materialDB: "CNS 560" },
   // 중국
@@ -212,7 +221,7 @@ export const DESIGN_CODES: Record<string, DesignCodeEntry> = {
   // 일본
   "AIJ-WSD99": { country: "JP", materialDB: "JIS G3112" },
   // 한국 (모두 KS D 3504)
-  "KDS 41 20 : 2022": { country: "KR", materialDB: "KS D 3504" }, // 건축물 콘크리트구조 (기본)
+  "KDS 41 20 : 2022": { country: "KR", materialDB: "KS D 3504", rcCheckFamily: "KDS" }, // 건축물 콘크리트구조 (기본)
   "KDS 41 30 : 2018": { country: "KR", materialDB: "KS D 3504" },
   "KCI-USD12":  { country: "KR", materialDB: "KS D 3504" },
   "KCI-USD07":  { country: "KR", materialDB: "KS D 3504" },
@@ -287,22 +296,25 @@ export function isOverride(designCode: string, materialDB: string): boolean {
   return defaultMaterialDB(designCode) !== materialDB;
 }
 
+/** 이 설계기준이 즉석 설계검토(phiMn/phiVn) 계수 세트를 갖고 있는지 — 없으면 null */
+export function rcCheckFamily(designCode: string): RcFormulaFamily | null {
+  return DESIGN_CODES[designCode]?.rcCheckFamily ?? null;
+}
+
 /** 이 재료 DB가 실제 Gen NX 화면과 1:1 대조 검증됐는지 (현재 KS·CNS·ASTM만 해당) */
 export function isVerified(materialDB: string): boolean {
   return MATERIAL_DBS[materialDB]?.verified === true;
 }
 
+/** 길이단위 1개당 mm 환산값 — /db/UNIT의 DIST 값(mm/cm/m/in/ft)과 짝을 이룸.
+ * mm 환산이 필요한 곳(단면 치수 변환 등)은 전부 이 표 하나만 참조할 것 —
+ * 별도로 값을 다시 적으면 나중에 둘 중 하나만 고쳐져서 어긋나기 쉽다. */
+export const MM_PER_UNIT: Record<string, number> = { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 };
+
 /** 규격 라벨 -> 모델 활성단위 기준 지름값으로 변환 */
 export function toModelDiameter(materialDB: string, label: string, modelUnit = "mm"): number | null {
   const bar = getBars(materialDB).find((b) => b.label === label);
   if (!bar) return null;
-  const mm = bar.nominal_mm;
-  switch (modelUnit) {
-    case "mm": return mm;
-    case "cm": return mm / 10;
-    case "m":  return mm / 1000;
-    case "in": return mm / 25.4;
-    case "ft": return mm / 304.8;
-    default:   return mm;
-  }
+  const perUnit = MM_PER_UNIT[modelUnit];
+  return perUnit ? bar.nominal_mm / perUnit : bar.nominal_mm;
 }

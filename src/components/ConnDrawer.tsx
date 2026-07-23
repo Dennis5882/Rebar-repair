@@ -22,15 +22,23 @@ export function ConnDrawer() {
   async function handleVerify() {
     setResultOk(null);
     setResult(t("js.checking"));
+    // Clear immediately, not just on failure — a slow/failed refetch below
+    // must never leave a PREVIOUS model's unit silently applied to whatever
+    // model this verify ends up connected to.
+    setLengthUnit("");
     try {
       const res = await verifyConnection(payload);
       if (res.ok) {
         setResult(t("js.connOk", { program: res.program || product }));
         setResultOk(true);
         setConnected(true);
-        getModelUnit(payload).then((u) => {
-          if (u.ok) setLengthUnit(u.unit);
-        });
+        getModelUnit(payload)
+          .then((u) => {
+            if (u.ok) setLengthUnit(u.unit);
+          })
+          .catch(() => {
+            /* leave lengthUnit at "" — BeamCheckSection treats unknown unit as no result, not as mm */
+          });
       } else if (res.code === "disconnected") {
         setResult(t("js.connDisconnected"));
         setResultOk(false);

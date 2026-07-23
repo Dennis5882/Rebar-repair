@@ -1,6 +1,31 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { ENDPOINTS, getJson, resolveBase, setCorsPost } from "./lib/midas.js";
 
+// ELEM/SECT are full-model collections (1000+ elements on a real project)
+// but don't change between the four member-type tabs' list-loads within one
+// editing session — cache them per (base, apiKey) for a short window so
+// repeated "load list" clicks (any tab) within a warm serverless instance
+// reuse the same fetch instead of re-downloading the whole model each time.
+// Only helps warm invocations (Vercel doesn't guarantee this persists across
+// cold starts) — a partial win, not a full fix, but free given the runtime.
+interface ElemSectCacheEntry {
+  at: number;
+  elemItems: Record<string, any>;
+  sectItems: Record<string, any>;
+}
+const elemSectCache = new Map<string, ElemSectCacheEntry>();
+const ELEM_SECT_CACHE_TTL_MS = 30_000;
+
+async function getElemSectCached(base: string, apiKey: string): Promise<ElemSectCacheEntry> {
+  const cacheKey = `${base}::${apiKey}`;
+  const cached = elemSectCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < ELEM_SECT_CACHE_TTL_MS) return cached;
+  const [elemRes, sectRes] = await Promise.all([getJson(base, "/db/ELEM", apiKey), getJson(base, "/db/SECT", apiKey)]);
+  const entry: ElemSectCacheEntry = { at: Date.now(), elemItems: elemRes.ELEM || {}, sectItems: sectRes.SECT || {} };
+  elemSectCache.set(cacheKey, entry);
+  return entry;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -37,9 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const names: Record<string, string> = {};
     const keys = Object.keys(items);
     if (keys.length) {
-      const [elemRes, sectRes] = await Promise.all([getJson(base, "/db/ELEM", apiKey), getJson(base, "/db/SECT", apiKey)]);
-      const elemItems: Record<string, any> = elemRes.ELEM || {};
-      const sectItems: Record<string, any> = sectRes.SECT || {};
+      const { elemItems, sectItems } = await getElemSectCached(base, apiKey);
       for (const key of keys) {
         const sectId = elemItems[key]?.SECT;
         const name = sectId != null ? sectItems[String(sectId)]?.SECT_NAME : undefined;

@@ -9,16 +9,13 @@
 // shape hasn't been live-verified yet, so the check panel takes Mu/Vu as
 // manual input instead of guessing at an unverified endpoint.
 
-export type RcFormulaFamily = "KDS" | "TWN_ACI";
-
-const FAMILY_BY_DESIGN_CODE: Record<string, RcFormulaFamily> = {
-  "KDS 41 20 : 2022": "KDS",
-  "TWN-USD112": "TWN_ACI",
-};
-
-export function formulaFamily(designCode: string): RcFormulaFamily | null {
-  return FAMILY_BY_DESIGN_CODE[designCode] || null;
-}
+// Which design codes this module has coefficients for lives as data on
+// DESIGN_CODES in rcCodePresets.ts (the `rcCheckFamily` field), not as a
+// second map here — a design-code label edited in one place used to be able
+// to silently desync from this file's own copy of the same string.
+export type { RcFormulaFamily } from "../data/rcCodePresets";
+export { rcCheckFamily as formulaFamily } from "../data/rcCodePresets";
+import type { RcFormulaFamily } from "../data/rcCodePresets";
 
 const Es_MPa = 200000;
 
@@ -85,6 +82,11 @@ export function flexuralCapacity(
   const eta = family === "KDS" ? interpolateTable(fck, "eta") : 1;
 
   const a = (As * fy) / (0.85 * eta * fck * b);
+  // a >= 2d means the internal moment arm (d - a/2) is zero or negative —
+  // physically invalid (grossly over-reinforced for this section), not just
+  // a low-phi compression-controlled case. Report "no valid capacity"
+  // instead of a nonsense negative Mn.
+  if (a >= 2 * d) return null;
   const c = a / beta1;
   const epsT = (0.003 * (d - c)) / c;
   const epsTy = fy / Es_MPa;

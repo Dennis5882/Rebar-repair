@@ -366,7 +366,7 @@ export function BeamForm() {
         </div>
         {status && <div className={"status show " + (status.ok ? "ok" : "err")}>{status.msg}</div>}
 
-        <BeamCheckSection sectors={sectors} dimB={dimB} dimH={dimH} dt={dt} db={db} lengthUnit={lengthUnit} />
+        <BeamCheckSection memberKey={existingKey} sectors={sectors} dimB={dimB} dimH={dimH} dt={dt} db={db} lengthUnit={lengthUnit} />
       </div>
 
       <SectionPreview

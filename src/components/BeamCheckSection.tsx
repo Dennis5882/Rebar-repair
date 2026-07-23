@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useDesignCode } from "../context/DesignCodeContext";
 import { SECTORS, type SectorKey } from "../types/rebar";
-import { toModelDiameter } from "../data/rcCodePresets";
+import { MM_PER_UNIT, toModelDiameter } from "../data/rcCodePresets";
 import { barArea_mm2, flexuralCapacity, formulaFamily, shearCapacity } from "../lib/rcBeamCheck";
 import type { SectorFormValues } from "./BeamForm";
 
@@ -12,10 +12,19 @@ interface DemandInputs {
   vu: string;
 }
 const EMPTY_DEMAND: DemandInputs = { muNeg: "", muPos: "", vu: "" };
+function emptyDemandBySector(): Record<SectorKey, DemandInputs> {
+  return Object.fromEntries(SECTORS.map((k) => [k, { ...EMPTY_DEMAND }])) as Record<SectorKey, DemandInputs>;
+}
 
-const UNIT_TO_MM: Record<string, number> = { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 };
+// NaN (not a silent 1:1 passthrough) when the unit isn't a recognized one —
+// letting an unconverted value through as "probably already mm" is exactly
+// how this used to silently understate/overstate cover and stirrup spacing.
+// NaN propagates through the capacity formulas' own `d > 0`/`s > 0` guards
+// in rcBeamCheck.ts, so an unknown unit degrades to "no result" rather than
+// a wrong-but-plausible number.
 function toMm(value: number, unit: string): number {
-  return value * (UNIT_TO_MM[unit] || 1);
+  const perUnit = MM_PER_UNIT[unit];
+  return perUnit ? value * perUnit : NaN;
 }
 function num(s: string): number {
   const n = Number(s);
@@ -29,6 +38,11 @@ function RatioBadge({ demand, capacity }: { demand: number; capacity: number }) 
 }
 
 interface Props {
+  // Identifies which beam is currently loaded (e.g. the selected existing-
+  // member key) — used only to reset manually-typed Mu/Vu demand when the
+  // user switches beams, so a leftover demand value from the PREVIOUS beam
+  // is never silently compared against the newly loaded one's capacity.
+  memberKey: string;
   sectors: Record<SectorKey, SectorFormValues>;
   dimB: string;
   dimH: string;
@@ -37,13 +51,17 @@ interface Props {
   lengthUnit: string;
 }
 
-export function BeamCheckSection({ sectors, dimB, dimH, dt, db, lengthUnit }: Props) {
+export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengthUnit }: Props) {
   const { t } = useI18n();
   const { designCode, materialDB } = useDesignCode();
   const [fck, setFck] = useState("24");
   const [fy, setFy] = useState("400");
   const [fyt, setFyt] = useState("400");
-  const [demand, setDemand] = useState<Record<SectorKey, DemandInputs>>({ I: { ...EMPTY_DEMAND }, M: { ...EMPTY_DEMAND }, J: { ...EMPTY_DEMAND } });
+  const [demand, setDemand] = useState<Record<SectorKey, DemandInputs>>(emptyDemandBySector);
+
+  useEffect(() => {
+    setDemand(emptyDemandBySector());
+  }, [memberKey]);
 
   const family = formulaFamily(designCode);
 
@@ -74,12 +92,12 @@ export function BeamCheckSection({ sectors, dimB, dimH, dt, db, lengthUnit }: Pr
       const shearDia = toModelDiameter(materialDB, s.shearName, "mm");
       const av = shearDia && s.shearLeg ? barArea_mm2(shearDia) * num(s.shearLeg) : 0;
       const dShear = Math.max(dNeg, dPos) || h_mm;
-      const shear = shearCapacity(family, fckN, fytN, b_mm, dShear, av, num(s.shearDist));
+      const shear = shearCapacity(family, fckN, fytN, b_mm, dShear, av, toMm(num(s.shearDist), lengthUnit));
 
       out[key] = { neg, pos, shear };
     }
     return out;
-  }, [family, sectors, b_mm, h_mm, dt_mm, db_mm, fckN, fyN, fytN, materialDB]);
+  }, [family, sectors, b_mm, h_mm, dt_mm, db_mm, fckN, fyN, fytN, materialDB, lengthUnit]);
 
   function setDemandField(key: SectorKey, field: keyof DemandInputs, value: string) {
     setDemand((prev) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
