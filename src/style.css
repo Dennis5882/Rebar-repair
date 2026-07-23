@@ -157,6 +157,8 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .conn-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
 .conn-dot.ok { background: var(--good); }
 
+.field-label-tech { letter-spacing: .06em; }
+
 .release-entry { margin-bottom: 16px; }
 .release-date { font-weight: 600; font-size: 12.5px; color: var(--ink); margin-bottom: 4px; }
 .release-entry ul { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); }

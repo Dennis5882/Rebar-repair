@@ -72,9 +72,24 @@ export function buildGeometryTraces(geo: ModelGeometry, t: TFn): any[] {
     }
   }
 
-  // Regular (non-support) node markers are deliberately omitted — with a
-  // real model's node count they clutter the view; only supports (a much
-  // sparser, meaningful set) are marked.
+  // All nodes: shown only on demand (Plotly's legend click toggles a
+  // "legendonly" trace on/off) — with a real model's node count they'd
+  // clutter the default view, but hiding them outright removes a useful
+  // debugging aid, so they're one click away instead of gone.
+  if (geo.nodes.length) {
+    traces.push({
+      type: "scatter3d",
+      mode: "markers",
+      name: t("geo3d.legendNode"),
+      visible: "legendonly",
+      x: geo.nodes.map((n) => n.x),
+      y: geo.nodes.map((n) => n.y),
+      z: geo.nodes.map((n) => n.z),
+      marker: { size: 3, color: "#898781" },
+      hoverinfo: "skip",
+    });
+  }
+
   const baseSet = new Set(geo.baseNodes);
   const supports = geo.nodes.filter((n) => baseSet.has(n.id));
 
