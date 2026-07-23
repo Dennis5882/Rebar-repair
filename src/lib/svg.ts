@@ -2,11 +2,13 @@ import type { TFn } from "../i18n/types";
 import type {
   BeamItem,
   BeamPayload,
+  BeamSector,
   ColumnLikeItem,
   ColumnLikePayload,
   ItemsPayload,
   MemberPayload,
   MemberType,
+  SectorKey,
   WallItem,
   WallPayload,
 } from "../types/rebar";
@@ -60,11 +62,23 @@ function perimeterPoints(count: number, w: number, h: number): [number, number][
   return pts;
 }
 
-function drawBeamSvg(t: TFn, payload: BeamPayload | null | undefined, dims: SectionDims, aria: string): string {
+const BEAM_SECTOR_FIELD: Record<SectorKey, "BAR_SECTOR_I" | "BAR_SECTOR_M" | "BAR_SECTOR_J"> = {
+  I: "BAR_SECTOR_I",
+  M: "BAR_SECTOR_M",
+  J: "BAR_SECTOR_J",
+};
+
+function drawBeamSvg(
+  t: TFn,
+  payload: BeamPayload | null | undefined,
+  dims: SectionDims,
+  aria: string,
+  sectorKey: SectorKey = "M"
+): string {
   const B = Number(dims.B) || 300;
   const H = Number(dims.H) || 600;
   const it: Partial<BeamItem> = firstItem(payload);
-  const sector = it.BAR_SECTOR_M || {};
+  const sector: BeamSector = it[BEAM_SECTOR_FIELD[sectorKey]] || {};
   const dt = it.DT || 40;
   const db = it.DB || 40;
   const topLayers = Object.values(sector.MAIN_BAR_TOP || {});
@@ -264,10 +278,11 @@ export function drawSectionSvg(
   type: MemberType,
   payload: MemberPayload | null | undefined,
   dims: SectionDims,
-  aria: string
+  aria: string,
+  sectorKey?: SectorKey
 ): string {
   if (!payload) return `<div class="sec-empty">${esc(t("js.noData"))}</div>`;
-  if (type === "BEAM") return drawBeamSvg(t, payload as BeamPayload, dims, aria);
+  if (type === "BEAM") return drawBeamSvg(t, payload as BeamPayload, dims, aria, sectorKey);
   if (type === "COLUMN") return drawColumnOrBraceSvg(t, payload as ColumnLikePayload, dims, aria, false);
   if (type === "BRACE") return drawColumnOrBraceSvg(t, payload as ColumnLikePayload, dims, aria, true);
   if (type === "WALL") return drawWallSvg(t, payload as WallPayload, dims, aria);

@@ -78,7 +78,7 @@
   "beam.checkShear": "Shear phiVn",
   "beam.muInput": "Enter Mu (kN·m)",
   "beam.vuInput": "Enter Vu (kN)",
-  "beam.previewTitle": "Section Preview (at center M sector)",
+  "beam.previewTitle": "Section Preview (I/M/J sectors)",
   "beam.stirrup": "Stirrup",
 
   "column.useCorner": "Use Corner Bar",

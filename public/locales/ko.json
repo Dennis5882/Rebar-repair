@@ -78,7 +78,7 @@
   "beam.checkShear": "전단 φVn",
   "beam.muInput": "Mu 입력 (kN·m)",
   "beam.vuInput": "Vu 입력 (kN)",
-  "beam.previewTitle": "단면 미리보기 (중앙 M단 기준)",
+  "beam.previewTitle": "단면 미리보기 (I/M/J단)",
   "beam.stirrup": "스터럽",
 
   "column.useCorner": "코너철근 사용",

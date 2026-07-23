@@ -78,7 +78,7 @@
   "beam.checkShear": "剪力 φVn",
   "beam.muInput": "輸入 Mu (kN·m)",
   "beam.vuInput": "輸入 Vu (kN)",
-  "beam.previewTitle": "斷面預覽（以中央 M 端為準）",
+  "beam.previewTitle": "斷面預覽（I/M/J 端）",
   "beam.stirrup": "箍筋",
 
   "column.useCorner": "使用角筋",

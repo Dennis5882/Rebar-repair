@@ -380,6 +380,7 @@ export function BeamForm() {
         before={loaded}
         after={afterPayload}
         dims={{ B: dimB, H: dimH }}
+        sectorKeys={SECTORS}
         legend={
           <>
             <span>
