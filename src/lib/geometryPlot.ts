@@ -58,6 +58,11 @@ export function buildGeometryTraces(geo: ModelGeometry, t: TFn): any[] {
       traces.push({
         type: "mesh3d",
         name: t("geo3d.legendWall"),
+        // Plotly's mesh3d traces default to no legend entry (unlike
+        // scatter3d), so without this the wall mesh renders but is
+        // impossible to find/toggle — it was actually there all along,
+        // just an invisible-in-the-legend, easy-to-miss faint patch.
+        showlegend: true,
         x: vx,
         y: vy,
         z: vz,
@@ -65,7 +70,7 @@ export function buildGeometryTraces(geo: ModelGeometry, t: TFn): any[] {
         j: jj,
         k: kk,
         color: "#9b8cff",
-        opacity: 0.35,
+        opacity: 0.55,
         flatshading: true,
         hoverinfo: "skip",
       });
