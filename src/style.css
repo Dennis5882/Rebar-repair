@@ -29,7 +29,7 @@ html, body {
 }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 64px; }
 .topbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
-.lang-row { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-bottom: 6px; }
+.lang-row { display: flex; align-items: center; gap: 6px; }
 .lang-row label { margin: 0; font-size: 11px; color: var(--muted); }
 .lang-row select { width: auto; padding: 4px 8px; font-size: 12px; }
 h1 { font-size: 20px; margin: 0 0 2px; }
