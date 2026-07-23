@@ -171,6 +171,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
             {t("common.loadListBtn")}
           </button>
         </div>
+        {listLoadedOnce && <div className="hint" style={{ marginTop: 4 }}>{t("js.listLoaded", { count: Object.keys(list).length })}</div>}
         <div className="field">
           <label htmlFor={`${type}-existing`}>{t("common.existingSectionLabel")}</label>
           <select id={`${type}-existing`} value={existingKey} onChange={(e) => handleSelectExisting(e.target.value)}>

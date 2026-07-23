@@ -237,6 +237,7 @@ export function BeamForm() {
             {t("common.loadListBtn")}
           </button>
         </div>
+        {listLoadedOnce && <div className="hint" style={{ marginTop: 4 }}>{t("js.listLoaded", { count: Object.keys(list).length })}</div>}
         <div className="field">
           <label htmlFor="BEAM-existing">{t("common.existingSectionLabel")}</label>
           <select id="BEAM-existing" value={existingKey} onChange={(e) => handleSelectExisting(e.target.value)}>
