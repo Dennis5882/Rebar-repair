@@ -74,3 +74,27 @@ export function connStatusText(t: TFn, s: ConnStatus): string {
       return t("js.connError", { error: s.error });
   }
 }
+
+// Same rationale as StatusMsg above, for BeamCheckSection's "Gen NX 결과
+// 불러오기" (fetch Mu/Vu from BC-TABLE) button.
+export type BeamResultStatus =
+  | { kind: "fetching" }
+  | { kind: "fetchOk"; count: number }
+  | { kind: "fetchEmpty" }
+  | { kind: "fetchFail"; res: ApiError }
+  | { kind: "fetchError"; error: string };
+
+export function beamResultStatusText(t: TFn, s: BeamResultStatus): string {
+  switch (s.kind) {
+    case "fetching":
+      return t("beam.fetching");
+    case "fetchOk":
+      return t("beam.fetchOk", { count: s.count });
+    case "fetchEmpty":
+      return t("beam.fetchEmpty");
+    case "fetchFail":
+      return t("beam.fetchFail", { error: errText(t, s.res) });
+    case "fetchError":
+      return t("beam.fetchError", { error: s.error });
+  }
+}

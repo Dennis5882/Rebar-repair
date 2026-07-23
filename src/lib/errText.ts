@@ -18,6 +18,8 @@ export function errText(t: TFn, res: ApiError): string | undefined {
       return t("js.err.emptyPayload");
     case "parse_error":
       return t("js.parseError");
+    case "timeout":
+      return t("js.err.timeout");
     default:
       return res.error;
   }

@@ -1,4 +1,4 @@
-import type { BeamWritePayload, MemberPayload, MemberType } from "../types/rebar";
+import type { BeamWritePayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
 
@@ -17,7 +17,8 @@ export type ErrorCode =
   | "disconnected"
   | "mismatch"
   | "http"
-  | "parse_error";
+  | "parse_error"
+  | "timeout";
 
 export interface ApiError {
   ok: false;
@@ -68,6 +69,17 @@ export interface UnitOk {
 }
 export type UnitResult = UnitOk | ApiError;
 
+export interface BeamDemandPoint {
+  muNeg?: number;
+  muPos?: number;
+  vu?: number;
+}
+export interface BeamDesignResultOk {
+  ok: true;
+  bySector: Partial<Record<SectorKey, BeamDemandPoint>>;
+}
+export type BeamDesignResultResult = BeamDesignResultOk | ApiError;
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
@@ -99,6 +111,10 @@ export function getProjectGeometry(conn: ConnInfo): Promise<ProjectGeometryResul
 
 export function getModelUnit(conn: ConnInfo): Promise<UnitResult> {
   return post<UnitResult>("/api/unit", conn);
+}
+
+export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<BeamDesignResultResult> {
+  return post<BeamDesignResultResult>("/api/beam-design-result", { elemKey, ...conn });
 }
 
 // BEAM's write endpoint needs the legacy BeamWritePayload shape (see

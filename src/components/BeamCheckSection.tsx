@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
+import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
 import { SECTORS, type SectorKey } from "../types/rebar";
 import { MM_PER_UNIT, toModelDiameter } from "../data/rcCodePresets";
 import { barArea_mm2, flexuralCapacity, formulaFamily, shearCapacity } from "../lib/rcBeamCheck";
+import { getBeamDesignResult, type BeamDemandPoint } from "../lib/api";
+import { beamResultStatusText, type BeamResultStatus } from "../lib/statusMsg";
 import type { SectorFormValues } from "./BeamForm";
 
 interface DemandInputs {
@@ -53,15 +56,52 @@ interface Props {
 
 export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengthUnit }: Props) {
   const { t } = useI18n();
+  const { payload: conn } = useConn();
   const { designCode, materialDB } = useDesignCode();
   const [fck, setFck] = useState("24");
   const [fy, setFy] = useState("400");
   const [fyt, setFyt] = useState("400");
   const [demand, setDemand] = useState<Record<SectorKey, DemandInputs>>(emptyDemandBySector);
+  const [fetching, setFetching] = useState(false);
+  const [fetchStatus, setFetchStatus] = useState<BeamResultStatus | null>(null);
 
   useEffect(() => {
     setDemand(emptyDemandBySector());
+    setFetchStatus(null);
   }, [memberKey]);
+
+  async function handleFetchResult() {
+    setFetching(true);
+    setFetchStatus({ kind: "fetching" });
+    try {
+      const res = await getBeamDesignResult(memberKey, conn);
+      if (!res.ok) {
+        setFetchStatus({ kind: "fetchFail", res });
+        return;
+      }
+      const entries = Object.entries(res.bySector) as [SectorKey, BeamDemandPoint][];
+      if (!entries.length) {
+        setFetchStatus({ kind: "fetchEmpty" });
+        return;
+      }
+      setDemand((prev) => {
+        const next = { ...prev };
+        for (const [key, point] of entries) {
+          next[key] = {
+            muNeg: point.muNeg != null ? String(point.muNeg) : prev[key].muNeg,
+            muPos: point.muPos != null ? String(point.muPos) : prev[key].muPos,
+            vu: point.vu != null ? String(point.vu) : prev[key].vu,
+          };
+        }
+        return next;
+      });
+      setFetchStatus({ kind: "fetchOk", count: entries.length });
+    } catch (e) {
+      setFetchStatus({ kind: "fetchError", error: String(e) });
+    } finally {
+      setFetching(false);
+    }
+  }
 
   const family = formulaFamily(designCode);
 
@@ -115,6 +155,24 @@ export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengt
         </div>
       ) : (
         <>
+          <div className="btn-row" style={{ marginTop: 0 }}>
+            <button className="btn" type="button" onClick={handleFetchResult} disabled={!memberKey || fetching}>
+              {t("beam.fetchResultBtn")}
+            </button>
+          </div>
+          <div className="hint" style={{ margin: "0 0 8px" }}>
+            {t("beam.fetchHint")}
+          </div>
+          {fetchStatus && (fetchStatus.kind === "fetching" || fetchStatus.kind === "fetchEmpty") && (
+            <div className="hint" style={{ margin: "0 0 8px" }}>
+              {beamResultStatusText(t, fetchStatus)}
+            </div>
+          )}
+          {fetchStatus && fetchStatus.kind !== "fetching" && fetchStatus.kind !== "fetchEmpty" && (
+            <div className={"status show " + (fetchStatus.kind === "fetchOk" ? "ok" : "err")} style={{ margin: "0 0 8px" }}>
+              {beamResultStatusText(t, fetchStatus)}
+            </div>
+          )}
           <div className="row3">
             <div className="field">
               <label htmlFor="BEAM-check-fck">{t("beam.fck")}</label>
