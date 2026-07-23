@@ -151,8 +151,8 @@ function toWritePayload(payload: BeamPayload): BeamWritePayload {
 
 export function BeamForm() {
   const { t } = useI18n();
-  const { payload: conn } = useConn();
-  const { list, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } = useRebarList<BeamPayload>(
+  const { payload: conn, lengthUnit } = useConn();
+  const { list, names, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } = useRebarList<BeamPayload>(
     "BEAM",
     conn
   );
@@ -242,7 +242,7 @@ export function BeamForm() {
             <option value="">{listLoadedOnce ? t("js.selectDefault") : t("common.existingDefaultOption")}</option>
             {Object.keys(list).map((k) => (
               <option key={k} value={k}>
-                {k}
+                {names[k] ? `${k} — ${names[k]}` : k}
               </option>
             ))}
           </select>
@@ -337,11 +337,11 @@ export function BeamForm() {
         <div className="subhead">{t("beam.coverTitle")}</div>
         <div className="row2">
           <div className="field">
-            <label htmlFor="BEAM-dt">{t("beam.dtLabel")}</label>
+            <label htmlFor="BEAM-dt">{t("beam.dtLabel")}{lengthUnit ? ` (${lengthUnit})` : ""}</label>
             <input id="BEAM-dt" type="number" step="any" value={dt} onChange={(e) => setDt(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="BEAM-db">{t("beam.dbLabel")}</label>
+            <label htmlFor="BEAM-db">{t("beam.dbLabel")}{lengthUnit ? ` (${lengthUnit})` : ""}</label>
             <input id="BEAM-db" type="number" step="any" value={db} onChange={(e) => setDb(e.target.value)} />
           </div>
         </div>

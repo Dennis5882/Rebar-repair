@@ -10,6 +10,8 @@ interface ConnContextValue {
   setProduct: (v: string) => void;
   setBaseUrl: (v: string) => void;
   payload: ConnInfo;
+  lengthUnit: string;
+  setLengthUnit: (v: string) => void;
 }
 
 const ConnContext = createContext<ConnContextValue | null>(null);
@@ -39,6 +41,9 @@ export function ConnProvider({ children }: { children: ReactNode }) {
   const [baseUrl, setBaseUrlState] = useState(() =>
     readSession("baseUrl", DEFAULT_BASE_URL[readSession("product", "gen")])
   );
+  // Not persisted to sessionStorage — cheap to refetch on connect, and
+  // stale unit label after switching models would be worse than blank.
+  const [lengthUnit, setLengthUnit] = useState("");
 
   // Stable (empty-dep) callbacks + a memoized context value, so components
   // that only read `t`/other context and not ConnContext don't re-render on
@@ -80,8 +85,10 @@ export function ConnProvider({ children }: { children: ReactNode }) {
       setProduct,
       setBaseUrl,
       payload: { apiKey: mapiKey, product, baseUrl },
+      lengthUnit,
+      setLengthUnit,
     }),
-    [mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl]
+    [mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl, lengthUnit]
   );
 
   return <ConnContext.Provider value={value}>{children}</ConnContext.Provider>;

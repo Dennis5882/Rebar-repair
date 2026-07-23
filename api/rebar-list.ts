@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ENDPOINTS, resolveBase, setCorsPost } from "./lib/midas.js";
+import { ENDPOINTS, getJson, resolveBase, setCorsPost } from "./lib/midas.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
@@ -28,7 +28,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const topKey = data ? Object.keys(data)[0] : null;
     const items = topKey ? data[topKey] || {} : {};
-    return res.json({ ok: true, data: items });
+
+    // Practitioners identify members by their section name (e.g. "G1"),
+    // not the raw element ID key returned above — resolve each key's
+    // assigned section name via ELEM -> SECT so the UI can show both.
+    // Both calls swallow errors to {} (getJson), so a lookup failure just
+    // means no names are attached, not a failed list load.
+    const names: Record<string, string> = {};
+    const keys = Object.keys(items);
+    if (keys.length) {
+      const [elemRes, sectRes] = await Promise.all([getJson(base, "/db/ELEM", apiKey), getJson(base, "/db/SECT", apiKey)]);
+      const elemItems: Record<string, any> = elemRes.ELEM || {};
+      const sectItems: Record<string, any> = sectRes.SECT || {};
+      for (const key of keys) {
+        const sectId = elemItems[key]?.SECT;
+        const name = sectId != null ? sectItems[String(sectId)]?.SECT_NAME : undefined;
+        if (name) names[key] = name;
+      }
+    }
+
+    return res.json({ ok: true, data: items, names });
   } catch (e: any) {
     return res.json({ ok: false, error: e.message });
   }

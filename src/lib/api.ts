@@ -40,6 +40,7 @@ export type VerifyResult = VerifyOk | ApiError;
 export interface ListOk<T> {
   ok: true;
   data: Record<string, T>;
+  names?: Record<string, string>;
 }
 export type ListResult<T> = ListOk<T> | ApiError;
 
@@ -60,6 +61,12 @@ export interface ProjectGeometryOk {
   data: ModelGeometry;
 }
 export type ProjectGeometryResult = ProjectGeometryOk | ApiError;
+
+export interface UnitOk {
+  ok: true;
+  unit: string;
+}
+export type UnitResult = UnitOk | ApiError;
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -88,6 +95,10 @@ export function getProjectSummary(conn: ConnInfo): Promise<ProjectSummaryResult>
 
 export function getProjectGeometry(conn: ConnInfo): Promise<ProjectGeometryResult> {
   return post<ProjectGeometryResult>("/api/project-geometry", conn);
+}
+
+export function getModelUnit(conn: ConnInfo): Promise<UnitResult> {
+  return post<UnitResult>("/api/unit", conn);
 }
 
 // BEAM's write endpoint needs the legacy BeamWritePayload shape (see

@@ -108,8 +108,8 @@ interface Props {
 
 export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceholder, hoopPlaceholder }: Props) {
   const { t } = useI18n();
-  const { payload: conn } = useConn();
-  const { list, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } =
+  const { payload: conn, lengthUnit } = useConn();
+  const { list, names, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } =
     useRebarList<ColumnLikePayload>(type, conn);
 
   const [keyInput, setKeyInput] = useState("");
@@ -177,7 +177,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
             <option value="">{listLoadedOnce ? t("js.selectDefault") : t("common.existingDefaultOption")}</option>
             {Object.keys(list).map((k) => (
               <option key={k} value={k}>
-                {k}
+                {names[k] ? `${k} — ${names[k]}` : k}
               </option>
             ))}
           </select>
@@ -265,7 +265,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
         <div className="subhead">{t("common.etcTitle")}</div>
         <div className={isColumn ? "row3" : "row2"}>
           <div className="field">
-            <label htmlFor={`${type}-doVal`}>{t("common.coverDO")}</label>
+            <label htmlFor={`${type}-doVal`}>{t("common.coverDO")}{lengthUnit ? ` (${lengthUnit})` : ""}</label>
             <input id={`${type}-doVal`} type="number" step="any" value={form.doVal} onChange={(e) => set("doVal", e.target.value)} />
           </div>
           <div className="field">

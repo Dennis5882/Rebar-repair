@@ -215,6 +215,8 @@
   "guide.release.d260723.item2": "設計規範與鋼筋材料規格現在可以獨立選擇，並為已用實際 Gen NX 資料驗證的規格標示徽章",
   "guide.release.d260723.item3": "將連線設定改為「API 設定」按鈕並顯示連線狀態",
   "guide.release.d260723.item4": "將 3D 形狀檢視全面重構為 React Three Fiber（修正牆體不顯示的問題，節點預設隱藏，點擊後顯示）",
+  "guide.release.d260723.item5": "既有構件下拉選單現在會在編號旁顯示斷面名稱",
+  "guide.release.d260723.item6": "保護層厚度輸入欄現在會顯示模型實際使用的長度單位",
   "guide.release.d260722.item1": "修正 BEAM 配筋儲存，使其符合 Gen NX API 實際的寫入欄位格式（已用實際模型驗證）",
   "guide.release.d260722.item2": "將整個應用程式重構為 TypeScript + Vite + React",
   "guide.release.d260722.item3": "在開發者署名旁新增策劃署名",

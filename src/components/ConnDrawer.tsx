@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
-import { verifyConnection } from "../lib/api";
+import { getModelUnit, verifyConnection } from "../lib/api";
 import { errText } from "../lib/errText";
 
 const PRODUCT_LABEL: Record<string, string> = { gen: "MIDAS GEN NX", civil: "MIDAS CIVIL NX" };
@@ -14,7 +14,7 @@ const PRODUCT_LABEL: Record<string, string> = { gen: "MIDAS GEN NX", civil: "MID
 export function ConnDrawer() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const { mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl, payload } = useConn();
+  const { mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl, payload, setLengthUnit } = useConn();
   const [result, setResult] = useState("");
   const [resultOk, setResultOk] = useState<boolean | null>(null);
   const [connected, setConnected] = useState(false);
@@ -28,6 +28,9 @@ export function ConnDrawer() {
         setResult(t("js.connOk", { program: res.program || product }));
         setResultOk(true);
         setConnected(true);
+        getModelUnit(payload).then((u) => {
+          if (u.ok) setLengthUnit(u.unit);
+        });
       } else if (res.code === "disconnected") {
         setResult(t("js.connDisconnected"));
         setResultOk(false);

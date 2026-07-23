@@ -16,6 +16,7 @@ export interface StatusMsg {
 export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
   const { t } = useI18n();
   const [list, setList] = useState<Record<string, T>>({});
+  const [names, setNames] = useState<Record<string, string>>({});
   const [keylistText, setKeylistText] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
@@ -30,6 +31,7 @@ export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
         return;
       }
       setList(res.data);
+      setNames(res.names || {});
       setListLoadedOnce(true);
       const keys = Object.keys(res.data);
       setKeylistText(keys.length ? t("js.itemsFound", { count: keys.length, keys: keys.join(", ") }) : t("js.noItems"));
@@ -41,5 +43,5 @@ export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
     }
   }
 
-  return { list, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList };
+  return { list, names, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList };
 }

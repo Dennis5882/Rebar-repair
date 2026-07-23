@@ -122,8 +122,8 @@ function fillWallForm(it: WallItem): FormState {
 
 export function WallForm() {
   const { t } = useI18n();
-  const { payload: conn } = useConn();
-  const { list, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } =
+  const { payload: conn, lengthUnit } = useConn();
+  const { list, names, keylistText, listLoading, listLoadedOnce, status, setStatus, handleList } =
     useRebarList<WallPayload>("WALL", conn);
 
   const [keyInput, setKeyInput] = useState("");
@@ -218,7 +218,7 @@ export function WallForm() {
             <option value="">{listLoadedOnce ? t("js.selectDefault") : t("common.existingDefaultOption")}</option>
             {Object.keys(list).map((k) => (
               <option key={k} value={k}>
-                {k}
+                {names[k] ? `${k} — ${names[k]}` : k}
               </option>
             ))}
           </select>
@@ -328,11 +328,11 @@ export function WallForm() {
         <div className="subhead">{t("wall.coverThkTitle")}</div>
         <div className="row2">
           <div className="field">
-            <label htmlFor="WALL-dw">{t("wall.dw")}</label>
+            <label htmlFor="WALL-dw">{t("wall.dw")}{lengthUnit ? ` (${lengthUnit})` : ""}</label>
             <input id="WALL-dw" type="number" step="any" value={form.dw} onChange={(e) => set("dw", e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="WALL-de">{t("wall.de")}</label>
+            <label htmlFor="WALL-de">{t("wall.de")}{lengthUnit ? ` (${lengthUnit})` : ""}</label>
             <input id="WALL-de" type="number" step="any" value={form.de} onChange={(e) => set("de", e.target.value)} />
           </div>
         </div>
