@@ -6,6 +6,7 @@ import { errText } from "../lib/errText";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
+import { BeamCheckSection } from "./BeamCheckSection";
 import {
   SECTORS,
   type BeamItem,
@@ -19,7 +20,7 @@ import {
   type SectorKey,
 } from "../types/rebar";
 
-interface SectorFormValues {
+export interface SectorFormValues {
   topName: string;
   topNum: string;
   botName: string;
@@ -364,6 +365,8 @@ export function BeamForm() {
           </button>
         </div>
         {status && <div className={"status show " + (status.ok ? "ok" : "err")}>{status.msg}</div>}
+
+        <BeamCheckSection sectors={sectors} dimB={dimB} dimH={dimH} dt={dt} db={db} lengthUnit={lengthUnit} />
       </div>
 
       <SectionPreview
