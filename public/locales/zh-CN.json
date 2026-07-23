@@ -76,8 +76,10 @@
   "beam.checkNeg": "负弯矩 φMn(-)",
   "beam.checkPos": "正弯矩 φMn(+)",
   "beam.checkShear": "剪力 φVn",
-  "beam.muInput": "输入 Mu (kN·m)",
-  "beam.vuInput": "输入 Vu (kN)",
+  "beam.muNegRow": "负弯矩 Mu(-) (kN·m)",
+  "beam.muPosRow": "正弯矩 Mu(+) (kN·m)",
+  "beam.vuRow": "剪力 Vu (kN)",
+  "beam.ratioRow": "检核比 (Check Ratio)",
   "beam.previewTitle": "断面预览（I/M/J 端）",
   "beam.stirrup": "箍筋",
 

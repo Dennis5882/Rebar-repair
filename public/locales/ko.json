@@ -76,8 +76,10 @@
   "beam.checkNeg": "부모멘트 φMn(-)",
   "beam.checkPos": "정모멘트 φMn(+)",
   "beam.checkShear": "전단 φVn",
-  "beam.muInput": "Mu 입력 (kN·m)",
-  "beam.vuInput": "Vu 입력 (kN)",
+  "beam.muNegRow": "부모멘트 Mu(-) (kN·m)",
+  "beam.muPosRow": "정모멘트 Mu(+) (kN·m)",
+  "beam.vuRow": "전단 Vu (kN)",
+  "beam.ratioRow": "비율 (Check Ratio)",
   "beam.previewTitle": "단면 미리보기 (I/M/J단)",
   "beam.stirrup": "스터럽",
 

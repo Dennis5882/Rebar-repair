@@ -46,9 +46,20 @@ export function SectionPreview({ type, titleKey, before, after, dims, legend, si
     [type, after, dimsKey, t, sectorKeysKey]
   );
 
+  // With multiple sector rows (BEAM), an unloaded "Before" repeats the same
+  // empty placeholder 3 times (once per I/M/J row) — collapse it into one
+  // note above the rows instead, and drop the empty before-boxes entirely,
+  // until a member is actually loaded.
+  const multiRowNoBefore = !!sectorKeys && !before;
+
   return (
     <div className="panel">
       <h2>{t(titleKey)}</h2>
+      {multiRowNoBefore && (
+        <div className="hint" style={{ marginTop: 0 }}>
+          {t("common.beforeLoad")}
+        </div>
+      )}
       {rows.map((sectorKey, idx) => (
         <div key={sectorKey ?? idx} style={idx > 0 ? { marginTop: 14 } : undefined}>
           {sectorKey && (
@@ -56,15 +67,17 @@ export function SectionPreview({ type, titleKey, before, after, dims, legend, si
               {t(`js.sectorTitle.${sectorKey}`)}
             </div>
           )}
-          <div className="diagrams" style={singleColumn ? { gridTemplateColumns: "1fr" } : undefined}>
-            <div className="diagram-box">
-              <div className="cap">{t("common.loadedCap")}</div>
-              {beforeRows[idx] ? (
-                <div dangerouslySetInnerHTML={{ __html: beforeRows[idx]! }} />
-              ) : (
-                <div className="sec-empty">{t("common.beforeLoad")}</div>
-              )}
-            </div>
+          <div className="diagrams" style={singleColumn || multiRowNoBefore ? { gridTemplateColumns: "1fr" } : undefined}>
+            {!multiRowNoBefore && (
+              <div className="diagram-box">
+                <div className="cap">{t("common.loadedCap")}</div>
+                {beforeRows[idx] ? (
+                  <div dangerouslySetInnerHTML={{ __html: beforeRows[idx]! }} />
+                ) : (
+                  <div className="sec-empty">{t("common.beforeLoad")}</div>
+                )}
+              </div>
+            )}
             <div className="diagram-box">
               <div className="cap">{t("common.currentCap")}</div>
               {afterRows[idx] ? <div dangerouslySetInnerHTML={{ __html: afterRows[idx]! }} /> : <div className="sec-empty">-</div>}

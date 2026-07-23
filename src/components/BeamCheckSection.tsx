@@ -187,57 +187,115 @@ export function BeamCheckSection({ memberKey, sectors, dimB, dimH, dt, db, lengt
               <input id="BEAM-check-fyt" type="number" step="any" value={fyt} onChange={(e) => setFyt(e.target.value)} />
             </div>
           </div>
-          {SECTORS.map((key) => {
-            const r = results?.[key];
-            return (
-              <div key={key} style={{ marginTop: 10 }}>
-                <div className="subhead" style={{ fontSize: 12 }}>
-                  {t(`js.sectorTitle.${key}`)}
-                </div>
-                <div className="row3">
-                  <div className="field">
-                    <label>{t("beam.checkNeg")}{r?.neg ? `: ${r.neg.phiMn_kNm.toFixed(2)} kN·m` : " —"}</label>
-                    <div className="btn-row" style={{ marginTop: 0 }}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="summary-table check-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  {SECTORS.map((key) => (
+                    <th key={key}>{t(`js.sectorTitle.${key}`)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="check-group-start">
+                  <td>{t("beam.muNegRow")}</td>
+                  {SECTORS.map((key) => (
+                    <td key={key}>
                       <input
                         type="number"
                         step="any"
-                        placeholder={t("beam.muInput")}
                         value={demand[key].muNeg}
                         onChange={(e) => setDemandField(key, "muNeg", e.target.value)}
                       />
-                      {r?.neg && <RatioBadge demand={num(demand[key].muNeg)} capacity={r.neg.phiMn_kNm} />}
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>{t("beam.checkPos")}{r?.pos ? `: ${r.pos.phiMn_kNm.toFixed(2)} kN·m` : " —"}</label>
-                    <div className="btn-row" style={{ marginTop: 0 }}>
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="check-subrow">{t("beam.checkNeg")}</td>
+                  {SECTORS.map((key) => {
+                    const r = results?.[key];
+                    return <td key={key} className="check-subrow">{r?.neg ? `${r.neg.phiMn_kNm.toFixed(2)} kN·m` : "—"}</td>;
+                  })}
+                </tr>
+                <tr>
+                  <td className="check-subrow">{t("beam.ratioRow")}</td>
+                  {SECTORS.map((key) => {
+                    const r = results?.[key];
+                    return (
+                      <td key={key} className="check-subrow">
+                        {r?.neg && <RatioBadge demand={num(demand[key].muNeg)} capacity={r.neg.phiMn_kNm} />}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                <tr className="check-group-start">
+                  <td>{t("beam.muPosRow")}</td>
+                  {SECTORS.map((key) => (
+                    <td key={key}>
                       <input
                         type="number"
                         step="any"
-                        placeholder={t("beam.muInput")}
                         value={demand[key].muPos}
                         onChange={(e) => setDemandField(key, "muPos", e.target.value)}
                       />
-                      {r?.pos && <RatioBadge demand={num(demand[key].muPos)} capacity={r.pos.phiMn_kNm} />}
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>{t("beam.checkShear")}{r?.shear ? `: ${r.shear.phiVn_kN.toFixed(2)} kN` : " —"}</label>
-                    <div className="btn-row" style={{ marginTop: 0 }}>
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="check-subrow">{t("beam.checkPos")}</td>
+                  {SECTORS.map((key) => {
+                    const r = results?.[key];
+                    return <td key={key} className="check-subrow">{r?.pos ? `${r.pos.phiMn_kNm.toFixed(2)} kN·m` : "—"}</td>;
+                  })}
+                </tr>
+                <tr>
+                  <td className="check-subrow">{t("beam.ratioRow")}</td>
+                  {SECTORS.map((key) => {
+                    const r = results?.[key];
+                    return (
+                      <td key={key} className="check-subrow">
+                        {r?.pos && <RatioBadge demand={num(demand[key].muPos)} capacity={r.pos.phiMn_kNm} />}
+                      </td>
+                    );
+                  })}
+                </tr>
+
+                <tr className="check-group-start">
+                  <td>{t("beam.vuRow")}</td>
+                  {SECTORS.map((key) => (
+                    <td key={key}>
                       <input
                         type="number"
                         step="any"
-                        placeholder={t("beam.vuInput")}
                         value={demand[key].vu}
                         onChange={(e) => setDemandField(key, "vu", e.target.value)}
                       />
-                      {r?.shear && <RatioBadge demand={num(demand[key].vu)} capacity={r.shear.phiVn_kN} />}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="check-subrow">{t("beam.checkShear")}</td>
+                  {SECTORS.map((key) => {
+                    const r = results?.[key];
+                    return <td key={key} className="check-subrow">{r?.shear ? `${r.shear.phiVn_kN.toFixed(2)} kN` : "—"}</td>;
+                  })}
+                </tr>
+                <tr>
+                  <td className="check-subrow">{t("beam.ratioRow")}</td>
+                  {SECTORS.map((key) => {
+                    const r = results?.[key];
+                    return (
+                      <td key={key} className="check-subrow">
+                        {r?.shear && <RatioBadge demand={num(demand[key].vu)} capacity={r.shear.phiVn_kN} />}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>

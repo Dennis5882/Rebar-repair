@@ -76,8 +76,10 @@
   "beam.checkNeg": "Negative moment phiMn(-)",
   "beam.checkPos": "Positive moment phiMn(+)",
   "beam.checkShear": "Shear phiVn",
-  "beam.muInput": "Enter Mu (kN·m)",
-  "beam.vuInput": "Enter Vu (kN)",
+  "beam.muNegRow": "Negative moment Mu(-) (kN·m)",
+  "beam.muPosRow": "Positive moment Mu(+) (kN·m)",
+  "beam.vuRow": "Shear Vu (kN)",
+  "beam.ratioRow": "Check Ratio",
   "beam.previewTitle": "Section Preview (I/M/J sectors)",
   "beam.stirrup": "Stirrup",
 
