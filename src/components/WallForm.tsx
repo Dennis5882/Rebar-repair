@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { saveRebar } from "../lib/api";
-import { keylistText, statusText } from "../lib/statusMsg";
+import { isListStatus, keylistText, statusText } from "../lib/statusMsg";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
@@ -212,7 +212,11 @@ export function WallForm() {
             {t("common.loadListBtn")}
           </button>
         </div>
-        {listLoadedOnce && <div className="hint" style={{ marginTop: 4 }}>{t("js.listLoaded", { count: Object.keys(list).length })}</div>}
+        {status && isListStatus(status) && (
+          <div className={"status show " + (status.ok ? "ok" : "err")} style={{ marginTop: 4 }}>
+            {statusText(t, status)}
+          </div>
+        )}
         <div className="field">
           <label htmlFor="WALL-existing">{t("wall.existingLabel")}</label>
           <select id="WALL-existing" value={existingKey} onChange={(e) => handleSelectExisting(e.target.value)}>
@@ -367,7 +371,7 @@ export function WallForm() {
             {t("common.saveBtn")}
           </button>
         </div>
-        {status && <div className={"status show " + (status.ok ? "ok" : "err")}>{statusText(t, status)}</div>}
+        {status && !isListStatus(status) && <div className={"status show " + (status.ok ? "ok" : "err")}>{statusText(t, status)}</div>}
       </div>
 
       <SectionPreview

@@ -20,6 +20,16 @@ export type StatusMsg =
   | { ok: true; kind: "saveDone" }
   | { ok: false; kind: "saveError"; error: string };
 
+const LIST_KINDS = new Set(["listLoaded", "listFail", "listError"]);
+
+// Distinguishes a list-load result from a save result so each can be shown
+// next to the action that produced it (list status near the "목록
+// 불러오기" button, save status near the save button) instead of both
+// sharing one status box far from whichever button was actually clicked.
+export function isListStatus(s: StatusMsg): boolean {
+  return LIST_KINDS.has(s.kind);
+}
+
 export function statusText(t: TFn, s: StatusMsg): string {
   switch (s.kind) {
     case "listLoaded":
