@@ -98,6 +98,12 @@ export function BeamBoard() {
   const { designCode, materialDB } = useDesignCode();
 
   const [sections, setSections] = useState<Record<string, BeamSectionGroup>>({});
+  // Length unit for cover/spacing conversion. The /api/beam-sections response
+  // carries the model's own unit, which is authoritative here — ConnContext's
+  // lengthUnit is only populated by the connection drawer's "connect" button,
+  // so loading sections with just a pasted key (no explicit connect) would
+  // otherwise leave it "" and mis-convert every cover. Fall back to lengthUnit.
+  const [boardUnit, setBoardUnit] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
   const [status, setStatus] = useState<StatusMsg | null>(null);
@@ -111,6 +117,7 @@ export function BeamBoard() {
         return;
       }
       setSections(res.sections);
+      setBoardUnit(res.unit || "");
       setListLoadedOnce(true);
       setStatus({ ok: true, kind: "listLoaded", count: Object.keys(res.sections).length });
     } catch (e) {
@@ -133,19 +140,23 @@ export function BeamBoard() {
   const [savingSid, setSavingSid] = useState<string | null>(null);
   const [fetchingSid, setFetchingSid] = useState<string | null>(null);
 
+  // The model's length unit for all cover/spacing math on this board. See the
+  // boardUnit declaration above for why the endpoint's unit wins over context.
+  const unit = boardUnit || lengthUnit;
+
   // Rebuild working rows whenever a fresh list arrives. Section grouping and
   // the "one section = identical rebar across its elements" rule come from
-  // the backend (api/rebar-list.ts); here each group's representative
+  // the backend (api/beam-sections.ts); here each group's representative
   // payload seeds one editable row.
   useEffect(() => {
     const sids = Object.keys(sections);
     const next: Record<string, RowState> = {};
-    for (const sid of sids) next[sid] = rowFromGroup(sections[sid], defB, defH, lengthUnit);
+    for (const sid of sids) next[sid] = rowFromGroup(sections[sid], defB, defH, unit);
     setRows(next);
     setOrder(sids);
     setDemand({});
     setSelectedSid(sids.length ? sids[0] : null);
-  }, [sections, defB, defH, lengthUnit]);
+  }, [sections, defB, defH, unit]);
 
   const family = formulaFamily(designCode);
   const mat: MatProps = useMemo(() => ({ fck: n(fck), fy: n(fy), fyt: n(fyt) }), [fck, fy, fyt]);
@@ -160,7 +171,7 @@ export function BeamBoard() {
         family,
         mat,
         materialDB,
-        lengthUnit,
+        unit,
         n(r.b),
         n(r.h),
         n(r.dt), // cover is already mm in row state
@@ -170,7 +181,7 @@ export function BeamBoard() {
       );
     }
     return out;
-  }, [family, order, rows, mat, materialDB, lengthUnit, demand]);
+  }, [family, order, rows, mat, materialDB, unit, demand]);
 
   const summary = useMemo(() => {
     let ok = 0;
@@ -226,7 +237,7 @@ export function BeamBoard() {
     const grp = sections[sid];
     if (!r || !grp) return;
     // Row cover is mm; REBB expects the model's native length unit.
-    const payload = buildBeamPayload(r.sectors, coverToModel(r.dt, lengthUnit), coverToModel(r.db, lengthUnit));
+    const payload = buildBeamPayload(r.sectors, coverToModel(r.dt, unit), coverToModel(r.db, unit));
     setSavingSid(sid);
     setStatus({ ok: true, kind: "saving" });
     try {
@@ -269,8 +280,8 @@ export function BeamBoard() {
   // Stable reference (SectionPreview memoizes on `before` identity) with cover
   // normalized to mm so the loaded diagram matches the current one.
   const beforePreview = useMemo(
-    () => (selectedGrp ? payloadCoverToMm(selectedGrp.payload, lengthUnit) : null),
-    [selectedGrp, lengthUnit]
+    () => (selectedGrp ? payloadCoverToMm(selectedGrp.payload, unit) : null),
+    [selectedGrp, unit]
   );
 
   const visibleSectors: { key: SectorKey; labelKey: string }[] =

@@ -39,36 +39,11 @@ export interface BeamItem {
 }
 export type BeamPayload = ItemsPayload<BeamItem>;
 
-// BEAM's write (POST/PUT) shape is NOT the same as what GET returns above.
-// The official manual's own JSON Schema for REBB matches the GET shape
-// (MAIN_BAR_TOP/BOT as LAYER1/LAYER2-keyed objects, DT/DB flat on the item —
-// confirmed live 2026-07-22), but the manual's own worked Request/Response
-// example — and the independently-authored midas-nx SDK, whose live write
-// test against this exact endpoint succeeded — both use this older,
-// differently-named shape instead, and the manual explicitly recommends
-// following the example for anything actually sent to the server. Treat
-// this as the confirmed-safe write shape until someone live-tests a PUT
-// with the new-style field names to see if the server accepts those too.
-export interface RcBeamMainBarLayerEntry {
-  LAYER: 1 | 2;
-  NAME: string;
-  NUM: number;
-}
-export interface BeamWriteSector {
-  vMAIN_BAR_TOP?: RcBeamMainBarLayerEntry[];
-  vMAIN_BAR_BOT?: RcBeamMainBarLayerEntry[];
-  SHEAR_BAR?: ShearBar;
-  SKIN_BAR_NAME?: string;
-  SKIN_BAR_NUM?: number;
-}
-export interface BeamWriteItem {
-  BAR_SECTOR_I?: BeamWriteSector;
-  BAR_SECTOR_M?: BeamWriteSector;
-  BAR_SECTOR_J?: BeamWriteSector;
-  MAIN_BAR_DC_TOP?: number;
-  MAIN_BAR_DC_BOT?: number;
-}
-export type BeamWritePayload = ItemsPayload<BeamWriteItem>;
+// BEAM's write shape is the SAME as this GET/read shape (MAIN_BAR_TOP as a
+// LAYER-keyed object + item-level DT/DB), sent via PUT — live-verified
+// 2026-07-24. The manual/SDK's `vMAIN_BAR_TOP`/`MAIN_BAR_DC_TOP` "legacy"
+// example shape is silently dropped by the server for populated bars, so
+// there is no separate write type: BeamBoard sends BeamPayload directly.
 
 export interface MainBar {
   NAME?: string;
@@ -140,8 +115,7 @@ export interface WallItem {
 }
 export type WallPayload = ItemsPayload<WallItem>;
 
-// Canonical (read/preview) shapes only — deliberately excludes
-// BeamWritePayload so this can't be used where a caller might accidentally
-// accept BEAM's write-only shape (see saveRebar's BEAM-specific overload in
-// src/lib/api.ts, which is the only place BeamWritePayload should appear).
+// Canonical read/preview shapes, which are also the write shapes (REBB/REBC/
+// REBW are written back in the same shape they're read — see the BeamPayload
+// note above and saveRebar in src/lib/api.ts).
 export type MemberPayload = BeamPayload | ColumnLikePayload | WallPayload;

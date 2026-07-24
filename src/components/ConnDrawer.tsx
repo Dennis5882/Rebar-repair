@@ -34,7 +34,8 @@ export function ConnDrawer() {
             if (u.ok) setLengthUnit(u.unit);
           })
           .catch(() => {
-            /* leave lengthUnit at "" — BeamCheckSection treats unknown unit as no result, not as mm */
+            /* leave lengthUnit at "" — the beam board falls back to the unit
+               returned by /api/beam-sections, so a failed fetch here is not fatal */
           });
       } else if (res.code === "disconnected") {
         setConnStatus({ kind: "connDisconnected" });

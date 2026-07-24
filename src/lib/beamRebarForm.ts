@@ -1,14 +1,4 @@
-import type {
-  BeamItem,
-  BeamPayload,
-  BeamSector,
-  BeamWriteItem,
-  BeamWritePayload,
-  BeamWriteSector,
-  RcBeamMainBarLayerEntry,
-  RebarLayer,
-  SectorKey,
-} from "../types/rebar";
+import type { BeamItem, BeamPayload, BeamSector, RebarLayer, SectorKey } from "../types/rebar";
 import { SECTORS } from "../types/rebar";
 
 // Shared by BeamForm.tsx (one element at a time) and BeamRebarTable.tsx
@@ -144,40 +134,10 @@ export function fillFromPayload(payload: BeamPayload): { sectors: Record<SectorK
   return { sectors, dt: toStr(it.DT), db: toStr(it.DB) };
 }
 
-// GET returns MAIN_BAR_TOP/BOT as LAYER-keyed objects with DT/DB flat on the
-// item (confirmed live). Writing back uses a different, older field-naming
-// convention that the manual's own worked example and the midas-nx SDK's
-// live-verified write test both use instead — see the BeamWriteItem doc
-// comment in types/rebar.ts. This converts the canonical (read-shape) form
-// state into that write shape only at the point of actually saving.
-function toWriteSector(sector: BeamSector): BeamWriteSector {
-  const write: BeamWriteSector = {};
-  if (sector.MAIN_BAR_TOP) {
-    write.vMAIN_BAR_TOP = Object.values(sector.MAIN_BAR_TOP).map(
-      (layer, i): RcBeamMainBarLayerEntry => ({ LAYER: (i + 1) as 1 | 2, NAME: layer.NAME || "", NUM: layer.NUM || 0 })
-    );
-  }
-  if (sector.MAIN_BAR_BOT) {
-    write.vMAIN_BAR_BOT = Object.values(sector.MAIN_BAR_BOT).map(
-      (layer, i): RcBeamMainBarLayerEntry => ({ LAYER: (i + 1) as 1 | 2, NAME: layer.NAME || "", NUM: layer.NUM || 0 })
-    );
-  }
-  if (sector.SHEAR_BAR) write.SHEAR_BAR = sector.SHEAR_BAR;
-  if (sector.SKIN_BAR_NAME) {
-    write.SKIN_BAR_NAME = sector.SKIN_BAR_NAME;
-    write.SKIN_BAR_NUM = sector.SKIN_BAR_NUM;
-  }
-  return write;
-}
-
-export function toWritePayload(payload: BeamPayload): BeamWritePayload {
-  const it: Partial<BeamItem> = payload.ITEMS?.[0] || {};
-  const item: BeamWriteItem = {
-    BAR_SECTOR_I: toWriteSector(it.BAR_SECTOR_I || {}),
-    BAR_SECTOR_M: toWriteSector(it.BAR_SECTOR_M || {}),
-    BAR_SECTOR_J: toWriteSector(it.BAR_SECTOR_J || {}),
-    MAIN_BAR_DC_TOP: it.DT,
-    MAIN_BAR_DC_BOT: it.DB,
-  };
-  return { ITEMS: [item] };
-}
+// NOTE: REBB is written back in the SAME canonical shape it is read in
+// (MAIN_BAR_TOP:{LAYER1:{NAME,NUM}} object + item-level DT/DB), sent via PUT —
+// live-verified 2026-07-24. The manual/SDK's `vMAIN_BAR_TOP`/`MAIN_BAR_DC_TOP`
+// "legacy" write shape is silently dropped by the server for populated bars,
+// so there is no read→write conversion: BeamBoard sends the BeamPayload from
+// buildBeamPayload() directly. (The old toWritePayload/toWriteSector helpers
+// were removed with the orphaned BeamForm/BeamRebarTable that used them.)

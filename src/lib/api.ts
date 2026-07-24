@@ -39,11 +39,9 @@ export interface VerifyOk {
 }
 export type VerifyResult = VerifyOk | ApiError;
 
-// One entry per section (or per orphaned element with no resolvable
-// section — see api/rebar-list.ts). `elementKeys` is every element sharing
-// that section; `payload` is one representative element's data, used as
-// the shared value for the whole group (practitioners give a section its
-// own copy instead of varying rebar within one).
+// One section group: `name` is the SECT_NAME, `elementKeys` every element
+// using it, `payload` the section's shared rebar. Structurally a supertype of
+// BeamSectionGroup (below), so sectionGroupLabel works for the beam board too.
 export interface SectionGroup<T> {
   name?: string;
   elementKeys: string[];
@@ -53,24 +51,20 @@ export interface ListOk<T> {
   ok: true;
   data: Record<string, T>;
   names?: Record<string, string>;
-  sections?: Record<string, SectionGroup<T>>;
 }
 export type ListResult<T> = ListOk<T> | ApiError;
 
-// Shared by any member-type tab that adopts section-based (rather than
-// element-based) list selection — currently BeamForm.tsx, but generic over
-// T so COLUMN/BRACE/WALL can reuse it as-is instead of each writing their
-// own copy. `sid` is either a real SECT id or api/rebar-list.ts's
-// `elem:<key>` fallback for an element with no resolvable section.
+// Renders a section's display label (name + element count). Used by the beam
+// board; `sid` is a real SECT id, or an `elem:<key>` fallback for an element
+// with no resolvable section.
 export function sectionGroupLabel<T>(t: TFn, sid: string, grp: SectionGroup<T>): string {
   const name = grp.name || sid.replace(/^elem:/, "");
   return grp.elementKeys.length > 1 ? t("common.sectionOptionLabel", { name, count: grp.elementKeys.length }) : name;
 }
 
 // Every beam section in the model (api/beam-sections.ts), including ones with
-// no rebar yet — unlike ListOk.sections which only groups elements that
-// already have a REBB record. Carries B/H dims (mm) read from /db/SECT so the
-// board can compute capacity without the user re-typing section sizes.
+// no rebar yet. Carries B/H dims (mm) read from /db/SECT so the board can
+// compute capacity without the user re-typing section sizes.
 export interface BeamSectionGroup {
   name?: string;
   elementKeys: string[];
