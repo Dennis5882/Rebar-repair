@@ -88,14 +88,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const sorted = keys.sort((x, y) => Number(x) - Number(y));
       const sect = sects[sid];
       const dims = sect ? sectDims(sect, mmPer) : {};
-      // Representative rebar = lowest-numbered element in the group that
-      // actually has a REBB record (practitioner rule: one section = one
-      // rebar layout, so any member's record stands for the whole group).
-      const repKey = sorted.find((k) => rebb[k]);
+      // REBB is keyed by SECTION number, not element id (manual §35: "단면
+      // 번호별로 … 수정합니다", worked example uses key "211" = section 211;
+      // live-confirmed: REBB keys 1-4 held the four girder sections' rebar,
+      // not element records). So the section's existing rebar is rebb[sid],
+      // and elementKeys is just which elements use it (display + count).
       sections[sid] = {
         name: sect?.SECT_NAME,
         elementKeys: sorted,
-        payload: repKey ? rebb[repKey] : emptyPayload,
+        payload: rebb[sid] ? rebb[sid] : emptyPayload,
         dimB: dims.b,
         dimH: dims.h,
       };

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { getBeamDesignResult, listBeamSections, saveRebar, sectionGroupLabel, type ApiError, type BeamSectionGroup } from "../lib/api";
+import { getBeamDesignResult, listBeamSections, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
 import { formulaFamily } from "../lib/rcBeamCheck";
 import { MM_PER_UNIT } from "../data/rcCodePresets";
 import {
@@ -200,28 +200,17 @@ export function BeamBoard() {
     const grp = sections[sid];
     if (!r || !grp) return;
     const payload = buildBeamPayload(r.sectors, r.dt, r.db);
-    const targets = grp.elementKeys;
     setSavingSid(sid);
     setStatus({ ok: true, kind: "saving" });
     try {
-      const failedKeys: string[] = [];
-      let lastFailure: ApiError | null = null;
-      // Sequential (not Promise.all) — single fragile live Gen NX session,
-      // and this yields exactly which elements failed. Same rationale as the
-      // old BeamForm save.
-      for (const k of targets) {
-        const res = await saveRebar("BEAM", k, toWritePayload(payload), conn);
-        if (!res.ok) {
-          failedKeys.push(k);
-          lastFailure = res;
-        }
-      }
-      if (failedKeys.length && failedKeys.length < targets.length) {
-        setStatus({ ok: false, kind: "saveBulkPartialFail", failedKeys, totalCount: targets.length, res: lastFailure! });
-        return;
-      }
-      if (failedKeys.length) {
-        setStatus({ ok: false, kind: "saveFail", res: lastFailure! });
+      // REBB is keyed by SECTION number (see api/beam-sections.ts), so this
+      // is a single write with the section id as the key — Gen NX applies it
+      // to every element using that section automatically. (The old per-
+      // element loop wrote bogus element-keyed REBB records that Gen NX
+      // couldn't read — the "MAIN_BAR_TOP does not exist" error.)
+      const res = await saveRebar("BEAM", sid, toWritePayload(payload), conn);
+      if (!res.ok) {
+        setStatus({ ok: false, kind: "saveFail", res });
         return;
       }
       setStatus({ ok: true, kind: "saveDone" });
