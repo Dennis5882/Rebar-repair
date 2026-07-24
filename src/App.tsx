@@ -9,6 +9,7 @@ import { ConnDrawer } from "./components/ConnDrawer";
 import { DesignCodeSelector } from "./components/DesignCodeSelector";
 import { Tabs, type TabKey } from "./components/Tabs";
 import { BeamBoard } from "./components/BeamBoard";
+import { ColumnBoard } from "./components/ColumnBoard";
 import { ColumnLikeForm } from "./components/ColumnLikeForm";
 import { WallForm } from "./components/WallForm";
 import { ProjectReview } from "./components/ProjectReview";
@@ -37,7 +38,7 @@ function AppShell() {
         <BeamBoard />
       </div>
       <div className={"tab-panel" + (active === "COLUMN" ? " active" : "")}>
-        <ColumnLikeForm type="COLUMN" isColumn defaultB="500" defaultH="500" mainPlaceholder="D25" hoopPlaceholder="D13" />
+        <ColumnBoard />
       </div>
       <div className={"tab-panel" + (active === "WALL" ? " active" : "")}>
         <WallForm />

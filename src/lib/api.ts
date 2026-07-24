@@ -83,6 +83,29 @@ export function listBeamSections(conn: ConnInfo): Promise<BeamSectionsResult> {
   return post<BeamSectionsResult>("/api/beam-sections", conn);
 }
 
+// Generic section listing for the non-beam boards (COLUMN today; WALL/BRACE
+// later). Same grouped shape as BeamSectionGroup — every section of the given
+// member type, whether or not it already carries a rebar record — but with a
+// caller-supplied payload type (ColumnLikePayload for the column board). BEAM
+// keeps its own dedicated listBeamSections above.
+export interface MemberSectionGroup<T> {
+  name?: string;
+  elementKeys: string[];
+  payload: T;
+  dimB?: number;
+  dimH?: number;
+}
+export interface MemberSectionsOk<T> {
+  ok: true;
+  unit: string;
+  sections: Record<string, MemberSectionGroup<T>>;
+}
+export type MemberSectionsResult<T> = MemberSectionsOk<T> | ApiError;
+
+export function listMemberSections<T>(memberType: MemberType, conn: ConnInfo): Promise<MemberSectionsResult<T>> {
+  return post<MemberSectionsResult<T>>("/api/member-sections", { memberType, ...conn });
+}
+
 export interface SaveOk {
   ok: true;
   data?: unknown;
