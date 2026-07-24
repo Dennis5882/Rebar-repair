@@ -1,165 +1,36 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
-import { saveRebar } from "../lib/api";
+import { saveRebar, sectionGroupLabel, type ApiError } from "../lib/api";
 import { isListStatus, keylistText, statusClass, statusText } from "../lib/statusMsg";
 import { useRebarList } from "../hooks/useRebarList";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import { BeamCheckSection } from "./BeamCheckSection";
+import { BeamRebarTable } from "./BeamRebarTable";
 import {
-  SECTORS,
-  type BeamItem,
-  type BeamPayload,
-  type BeamSector,
-  type BeamWriteItem,
-  type BeamWritePayload,
-  type BeamWriteSector,
-  type RcBeamMainBarLayerEntry,
-  type RebarLayer,
-  type SectorKey,
-} from "../types/rebar";
-
-export interface SectorFormValues {
-  topName: string;
-  topNum: string;
-  botName: string;
-  botNum: string;
-  shearName: string;
-  shearLeg: string;
-  shearDist: string;
-  skinName: string;
-  skinNum: string;
-}
-
-const EMPTY_SECTOR: SectorFormValues = {
-  topName: "",
-  topNum: "",
-  botName: "",
-  botNum: "",
-  shearName: "",
-  shearLeg: "",
-  shearDist: "",
-  skinName: "",
-  skinNum: "",
-};
-
-function emptySectors(): Record<SectorKey, SectorFormValues> {
-  return { I: { ...EMPTY_SECTOR }, M: { ...EMPTY_SECTOR }, J: { ...EMPTY_SECTOR } };
-}
-
-function num(s: string): number | undefined {
-  return s === "" ? undefined : Number(s);
-}
-function toStr(v: unknown): string {
-  return v === undefined || v === null ? "" : String(v);
-}
-function firstLayer(obj?: Record<string, RebarLayer>): RebarLayer {
-  if (!obj) return {};
-  const keys = Object.keys(obj);
-  return keys.length ? obj[keys[0]] : {};
-}
-
-function buildBeamSector(vals: SectorFormValues): BeamSector {
-  const sector: BeamSector = {};
-  const topNum = num(vals.topNum);
-  if (vals.topName && topNum) sector.MAIN_BAR_TOP = { LAYER1: { NAME: vals.topName, NUM: topNum } };
-  const botNum = num(vals.botNum);
-  if (vals.botName && botNum) sector.MAIN_BAR_BOT = { LAYER1: { NAME: vals.botName, NUM: botNum } };
-  if (vals.shearName) sector.SHEAR_BAR = { NAME: vals.shearName, LEG: num(vals.shearLeg), DIST: num(vals.shearDist) };
-  if (vals.skinName) {
-    sector.SKIN_BAR_NAME = vals.skinName;
-    sector.SKIN_BAR_NUM = num(vals.skinNum);
-  }
-  return sector;
-}
-
-function buildBeamPayload(sectors: Record<SectorKey, SectorFormValues>, dt: string, db: string): BeamPayload {
-  return {
-    ITEMS: [
-      {
-        BAR_SECTOR_I: buildBeamSector(sectors.I),
-        BAR_SECTOR_M: buildBeamSector(sectors.M),
-        BAR_SECTOR_J: buildBeamSector(sectors.J),
-        DT: num(dt),
-        DB: num(db),
-      },
-    ],
-  };
-}
-
-function fillFromPayload(payload: BeamPayload): { sectors: Record<SectorKey, SectorFormValues>; dt: string; db: string } {
-  const it: Partial<BeamItem> = payload.ITEMS?.[0] || {};
-  const sectors = emptySectors();
-  for (const key of SECTORS) {
-    const sector: BeamSector = it[`BAR_SECTOR_${key}`] || {};
-    const top = firstLayer(sector.MAIN_BAR_TOP);
-    const bot = firstLayer(sector.MAIN_BAR_BOT);
-    const shear = sector.SHEAR_BAR || {};
-    sectors[key] = {
-      topName: toStr(top.NAME),
-      topNum: toStr(top.NUM),
-      botName: toStr(bot.NAME),
-      botNum: toStr(bot.NUM),
-      shearName: toStr(shear.NAME),
-      shearLeg: toStr(shear.LEG),
-      shearDist: toStr(shear.DIST),
-      skinName: toStr(sector.SKIN_BAR_NAME),
-      skinNum: toStr(sector.SKIN_BAR_NUM),
-    };
-  }
-  return { sectors, dt: toStr(it.DT), db: toStr(it.DB) };
-}
-
-// GET returns MAIN_BAR_TOP/BOT as LAYER-keyed objects with DT/DB flat on the
-// item (confirmed live). Writing back uses a different, older field-naming
-// convention that the manual's own worked example and the midas-nx SDK's
-// live-verified write test both use instead — see the BeamWriteItem doc
-// comment in types/rebar.ts. This converts the canonical (read-shape) form
-// state into that write shape only at the point of actually saving, so the
-// live preview diagram (which reads the canonical shape) is unaffected.
-function toWriteSector(sector: BeamSector): BeamWriteSector {
-  const write: BeamWriteSector = {};
-  if (sector.MAIN_BAR_TOP) {
-    write.vMAIN_BAR_TOP = Object.values(sector.MAIN_BAR_TOP).map(
-      (layer, i): RcBeamMainBarLayerEntry => ({ LAYER: (i + 1) as 1 | 2, NAME: layer.NAME || "", NUM: layer.NUM || 0 })
-    );
-  }
-  if (sector.MAIN_BAR_BOT) {
-    write.vMAIN_BAR_BOT = Object.values(sector.MAIN_BAR_BOT).map(
-      (layer, i): RcBeamMainBarLayerEntry => ({ LAYER: (i + 1) as 1 | 2, NAME: layer.NAME || "", NUM: layer.NUM || 0 })
-    );
-  }
-  if (sector.SHEAR_BAR) write.SHEAR_BAR = sector.SHEAR_BAR;
-  if (sector.SKIN_BAR_NAME) {
-    write.SKIN_BAR_NAME = sector.SKIN_BAR_NAME;
-    write.SKIN_BAR_NUM = sector.SKIN_BAR_NUM;
-  }
-  return write;
-}
-
-function toWritePayload(payload: BeamPayload): BeamWritePayload {
-  const it: Partial<BeamItem> = payload.ITEMS?.[0] || {};
-  const item: BeamWriteItem = {
-    BAR_SECTOR_I: toWriteSector(it.BAR_SECTOR_I || {}),
-    BAR_SECTOR_M: toWriteSector(it.BAR_SECTOR_M || {}),
-    BAR_SECTOR_J: toWriteSector(it.BAR_SECTOR_J || {}),
-    MAIN_BAR_DC_TOP: it.DT,
-    MAIN_BAR_DC_BOT: it.DB,
-  };
-  return { ITEMS: [item] };
-}
+  buildBeamPayload,
+  detectInputMode,
+  emptySectors,
+  fillFromPayload,
+  sectorsEqual,
+  toWritePayload,
+  type BeamInputMode,
+  type SectorFormValues,
+} from "../lib/beamRebarForm";
+import { SECTORS, type BeamPayload, type SectorKey } from "../types/rebar";
 
 export function BeamForm() {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
-  const { list, names, keylistMsg, listLoading, listLoadedOnce, status, setStatus, handleList } = useRebarList<BeamPayload>(
+  const { list, names, sections, keylistMsg, listLoading, listLoadedOnce, status, setStatus, handleList } = useRebarList<BeamPayload>(
     "BEAM",
     conn
   );
 
   const [keyInput, setKeyInput] = useState("");
   const [existingKey, setExistingKey] = useState("");
+  const [selectedSectionId, setSelectedSectionId] = useState("");
   const [loaded, setLoaded] = useState<BeamPayload | null>(null);
   const [sectors, setSectors] = useState<Record<SectorKey, SectorFormValues>>(emptySectors());
   const [dt, setDt] = useState("");
@@ -167,27 +38,102 @@ export function BeamForm() {
   const [dimB, setDimB] = useState("300");
   const [dimH, setDimH] = useState("600");
   const [saving, setSaving] = useState(false);
+  const [tableMode, setTableMode] = useState(false);
+  const [inputMode, setInputMode] = useState<BeamInputMode>("each");
 
   const afterPayload = useMemo(() => buildBeamPayload(sectors, dt, db), [sectors, dt, db]);
 
+  // Derived, not its own state — deriving from selectedSectionId + the
+  // current `sections` means a stale group can never be saved: if the list
+  // is refreshed while a section is selected, this recomputes from the
+  // fresh grouping (or empties out if that section no longer exists)
+  // instead of keeping a frozen snapshot from before the refresh.
+  const selectedElementKeys = useMemo(
+    () => (selectedSectionId ? sections[selectedSectionId]?.elementKeys ?? [] : []),
+    [selectedSectionId, sections]
+  );
+
+  // In "all"/"endCenter" mode, editing one sector's field must also write
+  // through to whichever sectors it's linked to (I<->J, or I<->M<->J) so
+  // the underlying I/M/J data actually stays identical — the payload sent
+  // to Gen NX has no separate "mode" flag, only three independent sector
+  // objects, so the sync has to happen here rather than at save time.
   function updateSector(key: SectorKey, field: keyof SectorFormValues, value: string) {
-    setSectors((prev) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+    setSectors((prev) => {
+      const next = { ...prev, [key]: { ...prev[key], [field]: value } };
+      if (inputMode === "all") return { I: next[key], M: next[key], J: next[key] };
+      if (inputMode === "endCenter" && (key === "I" || key === "J")) return { ...next, I: next[key], J: next[key] };
+      return next;
+    });
   }
 
   function copyMtoIJ() {
     setSectors((prev) => ({ I: { ...prev.M }, M: prev.M, J: { ...prev.M } }));
   }
 
-  function handleSelectExisting(key: string) {
+  // A mode switch silently collapses whichever sector(s) it hides into a
+  // copy of the one it keeps — harmless if they already matched, but a real
+  // discard if they didn't (e.g. a loaded "each"-mode beam with genuinely
+  // different J, switched to "endCenter"). Only interrupt with a confirm
+  // when something would actually be lost.
+  function handleModeChange(mode: BeamInputMode) {
+    const wouldDiscard =
+      (mode === "all" && !(sectorsEqual(sectors.I, sectors.M) && sectorsEqual(sectors.M, sectors.J))) ||
+      (mode === "endCenter" && !sectorsEqual(sectors.I, sectors.J));
+    if (wouldDiscard && !window.confirm(t("beam.modeChangeConfirm"))) return;
+    setInputMode(mode);
+    setSectors((prev) => {
+      if (mode === "all") return { I: prev.M, M: prev.M, J: prev.M };
+      if (mode === "endCenter") return { I: prev.I, M: prev.M, J: prev.I };
+      return prev;
+    });
+  }
+
+  function handleKeyInputChange(value: string) {
+    setKeyInput(value);
+    // Typing a different key by hand means "target just this one element",
+    // not the section group that happened to be picked from the dropdown
+    // before — otherwise a stale group could silently get bulk-saved.
+    // Clearing existingKey too, not just the section/group state, matters
+    // because existingKey alone drives BeamCheckSection's design-result
+    // fetch and SectionPreview's "loaded" hint — leaving it pointed at the
+    // previous selection would silently show/check the wrong element.
+    setSelectedSectionId("");
+    setExistingKey("");
+  }
+
+  function loadMember(key: string, payload: BeamPayload) {
     setExistingKey(key);
-    if (!key) return;
     setKeyInput(key);
-    const payload = list[key];
     setLoaded(payload);
     const filled = fillFromPayload(payload);
     setSectors(filled.sectors);
+    setInputMode(detectInputMode(filled.sectors));
     setDt(filled.dt);
     setDb(filled.db);
+  }
+
+  function handleSelectExisting(sid: string) {
+    setSelectedSectionId(sid);
+    if (!sid) {
+      setExistingKey("");
+      return;
+    }
+    const grp = sections[sid];
+    if (!grp) return;
+    const repKey = [...grp.elementKeys].sort((a, b) => Number(a) - Number(b))[0];
+    loadMember(repKey, grp.payload);
+  }
+
+  // Lets a user inspect any individual element within a multi-element
+  // section group (not just the lowest-numbered representative) — the
+  // group's own REBB record, not just the representative's, since `list`
+  // already holds every element's real saved data. Saving still applies
+  // whatever's now in the form to every element in `selectedElementKeys`.
+  function handleSelectMember(key: string) {
+    const payload = list[key];
+    if (!payload) return;
+    loadMember(key, payload);
   }
 
   async function handleSave() {
@@ -196,12 +142,30 @@ export function BeamForm() {
       return;
     }
     const payload = buildBeamPayload(sectors, dt, db);
+    const targets = selectedElementKeys.length ? selectedElementKeys : [keyInput];
     setSaving(true);
     setStatus({ ok: true, kind: "saving" });
     try {
-      const res = await saveRebar("BEAM", keyInput, toWritePayload(payload), conn);
-      if (!res.ok) {
-        setStatus({ ok: false, kind: "saveFail", res });
+      // Sequential, not Promise.all — this API bridges to a single live Gen
+      // NX desktop session (not a scalable stateless service), and this
+      // project has documented that session hanging/crashing under other
+      // concurrent-call patterns. Sequential writes also make it possible
+      // to know exactly which elements succeeded vs failed below.
+      const failedKeys: string[] = [];
+      let lastFailure: ApiError | null = null;
+      for (const k of targets) {
+        const res = await saveRebar("BEAM", k, toWritePayload(payload), conn);
+        if (!res.ok) {
+          failedKeys.push(k);
+          lastFailure = res;
+        }
+      }
+      if (failedKeys.length && failedKeys.length < targets.length) {
+        setStatus({ ok: false, kind: "saveBulkPartialFail", failedKeys, totalCount: targets.length, res: lastFailure! });
+        return;
+      }
+      if (failedKeys.length) {
+        setStatus({ ok: false, kind: "saveFail", res: lastFailure! });
         return;
       }
       setStatus({ ok: true, kind: "saveDone" });
@@ -212,6 +176,16 @@ export function BeamForm() {
       setSaving(false);
     }
   }
+
+  const visibleSectors: { key: SectorKey; labelKey: string }[] =
+    inputMode === "all"
+      ? [{ key: "M", labelKey: "beam.modeAllLabel" }]
+      : inputMode === "endCenter"
+        ? [
+            { key: "I", labelKey: "beam.modeEndLabel" },
+            { key: "M", labelKey: "js.sectorTitle.M" },
+          ]
+        : SECTORS.map((key) => ({ key, labelKey: `js.sectorTitle.${key}` }));
 
   const sectorField = (key: SectorKey, field: keyof SectorFormValues, type: "text" | "number" = "text", placeholder?: string) => (
     <input
@@ -225,13 +199,13 @@ export function BeamForm() {
   );
 
   return (
-    <div className="editor-grid">
-      <div className="panel">
+    <div>
+      <div className="panel" style={{ marginBottom: 16 }}>
         <h2>{t("common.targetTitle")}</h2>
         <div className="select-row">
           <div className="field">
             <label htmlFor="BEAM-key">{t("common.sectionKeyLabel")}</label>
-            <input id="BEAM-key" type="text" placeholder={t("beam.keyPlaceholder")} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} />
+            <input id="BEAM-key" type="text" placeholder={t("beam.keyPlaceholder")} value={keyInput} onChange={(e) => handleKeyInputChange(e.target.value)} />
           </div>
           <button className="btn" type="button" onClick={handleList} disabled={listLoading}>
             {t("common.loadListBtn")}
@@ -244,24 +218,74 @@ export function BeamForm() {
         )}
         <div className="field">
           <label htmlFor="BEAM-existing">{t("common.existingSectionLabel")}</label>
-          <select id="BEAM-existing" value={existingKey} onChange={(e) => handleSelectExisting(e.target.value)}>
+          <select id="BEAM-existing" value={selectedSectionId} onChange={(e) => handleSelectExisting(e.target.value)}>
             <option value="">{listLoadedOnce ? t("js.selectDefault") : t("common.existingDefaultOption")}</option>
-            {Object.keys(list).map((k) => (
-              <option key={k} value={k}>
-                {names[k] ? `${k}: ${names[k]}` : k}
+            {Object.entries(sections).map(([sid, grp]) => (
+              <option key={sid} value={sid}>
+                {sectionGroupLabel(t, sid, grp)}
               </option>
             ))}
           </select>
         </div>
         <div className="keylist">{keylistText(t, keylistMsg)}</div>
 
-        <h2 style={{ marginTop: 16 }}>{t("beam.sectorsTitle")}</h2>
-        <div>
-          {SECTORS.map((key) => (
+        {selectedElementKeys.length > 1 && (
+          <div className="field">
+            <label htmlFor="BEAM-member">{t("beam.memberPreviewLabel")}</label>
+            <select id="BEAM-member" value={existingKey} onChange={(e) => handleSelectMember(e.target.value)}>
+              {selectedElementKeys.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+            <div className="hint" style={{ marginTop: 4, marginBottom: 0 }}>
+              {t("beam.memberPreviewHint")}
+            </div>
+          </div>
+        )}
+
+        <div className="field" style={{ marginTop: 8 }}>
+          <label>{t("beam.modeLabel")}</label>
+          <div className="radio-row">
+            {(["all", "endCenter", "each"] as BeamInputMode[]).map((mode) => (
+              <label key={mode} className="radio-option">
+                <input type="radio" name="BEAM-inputMode" checked={inputMode === mode} onChange={() => handleModeChange(mode)} />
+                {t(`beam.mode${mode === "all" ? "All" : mode === "endCenter" ? "EndCenter" : "Each"}`)}
+              </label>
+            ))}
+          </div>
+          <div className="hint" style={{ marginTop: 4, marginBottom: 0 }}>
+            {t("beam.modeHint")}
+          </div>
+        </div>
+
+        <div className="btn-row" style={{ marginTop: 8 }}>
+          <button className="btn" type="button" onClick={() => setTableMode((v) => !v)}>
+            {tableMode ? t("common.formViewBtn") : t("common.tableViewBtn")}
+          </button>
+        </div>
+        {tableMode && <div className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{t("common.tableHint")}</div>}
+      </div>
+
+      {/* Both branches stay mounted, toggled via display instead of a
+          conditional unmount/remount — BeamRebarTable keeps its own
+          per-row edit state locally, and unmounting it (as a ternary would)
+          silently threw away any unsaved cell edits the moment the user
+          switched views, even just to glance at the single-item preview. */}
+      <div style={{ display: tableMode ? undefined : "none" }}>
+        <BeamRebarTable list={list} names={names} conn={conn} />
+      </div>
+      <div style={{ display: tableMode ? "none" : undefined }}>
+        <div className="editor-grid">
+          <div className="panel">
+            <h2>{t("beam.sectorsTitle")}</h2>
+            <div>
+              {visibleSectors.map(({ key, labelKey }) => (
             <div key={key}>
               <div className="subhead">
-                {t(`js.sectorTitle.${key}`)}
-                {key === "M" && (
+                {t(labelKey)}
+                {inputMode === "each" && key === "M" && (
                   <button
                     type="button"
                     className="btn"
@@ -364,6 +388,11 @@ export function BeamForm() {
           </div>
         </div>
 
+        {selectedElementKeys.length > 1 && (
+          <div className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+            {t("common.bulkSaveHint", { count: selectedElementKeys.length, keys: selectedElementKeys.join(", ") })}
+          </div>
+        )}
         <div className="btn-row">
           <button className="btn primary" type="button" onClick={handleSave} disabled={saving}>
             {t("common.saveBtn")}
@@ -381,6 +410,7 @@ export function BeamForm() {
         after={afterPayload}
         dims={{ B: dimB, H: dimH }}
         sectorKeys={SECTORS}
+        loadedInfo={existingKey ? { key: existingKey, name: names[existingKey] } : undefined}
         legend={
           <>
             <span>
@@ -394,6 +424,8 @@ export function BeamForm() {
           </>
         }
       />
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { listRebar, type ConnInfo } from "../lib/api";
+import { listRebar, type ConnInfo, type SectionGroup } from "../lib/api";
 import type { KeylistMsg, StatusMsg } from "../lib/statusMsg";
 import type { MemberType } from "../types/rebar";
 
@@ -12,6 +12,7 @@ export type { StatusMsg };
 export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
   const [list, setList] = useState<Record<string, T>>({});
   const [names, setNames] = useState<Record<string, string>>({});
+  const [sections, setSections] = useState<Record<string, SectionGroup<T>>>({});
   const [keylistMsg, setKeylistMsg] = useState<KeylistMsg>(null);
   const [listLoading, setListLoading] = useState(false);
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
@@ -27,6 +28,7 @@ export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
       }
       setList(res.data);
       setNames(res.names || {});
+      setSections(res.sections || {});
       setListLoadedOnce(true);
       const keys = Object.keys(res.data);
       setKeylistMsg(keys.length ? { kind: "itemsFound", count: keys.length, keys } : { kind: "noItems" });
@@ -38,5 +40,5 @@ export function useRebarList<T>(memberType: MemberType, conn: ConnInfo) {
     }
   }
 
-  return { list, names, keylistMsg, listLoading, listLoadedOnce, status, setStatus, handleList };
+  return { list, names, sections, keylistMsg, listLoading, listLoadedOnce, status, setStatus, handleList };
 }

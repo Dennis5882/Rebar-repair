@@ -7,7 +7,7 @@ import { MM_PER_UNIT, toModelDiameter } from "../data/rcCodePresets";
 import { barArea_mm2, flexuralCapacity, formulaFamily, shearCapacity } from "../lib/rcBeamCheck";
 import { getBeamDesignResult, type BeamDemandPoint } from "../lib/api";
 import { beamResultStatusClass, beamResultStatusText, type BeamResultStatus } from "../lib/statusMsg";
-import type { SectorFormValues } from "./BeamForm";
+import type { SectorFormValues } from "../lib/beamRebarForm";
 
 interface DemandInputs {
   muNeg: string;

@@ -17,9 +17,16 @@ interface SectionPreviewProps {
   // Pass a referentially-stable array (e.g. the SECTORS constant) so the
   // memoization below doesn't recompute every render.
   sectorKeys?: SectorKey[];
+  // Which list entry is currently loaded (element key + its resolved
+  // section name, same data already shown in the "existing" dropdown).
+  // Without this, the preview drew a diagram with no on-screen confirmation
+  // of *which* Gen NX member/section it belongs to — a user comparing
+  // against Gen NX's own Section panel could see the shapes look plausible
+  // and still wonder whether the right section actually got loaded.
+  loadedInfo?: { key: string; name?: string };
 }
 
-export function SectionPreview({ type, titleKey, before, after, dims, legend, singleColumn, sectorKeys }: SectionPreviewProps) {
+export function SectionPreview({ type, titleKey, before, after, dims, legend, singleColumn, sectorKeys, loadedInfo }: SectionPreviewProps) {
   const { t } = useI18n();
   // dims is a fresh object literal from the caller every render; compare it
   // by value (cheap — a couple of numeric-ish fields) so `before` (which is
@@ -55,6 +62,13 @@ export function SectionPreview({ type, titleKey, before, after, dims, legend, si
   return (
     <div className="panel">
       <h2>{t(titleKey)}</h2>
+      {loadedInfo && (
+        <div className="hint" style={{ marginTop: 0 }}>
+          {loadedInfo.name
+            ? t("common.loadedSectionInfoNamed", { key: loadedInfo.key, name: loadedInfo.name })
+            : t("common.loadedSectionInfoUnnamed", { key: loadedInfo.key })}
+        </div>
+      )}
       {multiRowNoBefore && (
         <div className="hint" style={{ marginTop: 0 }}>
           {t("common.beforeLoad")}

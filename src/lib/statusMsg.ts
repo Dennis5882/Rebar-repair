@@ -15,10 +15,16 @@ export type StatusMsg =
   | { ok: false; kind: "listFail"; res: ApiError }
   | { ok: false; kind: "listError"; error: string }
   | { ok: false; kind: "keyRequired" }
+  | { ok: false; kind: "keyExists" }
   | { ok: true; kind: "saving" }
   | { ok: false; kind: "saveFail"; res: ApiError }
   | { ok: true; kind: "saveDone" }
-  | { ok: false; kind: "saveError"; error: string };
+  | { ok: false; kind: "saveError"; error: string }
+  // A bulk (section-group) save where SOME elements succeeded and some
+  // failed — distinct from saveFail (nothing succeeded) so the message can
+  // tell the user their live model is now in a partially-updated state,
+  // not silently imply the whole save was a no-op.
+  | { ok: false; kind: "saveBulkPartialFail"; failedKeys: string[]; totalCount: number; res: ApiError };
 
 const LIST_KINDS = new Set(["listLoaded", "listFail", "listError"]);
 
@@ -49,6 +55,8 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("js.listError", { error: s.error });
     case "keyRequired":
       return t("js.keyRequired");
+    case "keyExists":
+      return t("js.keyExists");
     case "saving":
       return t("js.saving");
     case "saveFail":
@@ -57,6 +65,13 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("js.saveDone");
     case "saveError":
       return t("js.saveError", { error: s.error });
+    case "saveBulkPartialFail":
+      return t("js.saveBulkPartialFail", {
+        failed: s.failedKeys.length,
+        total: s.totalCount,
+        keys: s.failedKeys.join(", "),
+        error: errText(t, s.res),
+      });
   }
 }
 

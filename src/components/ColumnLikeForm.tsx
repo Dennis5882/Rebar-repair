@@ -317,6 +317,7 @@ export function ColumnLikeForm({ type, isColumn, defaultB, defaultH, mainPlaceho
         before={loaded}
         after={afterPayload}
         dims={{ B: dimB, H: dimH }}
+        loadedInfo={existingKey ? { key: existingKey, name: names[existingKey] } : undefined}
         legend={
           <>
             <span>

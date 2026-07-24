@@ -1,6 +1,7 @@
 import type { BeamWritePayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
+import type { TFn } from "../i18n/types";
 
 export interface ConnInfo {
   apiKey: string;
@@ -38,12 +39,33 @@ export interface VerifyOk {
 }
 export type VerifyResult = VerifyOk | ApiError;
 
+// One entry per section (or per orphaned element with no resolvable
+// section — see api/rebar-list.ts). `elementKeys` is every element sharing
+// that section; `payload` is one representative element's data, used as
+// the shared value for the whole group (practitioners give a section its
+// own copy instead of varying rebar within one).
+export interface SectionGroup<T> {
+  name?: string;
+  elementKeys: string[];
+  payload: T;
+}
 export interface ListOk<T> {
   ok: true;
   data: Record<string, T>;
   names?: Record<string, string>;
+  sections?: Record<string, SectionGroup<T>>;
 }
 export type ListResult<T> = ListOk<T> | ApiError;
+
+// Shared by any member-type tab that adopts section-based (rather than
+// element-based) list selection — currently BeamForm.tsx, but generic over
+// T so COLUMN/BRACE/WALL can reuse it as-is instead of each writing their
+// own copy. `sid` is either a real SECT id or api/rebar-list.ts's
+// `elem:<key>` fallback for an element with no resolvable section.
+export function sectionGroupLabel<T>(t: TFn, sid: string, grp: SectionGroup<T>): string {
+  const name = grp.name || sid.replace(/^elem:/, "");
+  return grp.elementKeys.length > 1 ? t("common.sectionOptionLabel", { name, count: grp.elementKeys.length }) : name;
+}
 
 export interface SaveOk {
   ok: true;

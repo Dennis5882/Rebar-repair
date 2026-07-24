@@ -381,6 +381,7 @@ export function WallForm() {
         after={afterPayload}
         dims={{ THICKNESS: dispThk, LENGTH: dispLen }}
         singleColumn
+        loadedInfo={existingKey ? { key: existingKey, name: names[existingKey] } : undefined}
         legend={
           <>
             <span>
