@@ -7,14 +7,16 @@ import { compressKeyRanges } from "../lib/keyRange";
 import { EMPTY_COLUMN_FORM, buildColumnPayload, fillColumnForm, type FormState } from "../lib/columnRebarForm";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
-import type { ColumnLikePayload } from "../types/rebar";
+import type { ColumnLikePayload, MemberType } from "../types/rebar";
 
-// The COLUMN tab's board — every column section on one screen (row = section),
-// with inline summary + a detail editor, mirroring the BEAM board's layout.
-// Deliberately WITHOUT the beam board's live OK/NG verdict or demand fetch:
-// there is no in-browser column check engine (P-M interaction) yet, so this is
-// the "board UX only" pass agreed with the user. REBC is section-keyed, so one
-// row = one section = one saved record applied to every element using it.
+// Section-centric board shared by the COLUMN and BRACE tabs — every section on
+// one screen (row = section), summary strip, search/sort, and a per-section
+// detail editor. COLUMN and BRACE share the REBC/REBR shape (BRACE is REBC
+// minus the corner bar + hook type), so `isColumn` toggles just those two
+// extra controls. Deliberately WITHOUT a live OK/NG verdict — there is no
+// in-browser check engine for these member types yet ("board UX only" pass).
+// REBC/REBR are section-keyed, so one row = one section = one saved record
+// applied to every element using it.
 
 type ColGroup = MemberSectionGroup<ColumnLikePayload>;
 
@@ -28,16 +30,15 @@ interface ColRowState {
 const DEFAULT_B = "500";
 const DEFAULT_H = "500";
 
-function colRowFromGroup(grp: ColGroup): ColRowState {
+function colRowFromGroup(grp: ColGroup, isColumn: boolean): ColRowState {
   return {
-    form: fillColumnForm(grp.payload, true, EMPTY_COLUMN_FORM.hoopType),
+    form: fillColumnForm(grp.payload, isColumn, EMPTY_COLUMN_FORM.hoopType),
     b: grp.dimB != null ? String(Math.round(grp.dimB)) : DEFAULT_B,
     h: grp.dimH != null ? String(Math.round(grp.dimH)) : DEFAULT_H,
     dirty: false,
   };
 }
 
-// Compact one-cell summaries for the table rows.
 function mainCell(f: FormState) {
   if (!f.mainNum || !f.mainName) return "—";
   return (
@@ -55,14 +56,23 @@ function hoopCell(name: string, legY: string, legZ: string, dist: string) {
   );
 }
 
-export function ColumnBoard() {
+interface Props {
+  type: Extract<MemberType, "COLUMN" | "BRACE">;
+  isColumn: boolean;
+  ns: string; // i18n namespace for board-specific strings ("cboard" / "bboard")
+  mainPlaceholder: string;
+  hoopPlaceholder: string;
+}
+
+export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlaceholder }: Props) {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
+  const k = (suffix: string) => `${ns}.${suffix}`;
 
   const [sections, setSections] = useState<Record<string, ColGroup>>({});
-  // The model's active length unit, from the endpoint (authoritative — see the
-  // same reasoning in BeamBoard). COLUMN cover (DO) is shown in this unit, not
-  // converted to mm, matching the footer disclaimer and the old column form.
+  // The model's active length unit, from the endpoint (authoritative). COLUMN/
+  // BRACE cover (DO) and hoop DIST are shown in this unit, not converted to mm,
+  // matching the footer disclaimer and the old forms.
   const [boardUnit, setBoardUnit] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
@@ -82,7 +92,7 @@ export function ColumnBoard() {
   async function handleList() {
     setListLoading(true);
     try {
-      const res = await listMemberSections<ColumnLikePayload>("COLUMN", conn);
+      const res = await listMemberSections<ColumnLikePayload>(type, conn);
       if (!res.ok) {
         setStatus({ ok: false, kind: "listFail", res });
         return;
@@ -98,17 +108,15 @@ export function ColumnBoard() {
     }
   }
 
-  // Rebuild working rows whenever a fresh list arrives.
   useEffect(() => {
     const sids = Object.keys(sections);
     const next: Record<string, ColRowState> = {};
-    for (const sid of sids) next[sid] = colRowFromGroup(sections[sid]);
+    for (const sid of sids) next[sid] = colRowFromGroup(sections[sid], isColumn);
     setRows(next);
     setOrder(sids);
     setSelectedSid(sids.length ? sids[0] : null);
-  }, [sections]);
+  }, [sections, isColumn]);
 
-  // Section-specific feedback must not linger onto a different section.
   useEffect(() => setActionMsg(null), [selectedSid]);
 
   const summary = useMemo(() => {
@@ -142,13 +150,13 @@ export function ColumnBoard() {
     const r = rows[sid];
     const grp = sections[sid];
     if (!r || !grp) return;
-    const payload = buildColumnPayload(r.form, true);
+    const payload = buildColumnPayload(r.form, isColumn);
     setSavingSid(sid);
     setActionMsg({ ok: true, kind: "saving" });
     try {
-      // REBC is keyed by SECTION number — a single write with the section id
-      // as key applies to every element using that section.
-      const res = await saveRebar("COLUMN", sid, payload, conn);
+      // REBC/REBR are keyed by SECTION number — a single write with the
+      // section id as key applies to every element using that section.
+      const res = await saveRebar(type, sid, payload, conn);
       if (!res.ok) {
         setActionMsg({ ok: false, kind: "saveFail", res });
         return;
@@ -164,7 +172,7 @@ export function ColumnBoard() {
 
   const selected = selectedSid ? rows[selectedSid] : null;
   const selectedGrp = selectedSid ? sections[selectedSid] : null;
-  const afterPayload = useMemo(() => (selected ? buildColumnPayload(selected.form, true) : null), [selected]);
+  const afterPayload = useMemo(() => (selected ? buildColumnPayload(selected.form, isColumn) : null), [selected, isColumn]);
   const unitSuffix = unit ? ` (${unit})` : "";
 
   return (
@@ -173,7 +181,7 @@ export function ColumnBoard() {
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">
           <button className="btn primary" type="button" onClick={handleList} disabled={listLoading}>
-            {listLoading ? t("cboard.loadingBtn") : t("cboard.loadBtn")}
+            {listLoading ? t(k("loadingBtn")) : t(k("loadBtn"))}
           </button>
         </div>
         {status && (
@@ -186,7 +194,7 @@ export function ColumnBoard() {
       {/* --- summary strip --- */}
       {order.length > 0 && (
         <div className="board-summary">
-          <div className="stat"><div className="k">{t("cboard.summaryTotal")}</div><div className="v">{summary.total}</div></div>
+          <div className="stat"><div className="k">{t(k("summaryTotal"))}</div><div className="v">{summary.total}</div></div>
           <div className="stat"><div className="k">{t("board.summaryChanged")}</div><div className="v">{summary.dirty}</div></div>
         </div>
       )}
@@ -195,7 +203,7 @@ export function ColumnBoard() {
       <div className="board-wrap">
         <div className="board-head">
           <h2>
-            {t("cboard.title")}{" "}
+            {t(k("title"))}{" "}
             {order.length > 0 && (
               <span className="board-count">
                 {visibleOrder.length === order.length
@@ -204,7 +212,7 @@ export function ColumnBoard() {
               </span>
             )}
           </h2>
-          <span className="board-hint">{t("cboard.tableHint")}</span>
+          <span className="board-hint">{t(k("tableHint"))}</span>
         </div>
         {order.length > 0 && (
           <div className="board-filter">
@@ -231,11 +239,11 @@ export function ColumnBoard() {
               <tr>
                 <th>{t("board.colSection")}</th>
                 <th>{t("board.colElements")}</th>
-                <th>{t("cboard.colMain")}</th>
-                <th>{t("cboard.colEndHoop")}</th>
-                <th>{t("cboard.colCenHoop")}</th>
-                <th>{t("cboard.colCover")}</th>
-                <th>{t("cboard.colHoopType")}</th>
+                <th>{t(k("colMain"))}</th>
+                <th>{t(k("colEndHoop"))}</th>
+                <th>{t(k("colCenHoop"))}</th>
+                <th>{t(k("colCover"))}</th>
+                <th>{t(k("colHoopType"))}</th>
               </tr>
             </thead>
             <tbody>
@@ -261,7 +269,7 @@ export function ColumnBoard() {
               })}
               {order.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="board-empty">{listLoadedOnce ? t("cboard.emptyList") : t("cboard.notLoaded")}</td>
+                  <td colSpan={7} className="board-empty">{listLoadedOnce ? t(k("emptyList")) : t(k("notLoaded"))}</td>
                 </tr>
               )}
               {order.length > 0 && visibleOrder.length === 0 && (
@@ -285,7 +293,7 @@ export function ColumnBoard() {
               </div>
             </div>
             <SectionPreview
-              type="COLUMN"
+              type={type}
               titleKey="common.previewTitleSimple"
               before={selectedGrp.payload}
               after={afterPayload}
@@ -293,7 +301,7 @@ export function ColumnBoard() {
               legend={
                 <>
                   <span><i className="dot" style={{ background: "var(--main-bar)" }} />{t("common.mainBar")}</span>
-                  <span><i className="dot" style={{ background: "var(--corner)" }} />{t("column.cornerBar")}</span>
+                  {isColumn && <span><i className="dot" style={{ background: "var(--corner)" }} />{t("column.cornerBar")}</span>}
                   <span><i className="dot" style={{ background: "var(--hoop)" }} />{t("common.hoop")}</span>
                 </>
               }
@@ -305,7 +313,7 @@ export function ColumnBoard() {
             <div className="row3">
               <div className="field">
                 <label>{t("common.spec")}</label>
-                <BarSelect id="cb-mainName" placeholder="D25" value={selected.form.mainName} onChange={(v) => updateField(selectedSid, "mainName", v)} />
+                <BarSelect id="clb-mainName" placeholder={mainPlaceholder} value={selected.form.mainName} onChange={(v) => updateField(selectedSid, "mainName", v)} />
               </div>
               <div className="field">
                 <label>{t("common.totalCount")}</label>
@@ -317,22 +325,26 @@ export function ColumnBoard() {
               </div>
             </div>
 
-            <div className="checkline">
-              <input id="cb-useCorner" type="checkbox" checked={selected.form.useCorner} onChange={(e) => updateField(selectedSid, "useCorner", e.target.checked)} />
-              <label htmlFor="cb-useCorner" style={{ margin: 0 }}>{t("column.useCorner")}</label>
-            </div>
-            {selected.form.useCorner && (
-              <div className="field">
-                <label>{t("column.cornerSpec")}</label>
-                <BarSelect id="cb-cornerName" placeholder="D29" value={selected.form.cornerName} onChange={(v) => updateField(selectedSid, "cornerName", v)} />
-              </div>
+            {isColumn && (
+              <>
+                <div className="checkline">
+                  <input id="clb-useCorner" type="checkbox" checked={selected.form.useCorner} onChange={(e) => updateField(selectedSid, "useCorner", e.target.checked)} />
+                  <label htmlFor="clb-useCorner" style={{ margin: 0 }}>{t("column.useCorner")}</label>
+                </div>
+                {selected.form.useCorner && (
+                  <div className="field">
+                    <label>{t("column.cornerSpec")}</label>
+                    <BarSelect id="clb-cornerName" placeholder="D29" value={selected.form.cornerName} onChange={(v) => updateField(selectedSid, "cornerName", v)} />
+                  </div>
+                )}
+              </>
             )}
 
             <div className="subhead">{t("common.endHoopTitle")}</div>
             <div className="row4">
               <div className="field">
                 <label>{t("common.spec")}</label>
-                <BarSelect id="cb-endName" placeholder="D13" value={selected.form.endName} onChange={(v) => updateField(selectedSid, "endName", v)} />
+                <BarSelect id="clb-endName" placeholder={hoopPlaceholder} value={selected.form.endName} onChange={(v) => updateField(selectedSid, "endName", v)} />
               </div>
               <div className="field"><label>{t("common.legY")}</label><input type="number" value={selected.form.endLegY} onChange={(e) => updateField(selectedSid, "endLegY", e.target.value)} /></div>
               <div className="field"><label>{t("common.legZ")}</label><input type="number" value={selected.form.endLegZ} onChange={(e) => updateField(selectedSid, "endLegZ", e.target.value)} /></div>
@@ -343,7 +355,7 @@ export function ColumnBoard() {
             <div className="row4">
               <div className="field">
                 <label>{t("common.spec")}</label>
-                <BarSelect id="cb-cenName" placeholder="D13" value={selected.form.cenName} onChange={(v) => updateField(selectedSid, "cenName", v)} />
+                <BarSelect id="clb-cenName" placeholder={hoopPlaceholder} value={selected.form.cenName} onChange={(v) => updateField(selectedSid, "cenName", v)} />
               </div>
               <div className="field"><label>{t("common.legY")}</label><input type="number" value={selected.form.cenLegY} onChange={(e) => updateField(selectedSid, "cenLegY", e.target.value)} /></div>
               <div className="field"><label>{t("common.legZ")}</label><input type="number" value={selected.form.cenLegZ} onChange={(e) => updateField(selectedSid, "cenLegZ", e.target.value)} /></div>
@@ -351,7 +363,7 @@ export function ColumnBoard() {
             </div>
 
             <div className="subhead">{t("common.etcTitle")}</div>
-            <div className="row3">
+            <div className={isColumn ? "row3" : "row2"}>
               <div className="field">
                 <label>{t("common.coverDO")}{unitSuffix}</label>
                 <input type="number" step="any" value={selected.form.doVal} onChange={(e) => updateField(selectedSid, "doVal", e.target.value)} />
@@ -363,13 +375,15 @@ export function ColumnBoard() {
                   <option value="Spirals">Spirals</option>
                 </select>
               </div>
-              <div className="field">
-                <label>{t("column.hookType")}</label>
-                <select value={selected.form.hookType} onChange={(e) => updateField(selectedSid, "hookType", e.target.value)}>
-                  <option value="0">{t("column.hookType90")}</option>
-                  <option value="1">{t("column.hookTypeBoth")}</option>
-                </select>
-              </div>
+              {isColumn && (
+                <div className="field">
+                  <label>{t("column.hookType")}</label>
+                  <select value={selected.form.hookType} onChange={(e) => updateField(selectedSid, "hookType", e.target.value)}>
+                    <option value="0">{t("column.hookType90")}</option>
+                    <option value="1">{t("column.hookTypeBoth")}</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="subhead">{t("common.dimsHintTitle")}</div>

@@ -1,9 +1,9 @@
 import type { ColumnLikeItem, ColumnLikePayload } from "../types/rebar";
 
-// Column/brace rebar form state + payload conversion, shared by ColumnLikeForm
-// (the single-record BRACE editor) and ColumnBoard (the section-centric COLUMN
-// board). Extracted verbatim from ColumnLikeForm so both surfaces build and
-// read the exact same REBC/REBR shape — no second copy to drift.
+// Column/brace rebar form state + payload conversion, used by ColumnLikeBoard
+// for both the COLUMN and BRACE tabs (REBC/REBR share this shape). Kept in one
+// place so the two tabs can't drift, and extracted originally from the old
+// single-record column/brace form.
 
 export interface FormState {
   mainName: string;

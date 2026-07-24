@@ -8,16 +8,17 @@ import { ENDPOINTS, getJson, resolveBase, setCorsPost } from "./lib/midas.js";
 // dedicated endpoint (working, untouched), and this one generalizes the same
 // idea to the other member types, dispatched on `memberType`.
 //
-// Only COLUMN is implemented today (the board rollout starts there); WALL and
-// BRACE return a clean "unsupported" until their own classification is wired
-// (walls are PLATE elements, braces need explicit member-type assignment —
-// neither is orientation-classifiable the simple way columns are).
+// COLUMN and BRACE are implemented; WALL returns a clean "unsupported" (walls
+// are PLATE / multi-segment and don't fit this SECT-grouped model — the wall
+// board reads REBW via rebar-list instead).
 //
-// How Gen NX decides a frame element is a column (verified live 2026-07-24,
-// see genxn-api-schema-findings): /db/MBTP (member-type) is empty on a model
-// where types were never explicitly assigned, so Gen NX auto-classifies frame
-// elements by orientation — horizontal ⇒ beam, vertical ⇒ column. This does
-// the same, keeping only vertical elements (the mirror of beam-sections).
+// COLUMN uses orientation: Gen NX auto-classifies frame elements by
+// orientation when /db/MBTP is empty (verified live 2026-07-24, see
+// genxn-api-schema-findings) — horizontal ⇒ beam, vertical ⇒ column. This
+// keeps only vertical sections (the mirror of beam-sections), so bare columns
+// still show. BRACE can't use orientation (a brace is diagonal, indistinct
+// from a sloped beam/column), so it lists sections that already have a REBR
+// record — reliable, at the cost of not surfacing bare brace sections.
 
 const MM_PER_DIST: Record<string, number> = { MM: 1, CM: 10, M: 1000, IN: 25.4, FT: 304.8 };
 
@@ -51,14 +52,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const base = resolveBase(product, baseUrl);
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
-  if (memberType !== "COLUMN") {
-    // WALL/BRACE not classifiable the same orientation way — wired later.
+  // COLUMN and BRACE only. WALL is PLATE-based / multi-segment and doesn't fit
+  // this SECT-grouped model — its board reads REBW via rebar-list instead.
+  if (memberType !== "COLUMN" && memberType !== "BRACE") {
     return res.status(400).json({ ok: false, code: "unknown_member_type", memberType });
   }
-  const rebarPath = ENDPOINTS.COLUMN; // REBC
+  const rebarPath = memberType === "COLUMN" ? ENDPOINTS.COLUMN : ENDPOINTS.BRACE; // REBC / REBR
 
   try {
-    const [elemRes, nodeRes, sectRes, unitRes, rebcRes] = await Promise.all([
+    const [elemRes, nodeRes, sectRes, unitRes, rebRes] = await Promise.all([
       getJson(base, "/db/ELEM", apiKey),
       getJson(base, "/db/NODE", apiKey),
       getJson(base, "/db/SECT", apiKey),
@@ -73,38 +75,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const unitObj = unitRes.UNIT ? Object.values(unitRes.UNIT)[0] : undefined;
     const dist = ((unitObj as any)?.DIST || "M").toUpperCase();
     const mmPer = MM_PER_DIST[dist] ?? 1000;
-    // REBC items are keyed by SECTION number (same as REBB — see
+    // REBC/REBR items are keyed by SECTION number (same as REBB — see
     // genxn-api-schema-findings), each value {ITEMS:[ColumnLikeItem]}.
-    const rebcTop = rebcRes ? Object.keys(rebcRes)[0] : null;
-    const rebc: Record<string, any> = rebcTop && rebcRes[rebcTop] && typeof rebcRes[rebcTop] === "object" ? rebcRes[rebcTop] : {};
+    const rebTop = rebRes ? Object.keys(rebRes)[0] : null;
+    const reb: Record<string, any> = rebTop && rebRes[rebTop] && typeof rebRes[rebTop] === "object" ? rebRes[rebTop] : {};
 
-    // Group column-oriented (vertical) frame elements by section.
-    const bySect: Record<string, string[]> = {};
+    // All frame elements grouped by section (used to attach element counts).
+    const elemsBySect: Record<string, string[]> = {};
     for (const [key, el] of Object.entries(elems)) {
       if (el?.TYPE !== "BEAM") continue; // all frame elements report TYPE "BEAM"
       const sid = el?.SECT;
       if (sid == null) continue;
-      const nodeIds = el?.NODE;
-      if (!Array.isArray(nodeIds) || nodeIds.length < 2) continue;
-      const a = nodes[nodeIds[0]];
-      const b = nodes[nodeIds[1]];
-      if (!a || !b) continue;
-      const dz = Math.abs(Number(a.Z) - Number(b.Z));
-      const dxy = Math.hypot(Number(a.X) - Number(b.X), Number(a.Y) - Number(b.Y));
-      if (dz <= dxy) continue; // horizontal ⇒ beam, not a column
-      (bySect[String(sid)] = bySect[String(sid)] || []).push(key);
+      (elemsBySect[String(sid)] = elemsBySect[String(sid)] || []).push(key);
+    }
+
+    // Which section ids to list, per member type:
+    //  - COLUMN: every section used by a VERTICAL (dz>dxy) frame element — the
+    //    orientation classifier (mirror of beam-sections), so bare columns
+    //    without rebar still show up.
+    //  - BRACE: braces are diagonal frame elements and NOT reliably
+    //    orientation-classifiable (a sloped beam/column looks the same), so
+    //    instead list exactly the sections that already carry a REBR record.
+    //    Reliable (zero misclassification) at the cost of not surfacing
+    //    bare brace sections — acceptable for editing existing brace rebar.
+    let sectionIds: string[];
+    if (memberType === "COLUMN") {
+      const cols = new Set<string>();
+      for (const el of Object.values(elems)) {
+        if (el?.TYPE !== "BEAM") continue;
+        const sid = el?.SECT;
+        if (sid == null) continue;
+        const nodeIds = el?.NODE;
+        if (!Array.isArray(nodeIds) || nodeIds.length < 2) continue;
+        const a = nodes[nodeIds[0]];
+        const b = nodes[nodeIds[1]];
+        if (!a || !b) continue;
+        const dz = Math.abs(Number(a.Z) - Number(b.Z));
+        const dxy = Math.hypot(Number(a.X) - Number(b.X), Number(a.Y) - Number(b.Y));
+        if (dz <= dxy) continue; // horizontal ⇒ beam, not a column
+        cols.add(String(sid));
+      }
+      sectionIds = [...cols];
+    } else {
+      sectionIds = Object.keys(reb); // BRACE: rebar-driven
     }
 
     const emptyPayload = { ITEMS: [{}] };
     const sections: Record<string, { name?: string; elementKeys: string[]; payload: any; dimB?: number; dimH?: number }> = {};
-    for (const [sid, keys] of Object.entries(bySect)) {
-      const sorted = keys.sort((x, y) => Number(x) - Number(y));
+    for (const sid of sectionIds) {
+      const sorted = (elemsBySect[sid] || []).sort((x, y) => Number(x) - Number(y));
       const sect = sects[sid];
       const dims = sect ? sectDims(sect, mmPer) : {};
       sections[sid] = {
         name: sect?.SECT_NAME,
         elementKeys: sorted,
-        payload: rebc[sid] ? rebc[sid] : emptyPayload,
+        payload: reb[sid] ? reb[sid] : emptyPayload,
         dimB: dims.b,
         dimH: dims.h,
       };

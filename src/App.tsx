@@ -9,9 +9,8 @@ import { ConnDrawer } from "./components/ConnDrawer";
 import { DesignCodeSelector } from "./components/DesignCodeSelector";
 import { Tabs, type TabKey } from "./components/Tabs";
 import { BeamBoard } from "./components/BeamBoard";
-import { ColumnBoard } from "./components/ColumnBoard";
-import { ColumnLikeForm } from "./components/ColumnLikeForm";
-import { WallForm } from "./components/WallForm";
+import { ColumnLikeBoard } from "./components/ColumnLikeBoard";
+import { WallBoard } from "./components/WallBoard";
 import { ProjectReview } from "./components/ProjectReview";
 import { FooterHint } from "./components/FooterHint";
 import { Byline } from "./components/Byline";
@@ -38,13 +37,13 @@ function AppShell() {
         <BeamBoard />
       </div>
       <div className={"tab-panel" + (active === "COLUMN" ? " active" : "")}>
-        <ColumnBoard />
+        <ColumnLikeBoard type="COLUMN" isColumn ns="cboard" mainPlaceholder="D25" hoopPlaceholder="D13" />
       </div>
       <div className={"tab-panel" + (active === "WALL" ? " active" : "")}>
-        <WallForm />
+        <WallBoard />
       </div>
       <div className={"tab-panel" + (active === "BRACE" ? " active" : "")}>
-        <ColumnLikeForm type="BRACE" isColumn={false} defaultB="400" defaultH="400" mainPlaceholder="D22" hoopPlaceholder="D10" />
+        <ColumnLikeBoard type="BRACE" isColumn={false} ns="bboard" mainPlaceholder="D22" hoopPlaceholder="D10" />
       </div>
       <div className={"tab-panel" + (active === "PROJECT" ? " active" : "")}>
         <ProjectReview />
