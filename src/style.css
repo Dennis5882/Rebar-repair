@@ -256,7 +256,10 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .verdict.none { color: var(--muted); }
 .board-empty { text-align: center; color: var(--muted); padding: 34px; font-size: 12.5px; }
 
-.board-detail { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+/* Editor (input) on the left, section preview (graphic) on the right — the
+   preview card is DOM-first but placed second visually via `order`. */
+.board-detail { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+.board-preview-card { order: 2; }
 @media (max-width: 820px) { .board-detail { grid-template-columns: 1fr; } }
 .board-detail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .detail-nm { font-size: 16px; font-weight: 700; color: var(--ink); }
