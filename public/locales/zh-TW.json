@@ -121,6 +121,7 @@
   "board.tableHint": "點擊列 → 於下方編輯 · 數值即時重新判定",
   "board.colSection": "斷面",
   "board.colElements": "構件",
+  "board.memberCount": "{count}個",
   "board.colMode": "模式",
   "board.colCover": "保護層",
   "board.colVerdict": "判定 (M / V)",

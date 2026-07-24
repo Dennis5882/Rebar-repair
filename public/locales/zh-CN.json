@@ -121,6 +121,7 @@
   "board.tableHint": "点击行 → 在下方编辑 · 数值实时重新判定",
   "board.colSection": "截面",
   "board.colElements": "构件",
+  "board.memberCount": "{count}个",
   "board.colMode": "模式",
   "board.colCover": "保护层",
   "board.colVerdict": "判定 (M / V)",

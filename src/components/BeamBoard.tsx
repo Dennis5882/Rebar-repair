@@ -341,11 +341,11 @@ export function BeamBoard() {
                   );
                 return (
                   <tr key={sid} className={sid === selectedSid ? "sel" : ""} onClick={() => setSelectedSid(sid)}>
-                    <td>
+                    <td className="cell-section">
                       <span className="dirty-dot" style={{ visibility: r.dirty ? "visible" : "hidden" }} />
-                      <span className="sect-nm">{sectionGroupLabel(t, sid, grp)}</span>
+                      <span className="sect-nm">{grp.name || sid.replace(/^elem:/, "")}</span>
                     </td>
-                    <td><span className="elem-badge">{grp.elementKeys.length} · {grp.elementKeys.join(", ")}</span></td>
+                    <td><span className="elem-badge" title={grp.elementKeys.join(", ")}>{t("board.memberCount", { count: grp.elementKeys.length })}</span></td>
                     <td><span className="mode-chip">{t(MODE_LABEL[r.mode])}</span></td>
                     <td className="mono">{rep.topNum && rep.topName ? <><b>{rep.topNum}</b>×<span className="bar-main">{rep.topName}</span></> : "—"}</td>
                     <td className="mono">{rep.botNum && rep.botName ? <><b>{rep.botNum}</b>×<span className="bar-main">{rep.botName}</span></> : "—"}</td>

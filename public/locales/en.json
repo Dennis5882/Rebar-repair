@@ -121,6 +121,7 @@
   "board.tableHint": "Click a row to edit below · values re-check live",
   "board.colSection": "Section",
   "board.colElements": "Members",
+  "board.memberCount": "{count}",
   "board.colMode": "Mode",
   "board.colCover": "Cover",
   "board.colVerdict": "Verdict (M / V)",

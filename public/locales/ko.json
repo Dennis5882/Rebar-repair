@@ -121,6 +121,7 @@
   "board.tableHint": "행 클릭 → 아래에서 편집 · 값은 실시간 재판정",
   "board.colSection": "단면",
   "board.colElements": "부재",
+  "board.memberCount": "{count}개",
   "board.colMode": "모드",
   "board.colCover": "피복",
   "board.colVerdict": "판정 (M / V)",
