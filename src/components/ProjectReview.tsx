@@ -114,43 +114,64 @@ export function ProjectReview() {
   );
 }
 
+// Shared section wrapper: a title with a monospace count pill over a rounded,
+// bordered data-table card — the engineering-board look applied to the
+// read-only model summary.
+function DataSection({ title, total, empty, emptyLabel, moreHidden, moreLabel, children }: {
+  title: string;
+  total: number;
+  empty: boolean;
+  emptyLabel: string;
+  moreHidden?: number;
+  moreLabel?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="data-section">
+      <div className="data-section-head">
+        <h3>{title}</h3>
+        <span className="count-pill">{total}</span>
+      </div>
+      {empty ? (
+        <div className="hint" style={{ margin: 0 }}>{emptyLabel}</div>
+      ) : (
+        <>
+          <div className="data-table-wrap">{children}</div>
+          {moreHidden ? <div className="hint" style={{ margin: "6px 0 0" }}>{moreLabel}</div> : null}
+        </>
+      )}
+    </div>
+  );
+}
+
 function ElementsSection({ summary, t }: { summary: ProjectSummary; t: TFn }) {
   const types = Object.entries(summary.elements.byType).sort((a, b) => b[1] - a[1]);
   return (
-    <div className="subhead-block">
-      <div className="subhead">{t("project.elementsTitle")}</div>
-      <div className="hint" style={{ margin: "0 0 8px" }}>
-        {t("project.totalCount", { count: summary.elements.total })}
-      </div>
-      {types.length === 0 ? (
-        <div className="hint" style={{ margin: 0 }}>
-          {t("project.emptyList")}
-        </div>
-      ) : (
-        <table className="summary-table">
-          <thead>
-            <tr>
-              <th>{t("project.colType")}</th>
-              <th>{t("project.colCount")}</th>
+    <DataSection title={t("project.elementsTitle")} total={summary.elements.total} empty={types.length === 0} emptyLabel={t("project.emptyList")}>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>{t("project.colType")}</th>
+            <th className="num-col">{t("project.colCount")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {types.map(([ty, count]) => (
+            <tr key={ty}>
+              <td className="type-cell">{ty}</td>
+              <td className="num-col">{count}</td>
             </tr>
-          </thead>
-          <tbody>
-            {types.map(([ty, count]) => (
-              <tr key={ty}>
-                <td>{ty}</td>
-                <td>{count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+          ))}
+        </tbody>
+      </table>
+    </DataSection>
   );
 }
 
 interface Column<T> {
   header: string;
   cell: (item: T) => ReactNode;
+  numeric?: boolean;
 }
 
 function SummaryTable<T>({
@@ -170,42 +191,32 @@ function SummaryTable<T>({
 }) {
   const { shown, hiddenCount } = capped(items);
   return (
-    <div className="subhead-block">
-      <div className="subhead">{t(titleKey)}</div>
-      <div className="hint" style={{ margin: "0 0 8px" }}>
-        {t("project.totalCount", { count: total })}
-      </div>
-      {shown.length === 0 ? (
-        <div className="hint" style={{ margin: 0 }}>
-          {t("project.emptyList")}
-        </div>
-      ) : (
-        <>
-          <table className="summary-table">
-            <thead>
-              <tr>
-                {columns.map((c) => (
-                  <th key={c.header}>{c.header}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((item) => (
-                <tr key={rowKey(item)}>
-                  {columns.map((c) => (
-                    <td key={c.header}>{c.cell(item)}</td>
-                  ))}
-                </tr>
+    <DataSection
+      title={t(titleKey)}
+      total={total}
+      empty={shown.length === 0}
+      emptyLabel={t("project.emptyList")}
+      moreHidden={hiddenCount}
+      moreLabel={t("project.moreHidden", { count: hiddenCount })}
+    >
+      <table className="data-table">
+        <thead>
+          <tr>
+            {columns.map((c, i) => (
+              <th key={c.header} className={c.numeric ? "num-col" : i === 0 ? "id-col" : undefined}>{c.header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((item) => (
+            <tr key={rowKey(item)}>
+              {columns.map((c, i) => (
+                <td key={c.header} className={c.numeric ? "num-col" : i === 0 ? "id-cell" : undefined}>{c.cell(item)}</td>
               ))}
-            </tbody>
-          </table>
-          {hiddenCount > 0 && (
-            <div className="hint" style={{ margin: "4px 0 0" }}>
-              {t("project.moreHidden", { count: hiddenCount })}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </DataSection>
   );
 }

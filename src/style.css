@@ -284,3 +284,23 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .judge-fill.ng { background: var(--critical); }
 .judge-mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); opacity: .5; }
 .judge-nodem { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+/* ---- Project Review: model-info data tables (dynamic, model-driven) ---- */
+.data-section { margin-top: 22px; }
+.data-section:first-of-type { margin-top: 18px; }
+.data-section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.data-section-head h3 { margin: 0; font-size: 13px; font-weight: 650; color: var(--ink); letter-spacing: -.1px; }
+.count-pill { font-family: var(--mono); font-size: 11px; color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 20px; padding: 1px 9px; font-variant-numeric: tabular-nums; }
+.data-table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow-x: auto;
+  box-shadow: 0 1px 2px rgba(11,11,11,0.04); }
+.data-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+.data-table thead th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted); padding: 9px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table tbody td { padding: 8px 14px; border-bottom: 1px solid var(--border); color: var(--ink);
+  font-variant-numeric: tabular-nums; vertical-align: middle; white-space: nowrap; }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.data-table .id-cell { color: var(--accent); font-weight: 600; }
+.data-table .type-cell { font-family: var(--sans); font-weight: 500; }
+.data-table .num-col { text-align: right; }
