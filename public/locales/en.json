@@ -1,5 +1,5 @@
 {
-  "app.title": "Rebar Editing UI — MIDAS Gen NX",
+  "app.title": "QuickRebar NX API",
   "app.subtitle": "MIDAS Gen NX · Powered by Open API — anyone can connect with their own MAPI Key and edit their own Gen NX model.",
   "app.footerHint": "Dimension, spacing, and cover values follow the active length unit currently used in the MIDAS model. Section previews are schematic and may differ from the actual layout/spacing (beam/column/brace use the center section, wall uses the plan section).",
   "lang.label": "Language",

@@ -1,5 +1,5 @@
 {
-  "app.title": "배근수정 UI — MIDAS Gen NX",
+  "app.title": "QuickRebar NX API",
   "app.subtitle": "MIDAS Gen NX · Open API 기반 — 누구나 자신의 MAPI Key로 접속해 자신의 Gen NX 모델을 편집할 수 있습니다.",
   "app.footerHint": "치수·간격·피복 값의 단위는 MIDAS 모델에서 사용 중인 활성 길이단위를 따릅니다. 단면 미리보기는 개략도이며 실제 배치·간격과 다를 수 있습니다 (보/기둥/가새는 중앙 단면, 벽체는 평면 단면 기준).",
   "lang.label": "언어",
