@@ -121,7 +121,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .cornerbar { fill: var(--corner); }
 .endbar { fill: var(--endbar); }
 .be-zone { fill: var(--be-zone); }
-.sec-caption { font-size: 8.5px; fill: var(--ink-2); }
+.sec-caption-text { font-size: 11px; line-height: 1.4; color: var(--ink-2); text-align: center; margin-top: 6px; text-wrap: balance; }
 .sec-empty { color: var(--muted); font-size: 12px; padding: 40px 0; }
 
 .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 10.5px; color: var(--ink-2); margin-top: 10px; }

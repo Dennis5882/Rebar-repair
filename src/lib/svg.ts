@@ -20,6 +20,14 @@ export interface SectionDims {
   LENGTH?: string | number;
 }
 
+// The dimension/rebar caption is returned separately (not baked into the SVG)
+// so the UI can render it as normal HTML text below the diagram. Inside the
+// SVG it scaled with the viewBox down to ~7px and was unreadable.
+export interface SectionDrawing {
+  svg: string;
+  caption: string;
+}
+
 function firstItem<T>(payload: ItemsPayload<T> | null | undefined): Partial<T> {
   if (!payload || !payload.ITEMS || !payload.ITEMS[0]) return {};
   return payload.ITEMS[0];
@@ -74,7 +82,7 @@ function drawBeamSvg(
   dims: SectionDims,
   aria: string,
   sectorKey: SectorKey = "M"
-): string {
+): SectionDrawing {
   const B = Number(dims.B) || 300;
   const H = Number(dims.H) || 600;
   const it: Partial<BeamItem> = firstItem(payload);
@@ -124,9 +132,8 @@ function drawBeamSvg(
   emitDots(botLayers, false);
 
   const caption = t("js.svgBeamCaption", { B: nf(B), H: nf(H), name: nf(shear.NAME), dist: nf(shear.DIST) });
-  s += `<text x="${canvas / 2}" y="${canvas - 6}" class="sec-caption" text-anchor="middle">${esc(caption)}</text>`;
   s += "</svg>";
-  return s;
+  return { svg: s, caption };
 }
 
 function drawColumnOrBraceSvg(
@@ -135,7 +142,7 @@ function drawColumnOrBraceSvg(
   dims: SectionDims,
   aria: string,
   isBrace: boolean
-): string {
+): SectionDrawing {
   const B = Number(dims.B) || 500;
   const H = Number(dims.H) || 500;
   const it: Partial<ColumnLikeItem> = firstItem(payload);
@@ -198,12 +205,11 @@ function drawColumnOrBraceSvg(
     legZ: nf(se.LEG_Z),
     dist: nf(se.DIST),
   });
-  s += `<text x="${cx}" y="${canvas - 6}" class="sec-caption" text-anchor="middle">${esc(caption)}</text>`;
   s += "</svg>";
-  return s;
+  return { svg: s, caption };
 }
 
-function drawWallSvg(t: TFn, payload: WallPayload | null | undefined, dims: SectionDims, aria: string): string {
+function drawWallSvg(t: TFn, payload: WallPayload | null | undefined, dims: SectionDims, aria: string): SectionDrawing {
   const thickness = Number(dims.THICKNESS) || 300;
   const length = Number(dims.LENGTH) || 3000;
   const it: Partial<WallItem> = firstItem(payload);
@@ -268,9 +274,8 @@ function drawWallSvg(t: TFn, payload: WallPayload | null | undefined, dims: Sect
     hdist: nf(hr.DIST),
   });
   if (length > dispLen) caption += t("js.svgWallPartial");
-  s += `<text x="${canvasW / 2}" y="${canvasH - 4}" class="sec-caption" text-anchor="middle">${esc(caption)}</text>`;
   s += "</svg>";
-  return s;
+  return { svg: s, caption };
 }
 
 export function drawSectionSvg(
@@ -280,11 +285,11 @@ export function drawSectionSvg(
   dims: SectionDims,
   aria: string,
   sectorKey?: SectorKey
-): string {
-  if (!payload) return `<div class="sec-empty">${esc(t("js.noData"))}</div>`;
+): SectionDrawing {
+  if (!payload) return { svg: `<div class="sec-empty">${esc(t("js.noData"))}</div>`, caption: "" };
   if (type === "BEAM") return drawBeamSvg(t, payload as BeamPayload, dims, aria, sectorKey);
   if (type === "COLUMN") return drawColumnOrBraceSvg(t, payload as ColumnLikePayload, dims, aria, false);
   if (type === "BRACE") return drawColumnOrBraceSvg(t, payload as ColumnLikePayload, dims, aria, true);
   if (type === "WALL") return drawWallSvg(t, payload as WallPayload, dims, aria);
-  return '<div class="sec-empty">-</div>';
+  return { svg: '<div class="sec-empty">-</div>', caption: "" };
 }

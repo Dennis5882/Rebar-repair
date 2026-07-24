@@ -86,7 +86,10 @@ export function SectionPreview({ type, titleKey, before, after, dims, legend, si
               <div className="diagram-box">
                 <div className="cap">{t("common.loadedCap")}</div>
                 {beforeRows[idx] ? (
-                  <div dangerouslySetInnerHTML={{ __html: beforeRows[idx]! }} />
+                  <>
+                    <div dangerouslySetInnerHTML={{ __html: beforeRows[idx]!.svg }} />
+                    {beforeRows[idx]!.caption && <div className="sec-caption-text">{beforeRows[idx]!.caption}</div>}
+                  </>
                 ) : (
                   <div className="sec-empty">{t("common.beforeLoad")}</div>
                 )}
@@ -94,7 +97,14 @@ export function SectionPreview({ type, titleKey, before, after, dims, legend, si
             )}
             <div className="diagram-box">
               <div className="cap">{t("common.currentCap")}</div>
-              {afterRows[idx] ? <div dangerouslySetInnerHTML={{ __html: afterRows[idx]! }} /> : <div className="sec-empty">-</div>}
+              {afterRows[idx] ? (
+                <>
+                  <div dangerouslySetInnerHTML={{ __html: afterRows[idx]!.svg }} />
+                  {afterRows[idx]!.caption && <div className="sec-caption-text">{afterRows[idx]!.caption}</div>}
+                </>
+              ) : (
+                <div className="sec-empty">-</div>
+              )}
             </div>
           </div>
         </div>
