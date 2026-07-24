@@ -7,3 +7,7 @@ dist/
 .vercel/
 *.local
 *.tsbuildinfo
+
+# Local reference material / pasted screenshots — not part of the app
+*.mp4
+이미지.png

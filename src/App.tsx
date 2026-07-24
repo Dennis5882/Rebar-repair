@@ -8,7 +8,7 @@ import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ConnDrawer } from "./components/ConnDrawer";
 import { DesignCodeSelector } from "./components/DesignCodeSelector";
 import { Tabs, type TabKey } from "./components/Tabs";
-import { BeamForm } from "./components/BeamForm";
+import { BeamBoard } from "./components/BeamBoard";
 import { ColumnLikeForm } from "./components/ColumnLikeForm";
 import { WallForm } from "./components/WallForm";
 import { ProjectReview } from "./components/ProjectReview";
@@ -34,7 +34,7 @@ function AppShell() {
       <Tabs active={active} onChange={setActive} />
 
       <div className={"tab-panel" + (active === "BEAM" ? " active" : "")}>
-        <BeamForm />
+        <BeamBoard />
       </div>
       <div className={"tab-panel" + (active === "COLUMN" ? " active" : "")}>
         <ColumnLikeForm type="COLUMN" isColumn defaultB="500" defaultH="500" mainPlaceholder="D25" hoopPlaceholder="D13" />

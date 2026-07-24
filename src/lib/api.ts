@@ -1,4 +1,4 @@
-import type { BeamWritePayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
+import type { BeamPayload, BeamWritePayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
 import type { TFn } from "../i18n/types";
@@ -65,6 +65,28 @@ export type ListResult<T> = ListOk<T> | ApiError;
 export function sectionGroupLabel<T>(t: TFn, sid: string, grp: SectionGroup<T>): string {
   const name = grp.name || sid.replace(/^elem:/, "");
   return grp.elementKeys.length > 1 ? t("common.sectionOptionLabel", { name, count: grp.elementKeys.length }) : name;
+}
+
+// Every beam section in the model (api/beam-sections.ts), including ones with
+// no rebar yet — unlike ListOk.sections which only groups elements that
+// already have a REBB record. Carries B/H dims (mm) read from /db/SECT so the
+// board can compute capacity without the user re-typing section sizes.
+export interface BeamSectionGroup {
+  name?: string;
+  elementKeys: string[];
+  payload: BeamPayload;
+  dimB?: number;
+  dimH?: number;
+}
+export interface BeamSectionsOk {
+  ok: true;
+  unit: string;
+  sections: Record<string, BeamSectionGroup>;
+}
+export type BeamSectionsResult = BeamSectionsOk | ApiError;
+
+export function listBeamSections(conn: ConnInfo): Promise<BeamSectionsResult> {
+  return post<BeamSectionsResult>("/api/beam-sections", conn);
 }
 
 export interface SaveOk {
