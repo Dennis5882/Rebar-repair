@@ -294,13 +294,17 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   border: 1px solid var(--border); border-radius: 20px; padding: 1px 9px; font-variant-numeric: tabular-nums; }
 .data-table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow-x: auto;
   box-shadow: 0 1px 2px rgba(11,11,11,0.04); }
-.data-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+/* Fixed layout + a shared first-column width so every table's columns line
+   up vertically with each other (auto layout sized each table's columns
+   independently, so "이름"/"유형" started at a different x in each). */
+.data-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: var(--mono); font-size: 12px; }
+.data-table th:first-child, .data-table td:first-child { width: 104px; }
 .data-table thead th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
   color: var(--muted); padding: 9px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
 .data-table tbody td { padding: 8px 14px; border-bottom: 1px solid var(--border); color: var(--ink);
-  font-variant-numeric: tabular-nums; vertical-align: middle; white-space: nowrap; }
+  font-variant-numeric: tabular-nums; vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .data-table .id-cell { color: var(--accent); font-weight: 600; }
 .data-table .type-cell { font-family: var(--sans); font-weight: 500; }
-.data-table .num-col { text-align: right; }
+.data-table th.num-col, .data-table td.num-col { text-align: right; }
