@@ -40,12 +40,18 @@ interface RowState {
 const DEFAULT_B = "400";
 const DEFAULT_H = "600";
 
-function rowFromGroup(grp: BeamSectionGroup, defB: string, defH: string): RowState {
+function rowFromGroup(grp: BeamSectionGroup, defB: string, defH: string, lengthUnit: string): RowState {
   const filled = fillFromPayload(grp.payload);
   return {
     sectors: filled.sectors,
-    dt: filled.dt,
-    db: filled.db,
+    // REBB stores cover (DT/DB) in the model's native length unit (e.g. 0.0635
+    // when the model is in metres = 63.5 mm). The whole UI works in mm — same
+    // as B/H — so convert on the way in and back out again only at save time.
+    // Without this, a user typing "100" (thinking mm) into a metre-unit model
+    // silently wrote 100 m of cover; and the section diagram, which treats
+    // DT/DB as mm, drew a near-zero inset for the raw 0.0635 value.
+    dt: coverToMm(filled.dt, lengthUnit),
+    db: coverToMm(filled.db, lengthUnit),
     // Dims come from /db/SECT (vSIZE, converted to mm by the backend); fall
     // back to a default only for section shapes we can't read (non-SB).
     b: grp.dimB != null ? String(Math.round(grp.dimB)) : defB,
@@ -59,9 +65,30 @@ function n(s: string): number {
   const v = Number(s);
   return Number.isFinite(v) ? v : 0;
 }
-function toMm(value: number, unit: string): number {
-  const per = MM_PER_UNIT[unit];
-  return per ? value * per : NaN;
+const mmPerUnit = (unit: string): number => MM_PER_UNIT[unit] ?? 1;
+// model-unit string -> mm string (blank stays blank; float noise trimmed)
+function coverToMm(s: string, unit: string): string {
+  if (s.trim() === "") return "";
+  const v = Number(s);
+  if (!Number.isFinite(v)) return "";
+  return String(Math.round(v * mmPerUnit(unit) * 100) / 100);
+}
+// mm string -> model-unit string, for writing REBB back
+function coverToModel(s: string, unit: string): string {
+  if (s.trim() === "") return "";
+  const v = Number(s);
+  if (!Number.isFinite(v)) return "";
+  return String(v / mmPerUnit(unit));
+}
+// Copy of a loaded payload with its cover converted model-unit -> mm, so the
+// "before" diagram (which reads DT/DB as mm) matches the "after" diagram built
+// from the mm-based form state.
+function payloadCoverToMm(p: BeamSectionGroup["payload"], unit: string): BeamSectionGroup["payload"] {
+  const it = p.ITEMS?.[0];
+  if (!it) return p;
+  const dt = it.DT != null ? Number(it.DT) * mmPerUnit(unit) : it.DT;
+  const db = it.DB != null ? Number(it.DB) * mmPerUnit(unit) : it.DB;
+  return { ...p, ITEMS: [{ ...it, DT: dt, DB: db }] };
 }
 
 const MODE_LABEL: Record<BeamInputMode, string> = { all: "beam.modeAll", endCenter: "beam.modeEndCenter", each: "beam.modeEach" };
@@ -114,12 +141,12 @@ export function BeamBoard() {
   useEffect(() => {
     const sids = Object.keys(sections);
     const next: Record<string, RowState> = {};
-    for (const sid of sids) next[sid] = rowFromGroup(sections[sid], defB, defH);
+    for (const sid of sids) next[sid] = rowFromGroup(sections[sid], defB, defH, lengthUnit);
     setRows(next);
     setOrder(sids);
     setDemand({});
     setSelectedSid(sids.length ? sids[0] : null);
-  }, [sections, defB, defH]);
+  }, [sections, defB, defH, lengthUnit]);
 
   const family = formulaFamily(designCode);
   const mat: MatProps = useMemo(() => ({ fck: n(fck), fy: n(fy), fyt: n(fyt) }), [fck, fy, fyt]);
@@ -137,8 +164,8 @@ export function BeamBoard() {
         lengthUnit,
         n(r.b),
         n(r.h),
-        toMm(n(r.dt), lengthUnit),
-        toMm(n(r.db), lengthUnit),
+        n(r.dt), // cover is already mm in row state
+        n(r.db),
         r.sectors,
         demand[sid] || {}
       );
@@ -199,7 +226,8 @@ export function BeamBoard() {
     const r = rows[sid];
     const grp = sections[sid];
     if (!r || !grp) return;
-    const payload = buildBeamPayload(r.sectors, r.dt, r.db);
+    // Row cover is mm; REBB expects the model's native length unit.
+    const payload = buildBeamPayload(r.sectors, coverToModel(r.dt, lengthUnit), coverToModel(r.db, lengthUnit));
     setSavingSid(sid);
     setStatus({ ok: true, kind: "saving" });
     try {
@@ -238,6 +266,12 @@ export function BeamBoard() {
   const selected = selectedSid ? rows[selectedSid] : null;
   const selectedGrp = selectedSid ? sections[selectedSid] : null;
   const selectedJudge = selectedSid ? judgments[selectedSid] : null;
+  // Stable reference (SectionPreview memoizes on `before` identity) with cover
+  // normalized to mm so the loaded diagram matches the current one.
+  const beforePreview = useMemo(
+    () => (selectedGrp ? payloadCoverToMm(selectedGrp.payload, lengthUnit) : null),
+    [selectedGrp, lengthUnit]
+  );
 
   const visibleSectors: { key: SectorKey; labelKey: string }[] =
     selected?.mode === "all"
@@ -367,7 +401,7 @@ export function BeamBoard() {
             <SectionPreview
               type="BEAM"
               titleKey="beam.previewTitle"
-              before={selectedGrp.payload}
+              before={beforePreview}
               after={buildBeamPayload(selected.sectors, selected.dt, selected.db)}
               dims={{ B: selected.b, H: selected.h }}
               sectorKeys={SECTORS}
@@ -445,9 +479,9 @@ export function BeamBoard() {
 
             <div className="seg-title">{t("board.geomTitle")}</div>
             <div className="row2">
-              <div className="field"><label>{t("beam.dtLabel")}{lengthUnit ? ` (${lengthUnit})` : ""}</label>
+              <div className="field"><label>{t("beam.dtLabel")} (mm)</label>
                 <input type="number" step="any" value={selected.dt} onChange={(e) => patchRow(selectedSid, { dt: e.target.value })} /></div>
-              <div className="field"><label>{t("beam.dbLabel")}{lengthUnit ? ` (${lengthUnit})` : ""}</label>
+              <div className="field"><label>{t("beam.dbLabel")} (mm)</label>
                 <input type="number" step="any" value={selected.db} onChange={(e) => patchRow(selectedSid, { db: e.target.value })} /></div>
             </div>
             <div className="row2">
