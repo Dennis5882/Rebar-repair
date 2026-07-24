@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_LANG, LANGS, STORAGE_KEY, type Dict, type LangCode, type TFn } from "./types";
 
 interface I18nContextValue {
@@ -71,8 +71,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<LangCode>(DEFAULT_LANG);
   const [dict, setDict] = useState<Dict>({});
   const [ready, setReady] = useState(false);
-  const dictRef = useRef(dict);
-  dictRef.current = dict;
 
   const applyLang = useCallback(async (code: LangCode) => {
     const resolved = isLangCode(code) ? code : DEFAULT_LANG;
@@ -105,9 +103,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = HTML_LANG_MAP[lang] || lang;
   }, [dict, lang]);
 
+  // Depends on `dict` so its identity changes when the locale finishes
+  // loading (or the language switches). Consumers that memoize a translated
+  // result on `t` — e.g. SectionPreview's pre-rendered SVG strings — must
+  // recompute then; a stable-identity `t` (reading a ref) left those frozen
+  // with raw keys (e.g. "js.svgColumnCaption") whenever the first render
+  // happened before the async dictionary arrived.
   const t = useCallback<TFn>(
     (key, vars) => {
-      let s = dictRef.current[key];
+      let s = dict[key];
       if (s === undefined) s = key;
       if (vars) {
         for (const k of Object.keys(vars)) {
@@ -117,7 +121,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       }
       return s;
     },
-    []
+    [dict]
   );
 
   const value = useMemo<I18nContextValue>(

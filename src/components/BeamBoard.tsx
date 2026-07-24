@@ -378,7 +378,7 @@ export function BeamBoard() {
             <SectionPreview
               type="BEAM"
               titleKey="beam.previewTitle"
-              before={null}
+              before={selectedGrp.payload}
               after={buildBeamPayload(selected.sectors, selected.dt, selected.db)}
               dims={{ B: selected.b, H: selected.h }}
               sectorKeys={SECTORS}

@@ -258,7 +258,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 /* Editor (input) on the left, section preview (graphic) on the right — the
    preview card is DOM-first but placed second visually via `order`. */
-.board-detail { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+.board-detail { display: grid; grid-template-columns: 1fr 380px; gap: 16px; }
 .board-preview-card { order: 2; }
 @media (max-width: 820px) { .board-detail { grid-template-columns: 1fr; } }
 .board-detail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
