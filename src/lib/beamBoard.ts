@@ -1,7 +1,7 @@
 import type { SectorKey } from "../types/rebar";
 import { SECTORS } from "../types/rebar";
 import { barArea_mm2, flexuralCapacity, shearCapacity, type RcFormulaFamily } from "./rcBeamCheck";
-import { MM_PER_UNIT, toModelDiameter } from "../data/rcCodePresets";
+import { toModelDiameter } from "../data/rcCodePresets";
 import type { SectorFormValues } from "./beamRebarForm";
 
 // Per-section capacity + OK/NG judgment for the BEAM board. Reuses the exact
@@ -33,18 +33,16 @@ function num(s: string): number {
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
-// Mirrors BeamCheckSection.toMm: NaN (not a silent passthrough) for an
-// unknown unit so it degrades to "no result" rather than a wrong number.
-function toMm(value: number, unit: string): number {
-  const per = MM_PER_UNIT[unit];
-  return per ? value * per : NaN;
-}
 
+// Every length this consumes is already in mm: b/h/cover come from RowState
+// (converted on load), and shear spacing (s.shearDist) is now canonical mm on
+// the board too — same as cover — so there is no model-unit↔mm conversion left
+// here at all. The board is unit-agnostic; conversion happens only at the
+// load/save boundary in BeamBoard.tsx.
 export function sectorCapacity(
   family: RcFormulaFamily,
   mat: MatProps,
   materialDB: string,
-  lengthUnit: string,
   b_mm: number,
   h_mm: number,
   dt_mm: number,
@@ -65,7 +63,7 @@ export function sectorCapacity(
   const shearDia = toModelDiameter(materialDB, s.shearName, "mm");
   const av = shearDia && s.shearLeg ? barArea_mm2(shearDia) * num(s.shearLeg) : 0;
   const dShear = Math.max(dNeg, dPos) || h_mm;
-  const shear = shearCapacity(family, mat.fck, mat.fyt, b_mm, dShear, av, toMm(num(s.shearDist), lengthUnit));
+  const shear = shearCapacity(family, mat.fck, mat.fyt, b_mm, dShear, av, num(s.shearDist));
 
   return {
     phiMnNeg: neg ? neg.phiMn_kNm : null,
@@ -101,7 +99,6 @@ export function judgeSection(
   family: RcFormulaFamily,
   mat: MatProps,
   materialDB: string,
-  lengthUnit: string,
   b_mm: number,
   h_mm: number,
   dt_mm: number,
@@ -116,7 +113,7 @@ export function judgeSection(
   let ratioShear: number | undefined;
 
   for (const key of SECTORS) {
-    const cap = sectorCapacity(family, mat, materialDB, lengthUnit, b_mm, h_mm, dt_mm, db_mm, sectors[key]);
+    const cap = sectorCapacity(family, mat, materialDB, b_mm, h_mm, dt_mm, db_mm, sectors[key]);
     govNeg = minCap(govNeg, cap.phiMnNeg);
     govPos = minCap(govPos, cap.phiMnPos);
     govV = minCap(govV, cap.phiVn);

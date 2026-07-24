@@ -1,7 +1,7 @@
 {
   "app.title": "QuickRebar NX API",
   "app.subtitle": "MIDAS Gen NX · 基於 Open API — 任何人皆可使用自己的 MAPI Key 連線並編輯自己的 Gen NX 模型。",
-  "app.footerHint": "尺寸、間距、保護層數值的單位依照 MIDAS 模型目前使用的長度單位。斷面預覽為示意圖，可能與實際配置/間距有所不同（梁/柱/斜撐以中央斷面為準，牆體以平面斷面為準）。",
+  "app.footerHint": "梁斷面看板以 mm 顯示與輸入。柱/牆/斜撐頁籤的尺寸、間距、保護層數值單位依照 MIDAS 模型目前使用的長度單位。斷面預覽為示意圖，可能與實際配置/間距有所不同（梁/柱/斜撐以中央斷面為準，牆體以平面斷面為準）。",
   "lang.label": "語言",
   "app.developerLabel": "開發者",
   "app.plannerLabel": "策劃",

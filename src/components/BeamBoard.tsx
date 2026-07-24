@@ -16,6 +16,7 @@ import {
 import type { TFn } from "../i18n/types";
 import { judgeSection, type DemandBySector, type MatProps } from "../lib/beamBoard";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
+import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import { SECTORS, type SectorKey } from "../types/rebar";
@@ -42,7 +43,7 @@ const DEFAULT_H = "600";
 function rowFromGroup(grp: BeamSectionGroup, defB: string, defH: string, lengthUnit: string): RowState {
   const filled = fillFromPayload(grp.payload);
   return {
-    sectors: filled.sectors,
+    sectors: shearDistToMm(filled.sectors, lengthUnit),
     // REBB stores cover (DT/DB) in the model's native length unit (e.g. 0.0635
     // when the model is in metres = 63.5 mm). The whole UI works in mm — same
     // as B/H — so convert on the way in and back out again only at save time.
@@ -78,6 +79,21 @@ function coverToModel(s: string, unit: string): string {
   const v = Number(s);
   if (!Number.isFinite(v)) return "";
   return String(v / mmPerUnit(unit));
+}
+// Shear spacing (SHEAR_BAR.DIST) is stored in the model's native length unit
+// just like cover. The board works entirely in mm, so convert each sector's
+// shearDist on the same load/save boundary as cover — mm in RowState, model
+// unit only in the REBB write payload. (These reuse coverToMm/coverToModel,
+// which are generic length-string converters despite the "cover" name.)
+function shearDistToMm(sectors: Record<SectorKey, SectorFormValues>, unit: string): Record<SectorKey, SectorFormValues> {
+  const out = {} as Record<SectorKey, SectorFormValues>;
+  for (const k of SECTORS) out[k] = { ...sectors[k], shearDist: coverToMm(sectors[k].shearDist, unit) };
+  return out;
+}
+function shearDistToModel(sectors: Record<SectorKey, SectorFormValues>, unit: string): Record<SectorKey, SectorFormValues> {
+  const out = {} as Record<SectorKey, SectorFormValues>;
+  for (const k of SECTORS) out[k] = { ...sectors[k], shearDist: coverToModel(sectors[k].shearDist, unit) };
+  return out;
 }
 // Copy of a loaded payload with its cover converted model-unit -> mm, so the
 // "before" diagram (which reads DT/DB as mm) matches the "after" diagram built
@@ -191,17 +207,16 @@ export function BeamBoard() {
         family,
         mat,
         materialDB,
-        unit,
         n(r.b),
         n(r.h),
-        n(r.dt), // cover is already mm in row state
+        n(r.dt), // cover + spacing are already mm in row state
         n(r.db),
         r.sectors,
         demand[sid] || {}
       );
     }
     return out;
-  }, [family, order, rows, mat, materialDB, unit, demand]);
+  }, [family, order, rows, mat, materialDB, demand]);
 
   const summary = useMemo(() => {
     let ok = 0;
@@ -285,8 +300,9 @@ export function BeamBoard() {
     const r = rows[sid];
     const grp = sections[sid];
     if (!r || !grp) return;
-    // Row cover is mm; REBB expects the model's native length unit.
-    const payload = buildBeamPayload(r.sectors, coverToModel(r.dt, unit), coverToModel(r.db, unit));
+    // Row cover AND shear spacing are mm; REBB expects the model's native
+    // length unit, so convert both back on the way out.
+    const payload = buildBeamPayload(shearDistToModel(r.sectors, unit), coverToModel(r.dt, unit), coverToModel(r.db, unit));
     setSavingSid(sid);
     setActionMsg({ ok: true, kind: "saving" });
     try {
@@ -436,17 +452,17 @@ export function BeamBoard() {
           <button className="btn primary" type="button" onClick={handleList} disabled={listLoading}>
             {listLoading ? t("board.loadingBtn") : t("board.loadBtn")}
           </button>
+          {order.length > 0 && (
+            <button className="btn board-fetch-all" type="button" onClick={fetchAllDemand} disabled={fetchingAll}>
+              {fetchingAll ? t("board.fetchingAll") : t("board.fetchAllBtn")}
+            </button>
+          )}
           <div className="board-mat">
             <span className="board-mat-title">{t("board.materialTitle")}</span>
             <label className="board-mat-fld">{t("beam.fck")}<input type="number" step="any" value={fck} onChange={(e) => setFck(e.target.value)} /></label>
             <label className="board-mat-fld">{t("beam.fy")}<input type="number" step="any" value={fy} onChange={(e) => setFy(e.target.value)} /></label>
             <label className="board-mat-fld">{t("beam.fyt")}<input type="number" step="any" value={fyt} onChange={(e) => setFyt(e.target.value)} /></label>
           </div>
-          {order.length > 0 && (
-            <button className="btn board-fetch-all" type="button" onClick={fetchAllDemand} disabled={fetchingAll}>
-              {fetchingAll ? t("board.fetchingAll") : t("board.fetchAllBtn")}
-            </button>
-          )}
         </div>
         {status && (
           <div className={"status show " + statusClass(status)} style={{ marginTop: 8 }}>
@@ -551,7 +567,7 @@ export function BeamBoard() {
                       <span className="dirty-dot" style={{ visibility: r.dirty ? "visible" : "hidden" }} />
                       <span className="sect-nm">{grp.name || sid.replace(/^elem:/, "")}</span>
                     </td>
-                    <td><span className="elem-badge" title={grp.elementKeys.join(", ")}>{t("board.memberCount", { count: grp.elementKeys.length })}</span></td>
+                    <td><span className="elem-badge" title={compressKeyRanges(grp.elementKeys)}>{t("board.memberCount", { count: grp.elementKeys.length })}</span></td>
                     <td><span className="mode-chip">{t(MODE_LABEL[r.mode])}</span></td>
                     <td className="mono">{rep.topNum && rep.topName ? <><b>{rep.topNum}</b>×<span className="bar-main">{rep.topName}</span></> : "—"}</td>
                     <td className="mono">{rep.botNum && rep.botName ? <><b>{rep.botNum}</b>×<span className="bar-main">{rep.botName}</span></> : "—"}</td>
@@ -583,7 +599,7 @@ export function BeamBoard() {
             <div className="board-detail-head">
               <div>
                 <div className="detail-nm">{sectionGroupLabel(t, selectedSid, selectedGrp)}</div>
-                <div className="detail-el">{t("board.appliesTo", { count: selectedGrp.elementKeys.length, keys: selectedGrp.elementKeys.join(", ") })}</div>
+                <div className="detail-el">{t("board.appliesTo", { count: selectedGrp.elementKeys.length, keys: compressKeyRanges(selectedGrp.elementKeys) })}</div>
               </div>
             </div>
             <SectionPreview
@@ -646,7 +662,7 @@ export function BeamBoard() {
                     <input type="number" value={selected.sectors[key].shearLeg} onChange={(e) => updateSector(selectedSid, key, "shearLeg", e.target.value)} />
                   </div>
                   <div className="field">
-                    <label>{t("common.dist")}</label>
+                    <label>{t("common.dist")} (mm)</label>
                     <input type="number" value={selected.sectors[key].shearDist} onChange={(e) => updateSector(selectedSid, key, "shearDist", e.target.value)} />
                   </div>
                 </div>
