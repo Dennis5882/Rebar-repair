@@ -147,11 +147,11 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export function verifyConnection(conn: ConnInfo): Promise<VerifyResult> {
-  return post<VerifyResult>("/api/verify", conn);
+  return post<VerifyResult>("/api/model", { action: "verify", ...conn });
 }
 
 export function listRebar<T = unknown>(memberType: MemberType, conn: ConnInfo): Promise<ListResult<T>> {
-  return post<ListResult<T>>("/api/rebar-list", { memberType, ...conn });
+  return post<ListResult<T>>("/api/rebar", { action: "list", memberType, ...conn });
 }
 
 export function getProjectSummary(conn: ConnInfo): Promise<ProjectSummaryResult> {
@@ -163,7 +163,7 @@ export function getProjectGeometry(conn: ConnInfo): Promise<ProjectGeometryResul
 }
 
 export function getModelUnit(conn: ConnInfo): Promise<UnitResult> {
-  return post<UnitResult>("/api/unit", conn);
+  return post<UnitResult>("/api/model", { action: "unit", ...conn });
 }
 
 export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<BeamDesignResultResult> {
@@ -184,7 +184,7 @@ export function getAllBeamDesignResults(elemKeys: string[], conn: ConnInfo): Pro
 // and post()'s own parse-error fallback (code:"parse_error") covers a raw
 // platform 504 — the caller treats both as "still running", not a failure.
 export function runAnalysis(conn: ConnInfo): Promise<RunAnalysisResult> {
-  return post<RunAnalysisResult>("/api/run-analysis", conn);
+  return post<RunAnalysisResult>("/api/model", { action: "analyze", ...conn });
 }
 
 // BEAM's write endpoint takes the SAME shape it returns on read — the
@@ -198,5 +198,5 @@ export function runAnalysis(conn: ConnInfo): Promise<RunAnalysisResult> {
 // Exist" on an existing section — so writes must use PUT, which the handler
 // already does.)
 export function saveRebar(memberType: MemberType, key: string, payload: MemberPayload, conn: ConnInfo): Promise<SaveResult> {
-  return post<SaveResult>("/api/rebar-update", { memberType, key, payload, ...conn });
+  return post<SaveResult>("/api/rebar", { action: "update", memberType, key, payload, ...conn });
 }
