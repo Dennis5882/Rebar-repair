@@ -41,24 +41,34 @@ export function ProjectReview() {
     }
   }
 
+  // Same stacked-card board layout as the member tabs (.beam-board): a toolbar
+  // card with the load control, an optional summary strip, then one bordered
+  // .board-wrap card per data list — so switching to this tab reads as the
+  // same app, not a differently-styled page.
   return (
-    <section className="panel">
-      <h2>{t("project.title")}</h2>
-      <div className="hint">{t("project.hint")}</div>
+    <div className="beam-board">
+      <div className="board-toolbar panel">
+        <div className="board-toolbar-row">
+          <button className="btn primary" type="button" onClick={handleLoad} disabled={loading}>
+            {t("project.loadBtn")}
+          </button>
+        </div>
+        <div className="hint" style={{ marginTop: 8, marginBottom: 0 }}>{t("project.hint")}</div>
+        {status && <div className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{status}</div>}
+      </div>
 
       <Geometry3DSection />
 
-      <div className="btn-row" style={{ marginTop: 14 }}>
-        <button className="btn primary" type="button" onClick={handleLoad} disabled={loading}>
-          {t("project.loadBtn")}
-        </button>
-        <span className="hint" style={{ margin: 0 }}>
-          {status}
-        </span>
-      </div>
-
       {summary && (
         <>
+          <div className="board-summary">
+            <SummaryStat label={t("project.sumElements")} value={summary.elements.total} />
+            <SummaryStat label={t("project.sumSections")} value={summary.sections.total} />
+            <SummaryStat label={t("project.sumMaterials")} value={summary.materials.total} />
+            <SummaryStat label={t("project.sumLoads")} value={summary.loadCombinations.total} />
+            <SummaryStat label={t("project.sumConstraints")} value={summary.constraints.total} />
+          </div>
+
           <ElementsSection summary={summary} t={t} />
           <SummaryTable
             titleKey="project.sectionsTitle"
@@ -110,13 +120,21 @@ export function ProjectReview() {
           />
         </>
       )}
-    </section>
+    </div>
   );
 }
 
-// Shared section wrapper: a title with a monospace count pill over a rounded,
-// bordered data-table card — the engineering-board look applied to the
-// read-only model summary.
+function SummaryStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="stat">
+      <div className="k">{label}</div>
+      <div className="v">{value}</div>
+    </div>
+  );
+}
+
+// One bordered board card: uppercase title + inline count in the head, table
+// (or an empty note) below — the same shell the member boards use.
 function DataSection({ title, total, empty, emptyLabel, moreHidden, moreLabel, children }: {
   title: string;
   total: number;
@@ -127,19 +145,14 @@ function DataSection({ title, total, empty, emptyLabel, moreHidden, moreLabel, c
   children: ReactNode;
 }) {
   return (
-    <div className="data-section">
-      <div className="data-section-head">
-        <h3>{title}</h3>
-        <span className="count-pill">{total}</span>
+    <div className="board-wrap">
+      <div className="board-head">
+        <h2>
+          {title} <span className="board-count">({total})</span>
+        </h2>
+        {moreHidden ? <span className="board-hint">{moreLabel}</span> : null}
       </div>
-      {empty ? (
-        <div className="hint" style={{ margin: 0 }}>{emptyLabel}</div>
-      ) : (
-        <>
-          <div className="data-table-wrap">{children}</div>
-          {moreHidden ? <div className="hint" style={{ margin: "6px 0 0" }}>{moreLabel}</div> : null}
-        </>
-      )}
+      {empty ? <div className="board-empty">{emptyLabel}</div> : <div className="table-scroll">{children}</div>}
     </div>
   );
 }
