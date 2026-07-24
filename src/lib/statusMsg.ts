@@ -12,6 +12,11 @@ import { errText } from "./errText";
 // so the text now always matches the current language.
 export type StatusMsg =
   | { ok: true; kind: "listLoaded"; count: number }
+  // Beam board's own list-loaded message ("단면정보 N건 불러옴") — distinct
+  // from listLoaded (shared with the column/wall forms, which count elements
+  // not sections) so its wording can say "sections" without misdescribing
+  // what those forms load.
+  | { ok: true; kind: "sectionsLoaded"; count: number }
   | { ok: false; kind: "listFail"; res: ApiError }
   | { ok: false; kind: "listError"; error: string }
   | { ok: false; kind: "keyRequired" }
@@ -24,9 +29,21 @@ export type StatusMsg =
   // failed — distinct from saveFail (nothing succeeded) so the message can
   // tell the user their live model is now in a partially-updated state,
   // not silently imply the whole save was a no-op.
-  | { ok: false; kind: "saveBulkPartialFail"; failedKeys: string[]; totalCount: number; res: ApiError };
+  | { ok: false; kind: "saveBulkPartialFail"; failedKeys: string[]; totalCount: number; res: ApiError }
+  // Run-analysis (/doc/ANAL) feedback for the beam board's "해석 실행" button.
+  // analyzeRunning is the timeout/parse-error case: a long solve can outlast
+  // the serverless function, so a missing/late response means "still solving
+  // in Gen NX", NOT a hard failure (see api/run-analysis.ts).
+  | { ok: true; kind: "analyzing" }
+  | { ok: true; kind: "analyzeDone" }
+  | { ok: false; kind: "analyzeRunning" }
+  | { ok: false; kind: "analyzeFail"; res: ApiError }
+  // Design-result (BC-TABLE) fetch feedback for the "결과값 불러오기" button.
+  | { ok: true; kind: "demandLoaded"; count: number }
+  | { ok: false; kind: "demandEmpty" }
+  | { ok: false; kind: "demandFail"; res: ApiError };
 
-const LIST_KINDS = new Set(["listLoaded", "listFail", "listError"]);
+const LIST_KINDS = new Set(["listLoaded", "sectionsLoaded", "listFail", "listError"]);
 
 // Distinguishes a list-load result from a save result so each can be shown
 // next to the action that produced it (list status near the "목록
@@ -49,6 +66,8 @@ export function statusText(t: TFn, s: StatusMsg): string {
   switch (s.kind) {
     case "listLoaded":
       return t("js.listLoaded", { count: s.count });
+    case "sectionsLoaded":
+      return t("board.sectionsLoaded", { count: s.count });
     case "listFail":
       return t("js.listFail", { error: errText(t, s.res) });
     case "listError":
@@ -72,6 +91,20 @@ export function statusText(t: TFn, s: StatusMsg): string {
         keys: s.failedKeys.join(", "),
         error: errText(t, s.res),
       });
+    case "analyzing":
+      return t("board.analyzing");
+    case "analyzeDone":
+      return t("board.analyzeDone");
+    case "analyzeRunning":
+      return t("board.analyzeRunning");
+    case "analyzeFail":
+      return t("board.analyzeFail", { error: errText(t, s.res) });
+    case "demandLoaded":
+      return t("board.demandLoaded", { count: s.count });
+    case "demandEmpty":
+      return t("board.demandEmpty");
+    case "demandFail":
+      return t("board.demandFail", { error: errText(t, s.res) });
   }
 }
 

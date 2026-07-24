@@ -232,9 +232,25 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .board-head h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-2); }
 .board-head .board-count { color: var(--muted); font-weight: 400; }
 .board-hint { font-size: 11px; color: var(--muted); }
+
+/* Filter/sort bar above the table. */
+.board-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.board-search { flex: 1 1 180px; min-width: 140px; padding: 6px 10px; font-size: 12px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface); color: var(--ink); }
+.board-ng-toggle { padding: 6px 12px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.board-ng-toggle.on { background: var(--critical); border-color: var(--critical); color: #fff; }
+.board-sort { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.board-sort select { padding: 6px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
+
+/* Cap the board table's height so a many-section model scrolls internally
+   instead of stretching the page; the header row stays pinned. Scoped to
+   .board-wrap so the old rebar forms' .table-scroll is unaffected. */
+.board-wrap .table-scroll { max-height: 56vh; overflow-y: auto; }
 .board-table { width: 100%; border-collapse: collapse; min-width: 640px; font-family: var(--mono); }
 .board-table thead th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
-  color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; }
+  color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap;
+  position: sticky; top: 0; z-index: 2; }
 .board-table tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--ink); vertical-align: middle; }
 .board-table tbody tr:last-child td { border-bottom: none; }
 .board-table tbody tr { cursor: pointer; transition: background .1s; }
@@ -270,7 +286,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .modeseg button + button { border-left: 1px solid var(--grid); }
 .seg-edit { padding-bottom: 6px; }
 .seg-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin: 12px 0 8px; }
-.save-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.board-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.board-actions .save-note { margin: 0 0 0 auto; white-space: nowrap; }
+.board-actions-hint { margin: 8px 0 0; }
 
 .judge-block { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 .judge-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-bottom: 10px; }

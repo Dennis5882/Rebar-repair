@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { getBeamDesignResult, listBeamSections, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
+import { getBeamDesignResult, listBeamSections, runAnalysis, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
 import { formulaFamily } from "../lib/rcBeamCheck";
 import { MM_PER_UNIT } from "../data/rcCodePresets";
 import {
@@ -119,7 +119,7 @@ export function BeamBoard() {
       setSections(res.sections);
       setBoardUnit(res.unit || "");
       setListLoadedOnce(true);
-      setStatus({ ok: true, kind: "listLoaded", count: Object.keys(res.sections).length });
+      setStatus({ ok: true, kind: "sectionsLoaded", count: Object.keys(res.sections).length });
     } catch (e) {
       setStatus({ ok: false, kind: "listError", error: String(e) });
     } finally {
@@ -139,6 +139,20 @@ export function BeamBoard() {
   const [selectedSid, setSelectedSid] = useState<string | null>(null);
   const [savingSid, setSavingSid] = useState<string | null>(null);
   const [fetchingSid, setFetchingSid] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  // Per-section action feedback (save / analyze / fetch results). Kept
+  // separate from the top-of-board `status` (which only reports the list
+  // load) so the message shows next to the action bar down in the detail
+  // panel, not scrolled far away at the toolbar.
+  const [actionMsg, setActionMsg] = useState<StatusMsg | null>(null);
+
+  // Board filter/sort — the table height is capped and scrolls (see
+  // .table-scroll), so a many-section model doesn't stretch the page; these
+  // let the user jump to what matters (search by name, NG-only, reorder)
+  // instead of paging, which would hide off-page NG rows.
+  const [query, setQuery] = useState("");
+  const [ngOnly, setNgOnly] = useState(false);
+  const [sortKey, setSortKey] = useState<"default" | "name" | "verdict" | "members">("default");
 
   // The model's length unit for all cover/spacing math on this board. See the
   // boardUnit declaration above for why the endpoint's unit wins over context.
@@ -157,6 +171,11 @@ export function BeamBoard() {
     setDemand({});
     setSelectedSid(sids.length ? sids[0] : null);
   }, [sections, defB, defH, unit]);
+
+  // Save/demand feedback is section-specific, so drop it when the selected
+  // section changes — a stale "saved"/"loaded N" message must not appear to
+  // describe a different section the user just clicked into.
+  useEffect(() => setActionMsg(null), [selectedSid]);
 
   const family = formulaFamily(designCode);
   const mat: MatProps = useMemo(() => ({ fck: n(fck), fy: n(fy), fyt: n(fyt) }), [fck, fy, fyt]);
@@ -197,6 +216,35 @@ export function BeamBoard() {
     }
     return { total: order.length, ok, ng, judged, dirty };
   }, [order, judgments, rows]);
+
+  // Filtered + sorted view of `order`. `order` stays the canonical model
+  // order; only what the table renders changes. Verdict rank puts NG first
+  // (what needs attention), then OK, then not-yet-judged.
+  const visibleOrder = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = order.filter((sid) => {
+      if (ngOnly && judgments[sid]?.ok !== false) return false;
+      if (q) {
+        const name = (sections[sid]?.name || sid.replace(/^elem:/, "")).toLowerCase();
+        if (!name.includes(q)) return false;
+      }
+      return true;
+    });
+    if (sortKey !== "default") {
+      const rank = (sid: string) => {
+        const ok = judgments[sid]?.ok;
+        return ok === false ? 0 : ok === true ? 1 : 2; // NG, OK, unjudged
+      };
+      list = [...list].sort((a, b) => {
+        if (sortKey === "name")
+          return (sections[a]?.name || a).localeCompare(sections[b]?.name || b, undefined, { numeric: true });
+        if (sortKey === "members")
+          return (sections[b]?.elementKeys.length || 0) - (sections[a]?.elementKeys.length || 0);
+        return rank(a) - rank(b); // verdict
+      });
+    }
+    return list;
+  }, [order, query, ngOnly, sortKey, judgments, sections]);
 
   function patchRow(sid: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [sid]: { ...prev[sid], ...patch, dirty: true } }));
@@ -239,7 +287,7 @@ export function BeamBoard() {
     // Row cover is mm; REBB expects the model's native length unit.
     const payload = buildBeamPayload(r.sectors, coverToModel(r.dt, unit), coverToModel(r.db, unit));
     setSavingSid(sid);
-    setStatus({ ok: true, kind: "saving" });
+    setActionMsg({ ok: true, kind: "saving" });
     try {
       // REBB is keyed by SECTION number (see api/beam-sections.ts), so this
       // is a single write with the section id as the key — Gen NX applies it
@@ -249,13 +297,13 @@ export function BeamBoard() {
       // the old `vMAIN_BAR_TOP` legacy shape, so we do NOT call toWritePayload.
       const res = await saveRebar("BEAM", sid, payload, conn);
       if (!res.ok) {
-        setStatus({ ok: false, kind: "saveFail", res });
+        setActionMsg({ ok: false, kind: "saveFail", res });
         return;
       }
-      setStatus({ ok: true, kind: "saveDone" });
+      setActionMsg({ ok: true, kind: "saveDone" });
       setRows((prev) => ({ ...prev, [sid]: { ...prev[sid], dirty: false } }));
     } catch (e) {
-      setStatus({ ok: false, kind: "saveError", error: String(e) });
+      setActionMsg({ ok: false, kind: "saveError", error: String(e) });
     } finally {
       setSavingSid(null);
     }
@@ -264,13 +312,49 @@ export function BeamBoard() {
   async function fetchDemand(sid: string) {
     const grp = sections[sid];
     if (!grp) return;
+    // REBB/design tables are keyed per element, so query a representative
+    // element of the section group (lowest id, deterministic).
     const repKey = [...grp.elementKeys].sort((a, b) => Number(a) - Number(b))[0];
     setFetchingSid(sid);
     try {
       const res = await getBeamDesignResult(repKey, conn);
-      if (res.ok) setDemand((prev) => ({ ...prev, [sid]: res.bySector }));
+      if (!res.ok) {
+        setActionMsg({ ok: false, kind: "demandFail", res });
+        return;
+      }
+      setDemand((prev) => ({ ...prev, [sid]: res.bySector }));
+      const count = Object.keys(res.bySector).length;
+      setActionMsg(count ? { ok: true, kind: "demandLoaded", count } : { ok: false, kind: "demandEmpty" });
+    } catch (e) {
+      setActionMsg({ ok: false, kind: "demandFail", res: { ok: false, error: String(e) } });
     } finally {
       setFetchingSid(null);
+    }
+  }
+
+  // Run the whole model's structural analysis (/doc/ANAL) so the design-check
+  // results the "결과값 불러오기" button reads are up to date. Confirmed first
+  // because it refreshes/invalidates the model's existing analysis results.
+  // A long solve can outlast the serverless function: code "timeout"
+  // (our abort) or "parse_error" (a raw platform 504) means the solve is
+  // likely still running in Gen NX, not that it failed.
+  async function runModelAnalysis() {
+    if (!window.confirm(t("board.analyzeConfirm"))) return;
+    setAnalyzing(true);
+    setActionMsg({ ok: true, kind: "analyzing" });
+    try {
+      const res = await runAnalysis(conn);
+      if (res.ok) {
+        setActionMsg({ ok: true, kind: "analyzeDone" });
+      } else if (res.code === "timeout" || res.code === "parse_error") {
+        setActionMsg({ ok: false, kind: "analyzeRunning" });
+      } else {
+        setActionMsg({ ok: false, kind: "analyzeFail", res });
+      }
+    } catch (e) {
+      setActionMsg({ ok: false, kind: "analyzeFail", res: { ok: false, error: String(e) } });
+    } finally {
+      setAnalyzing(false);
     }
   }
 
@@ -341,9 +425,46 @@ export function BeamBoard() {
       {/* --- board table --- */}
       <div className="board-wrap">
         <div className="board-head">
-          <h2>{t("board.title")} {order.length > 0 && <span className="board-count">({order.length})</span>}</h2>
+          <h2>
+            {t("board.title")}{" "}
+            {order.length > 0 && (
+              <span className="board-count">
+                {visibleOrder.length === order.length
+                  ? `(${order.length})`
+                  : `(${t("board.countFiltered", { shown: visibleOrder.length, total: order.length })})`}
+              </span>
+            )}
+          </h2>
           <span className="board-hint">{t("board.tableHint")}</span>
         </div>
+        {order.length > 0 && (
+          <div className="board-filter">
+            <input
+              className="board-search"
+              type="search"
+              placeholder={t("board.searchPlaceholder")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button
+              type="button"
+              className={"board-ng-toggle" + (ngOnly ? " on" : "")}
+              onClick={() => setNgOnly((v) => !v)}
+              aria-pressed={ngOnly}
+            >
+              {t("board.ngOnly")}
+            </button>
+            <label className="board-sort">
+              <span>{t("board.sortLabel")}</span>
+              <select value={sortKey} onChange={(e) => setSortKey(e.target.value as typeof sortKey)}>
+                <option value="default">{t("board.sortDefault")}</option>
+                <option value="name">{t("board.sortName")}</option>
+                <option value="verdict">{t("board.sortVerdict")}</option>
+                <option value="members">{t("board.sortMembers")}</option>
+              </select>
+            </label>
+          </div>
+        )}
         <div className="table-scroll">
           <table className="board-table">
             <thead>
@@ -359,7 +480,7 @@ export function BeamBoard() {
               </tr>
             </thead>
             <tbody>
-              {order.map((sid) => {
+              {visibleOrder.map((sid) => {
                 const r = rows[sid];
                 const grp = sections[sid];
                 if (!r || !grp) return null;
@@ -394,6 +515,11 @@ export function BeamBoard() {
                   <td colSpan={8} className="board-empty">{listLoadedOnce ? t("board.emptyList") : t("board.notLoaded")}</td>
                 </tr>
               )}
+              {order.length > 0 && visibleOrder.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="board-empty">{t("board.filterEmpty")}</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -423,18 +549,6 @@ export function BeamBoard() {
                 </>
               }
             />
-            {/* --- live judgment bars --- */}
-            {selectedJudge && (
-              <div className="judge-block">
-                <div className="judge-title">{t("board.judgeTitle")}</div>
-                <JudgeBar label={t("board.flexLabel")} sym="φMn" ratio={selectedJudge.ratioFlex} cap={selectedJudge.phiMnPos ?? selectedJudge.phiMnNeg} unit="kN·m" t={t} />
-                <JudgeBar label={t("board.shearLabel")} sym="φVn" ratio={selectedJudge.ratioShear} cap={selectedJudge.phiVn} unit="kN" t={t} />
-                <button className="btn" type="button" style={{ marginTop: 8 }} onClick={() => fetchDemand(selectedSid)} disabled={fetchingSid === selectedSid}>
-                  {fetchingSid === selectedSid ? t("board.fetchingDemand") : t("board.fetchDemandBtn")}
-                </button>
-                <div className="hint" style={{ margin: "6px 0 0" }}>{t("board.fetchDemandHint")}</div>
-              </div>
-            )}
           </div>
 
           <div className="panel board-editor-card">
@@ -502,12 +616,30 @@ export function BeamBoard() {
                 <input type="number" value={selected.h} onChange={(e) => patchRow(selectedSid, { h: e.target.value })} /></div>
             </div>
 
-            <div className="save-row">
+            {/* --- action bar: save · run analysis · load results --- */}
+            <div className="board-actions">
               <button className="btn primary" type="button" onClick={() => saveGroup(selectedSid)} disabled={savingSid === selectedSid}>
                 {t("board.saveGroupBtn", { count: selectedGrp.elementKeys.length })}
               </button>
-              <span className="hint" style={{ margin: 0 }}>{selected.dirty ? t("board.unsavedNote") : t("board.savedNote")}</span>
+              <button className="btn" type="button" onClick={runModelAnalysis} disabled={analyzing}>
+                {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
+              </button>
+              <button className="btn" type="button" onClick={() => fetchDemand(selectedSid)} disabled={fetchingSid === selectedSid}>
+                {fetchingSid === selectedSid ? t("board.fetchingDemand") : t("board.fetchDemandBtn")}
+              </button>
+              <span className="hint save-note">{selected.dirty ? t("board.unsavedNote") : t("board.savedNote")}</span>
             </div>
+            <div className="hint board-actions-hint">{t("board.fetchDemandHint")}</div>
+            {actionMsg && <div className={"status show " + statusClass(actionMsg)}>{statusText(t, actionMsg)}</div>}
+
+            {/* --- live judgment (실시간 판정), directly under the action bar --- */}
+            {selectedJudge && (
+              <div className="judge-block">
+                <div className="judge-title">{t("board.judgeTitle")}</div>
+                <JudgeBar label={t("board.flexLabel")} sym="φMn" ratio={selectedJudge.ratioFlex} cap={selectedJudge.phiMnPos ?? selectedJudge.phiMnNeg} unit="kN·m" t={t} />
+                <JudgeBar label={t("board.shearLabel")} sym="φVn" ratio={selectedJudge.ratioShear} cap={selectedJudge.phiVn} unit="kN" t={t} />
+              </div>
+            )}
           </div>
         </div>
       )}

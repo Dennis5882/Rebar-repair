@@ -118,6 +118,12 @@ export interface BeamDesignResultOk {
 }
 export type BeamDesignResultResult = BeamDesignResultOk | ApiError;
 
+export interface RunAnalysisOk {
+  ok: true;
+  data?: unknown;
+}
+export type RunAnalysisResult = RunAnalysisOk | ApiError;
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
@@ -153,6 +159,14 @@ export function getModelUnit(conn: ConnInfo): Promise<UnitResult> {
 
 export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<BeamDesignResultResult> {
   return post<BeamDesignResultResult>("/api/beam-design-result", { elemKey, ...conn });
+}
+
+// Runs the model's structural analysis (/doc/ANAL). A long solve can outlast
+// the serverless function; the handler returns code:"timeout" in that case,
+// and post()'s own parse-error fallback (code:"parse_error") covers a raw
+// platform 504 — the caller treats both as "still running", not a failure.
+export function runAnalysis(conn: ConnInfo): Promise<RunAnalysisResult> {
+  return post<RunAnalysisResult>("/api/run-analysis", conn);
 }
 
 // BEAM's write endpoint takes the SAME shape it returns on read — the
