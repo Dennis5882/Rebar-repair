@@ -1,4 +1,4 @@
-import type { BeamPayload, BeamWritePayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
+import type { BeamPayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
 import type { TFn } from "../i18n/types";
@@ -161,26 +161,16 @@ export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<Be
   return post<BeamDesignResultResult>("/api/beam-design-result", { elemKey, ...conn });
 }
 
-// BEAM's write endpoint needs the legacy BeamWritePayload shape (see
-// toWritePayload() in BeamForm.tsx and the doc comment on BeamWriteItem).
-// Overloading on memberType catches a wrong-member-type payload (e.g.
-// accidentally passing a WallPayload for "BEAM"). It does NOT catch passing
-// BEAM's own canonical BeamPayload where BeamWritePayload is expected —
-// both are structurally "weak types" (every field optional) with enough
-// overlapping field names that TypeScript accepts the substitution anyway.
-// Always call toWritePayload() explicitly at the BEAM save call site.
-export function saveRebar(memberType: "BEAM", key: string, payload: BeamWritePayload, conn: ConnInfo): Promise<SaveResult>;
-export function saveRebar(
-  memberType: Exclude<MemberType, "BEAM">,
-  key: string,
-  payload: MemberPayload,
-  conn: ConnInfo
-): Promise<SaveResult>;
-export function saveRebar(
-  memberType: MemberType,
-  key: string,
-  payload: MemberPayload | BeamWritePayload,
-  conn: ConnInfo
-): Promise<SaveResult> {
+// BEAM's write endpoint takes the SAME shape it returns on read — the
+// canonical BeamPayload (MAIN_BAR_TOP:{LAYER1:{NAME,NUM}} object + item-level
+// DT/DB), sent via PUT. This was live-verified 2026-07-24 (see
+// genxn-api-schema-findings): the manual's `vMAIN_BAR_TOP`/`MAIN_BAR_DC_TOP`
+// "legacy" example shape is silently dropped by the server for populated bars
+// (PUT returns 200 with the main bars stripped; POST returns "Wrong Field"),
+// so the old toWritePayload() conversion produced a no-op save. Send the
+// BeamPayload directly. (POST is create-only here — it 409s "Key Already
+// Exist" on an existing section — so writes must use PUT, which the handler
+// already does.)
+export function saveRebar(memberType: MemberType, key: string, payload: MemberPayload, conn: ConnInfo): Promise<SaveResult> {
   return post<SaveResult>("/api/rebar-update", { memberType, key, payload, ...conn });
 }

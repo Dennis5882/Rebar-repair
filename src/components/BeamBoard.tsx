@@ -10,7 +10,6 @@ import {
   detectInputMode,
   fillFromPayload,
   sectorsEqual,
-  toWritePayload,
   type BeamInputMode,
   type SectorFormValues,
 } from "../lib/beamRebarForm";
@@ -233,10 +232,11 @@ export function BeamBoard() {
     try {
       // REBB is keyed by SECTION number (see api/beam-sections.ts), so this
       // is a single write with the section id as the key — Gen NX applies it
-      // to every element using that section automatically. (The old per-
-      // element loop wrote bogus element-keyed REBB records that Gen NX
-      // couldn't read — the "MAIN_BAR_TOP does not exist" error.)
-      const res = await saveRebar("BEAM", sid, toWritePayload(payload), conn);
+      // to every element using that section automatically. The payload is the
+      // canonical read shape (MAIN_BAR_TOP object + DT/DB); the server accepts
+      // exactly that on write (live-verified 2026-07-24) and silently drops
+      // the old `vMAIN_BAR_TOP` legacy shape, so we do NOT call toWritePayload.
+      const res = await saveRebar("BEAM", sid, payload, conn);
       if (!res.ok) {
         setStatus({ ok: false, kind: "saveFail", res });
         return;
