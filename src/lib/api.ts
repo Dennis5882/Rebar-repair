@@ -176,7 +176,7 @@ export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<Be
 // take a few seconds on a many-section model; it returns whatever completed
 // within its time budget with `partial: true` if it had to stop early.
 export function getAllBeamDesignResults(elemKeys: string[], conn: ConnInfo): Promise<BeamDesignResultsAllResult> {
-  return post<BeamDesignResultsAllResult>("/api/beam-design-results-batch", { elemKeys, ...conn });
+  return post<BeamDesignResultsAllResult>("/api/beam-design-result", { elemKeys, ...conn });
 }
 
 // Runs the model's structural analysis (/doc/ANAL). A long solve can outlast
