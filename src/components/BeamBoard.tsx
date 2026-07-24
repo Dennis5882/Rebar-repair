@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { getBeamDesignResult, listBeamSections, runAnalysis, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
+import { getAllBeamDesignResults, getBeamDesignResult, listBeamSections, runAnalysis, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
 import { formulaFamily } from "../lib/rcBeamCheck";
 import { MM_PER_UNIT } from "../data/rcCodePresets";
 import {
@@ -139,6 +139,7 @@ export function BeamBoard() {
   const [selectedSid, setSelectedSid] = useState<string | null>(null);
   const [savingSid, setSavingSid] = useState<string | null>(null);
   const [fetchingSid, setFetchingSid] = useState<string | null>(null);
+  const [fetchingAll, setFetchingAll] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   // Per-section action feedback (save / analyze / fetch results). Kept
   // separate from the top-of-board `status` (which only reports the list
@@ -332,6 +333,51 @@ export function BeamBoard() {
     }
   }
 
+  // Board-wide demand fetch: one representative element (lowest id) per
+  // section — same choice as the single fetch above — sent as one batch. The
+  // backend queries each element separately (BC-TABLE's MEMB can't demux a
+  // multi-element response), so a many-section model takes a few seconds.
+  // Merges into existing demand so a section the batch skips keeps whatever
+  // was already loaded for it.
+  async function fetchAllDemand() {
+    if (!order.length) return;
+    const repBySid: Record<string, string> = {};
+    const repKeys: string[] = [];
+    for (const sid of order) {
+      const grp = sections[sid];
+      if (!grp || !grp.elementKeys.length) continue;
+      const rep = [...grp.elementKeys].sort((a, b) => Number(a) - Number(b))[0];
+      repBySid[sid] = rep;
+      repKeys.push(rep);
+    }
+    if (!repKeys.length) return;
+    setFetchingAll(true);
+    setStatus({ ok: true, kind: "demandAllLoading" });
+    try {
+      const res = await getAllBeamDesignResults(repKeys, conn);
+      if (!res.ok) {
+        setStatus({ ok: false, kind: "demandFail", res });
+        return;
+      }
+      const next: Record<string, DemandBySector> = {};
+      let loaded = 0;
+      for (const sid of order) {
+        const rep = repBySid[sid];
+        const bySector = rep ? res.byElem[rep] : undefined;
+        if (bySector && Object.keys(bySector).length) {
+          next[sid] = bySector;
+          loaded++;
+        }
+      }
+      setDemand((prev) => ({ ...prev, ...next }));
+      setStatus({ ok: true, kind: "demandAllLoaded", loaded, total: order.length });
+    } catch (e) {
+      setStatus({ ok: false, kind: "demandFail", res: { ok: false, error: String(e) } });
+    } finally {
+      setFetchingAll(false);
+    }
+  }
+
   // Run the whole model's structural analysis (/doc/ANAL) so the design-check
   // results the "결과값 불러오기" button reads are up to date. Confirmed first
   // because it refreshes/invalidates the model's existing analysis results.
@@ -396,6 +442,11 @@ export function BeamBoard() {
             <label className="board-mat-fld">{t("beam.fy")}<input type="number" step="any" value={fy} onChange={(e) => setFy(e.target.value)} /></label>
             <label className="board-mat-fld">{t("beam.fyt")}<input type="number" step="any" value={fyt} onChange={(e) => setFyt(e.target.value)} /></label>
           </div>
+          {order.length > 0 && (
+            <button className="btn board-fetch-all" type="button" onClick={fetchAllDemand} disabled={fetchingAll}>
+              {fetchingAll ? t("board.fetchingAll") : t("board.fetchAllBtn")}
+            </button>
+          )}
         </div>
         {status && (
           <div className={"status show " + statusClass(status)} style={{ marginTop: 8 }}>

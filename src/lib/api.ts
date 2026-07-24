@@ -118,6 +118,15 @@ export interface BeamDesignResultOk {
 }
 export type BeamDesignResultResult = BeamDesignResultOk | ApiError;
 
+export interface BeamDesignResultsAllOk {
+  ok: true;
+  // Keyed by the element id that was queried (one representative element per
+  // section). `partial` is true if the batch stopped early on its time budget.
+  byElem: Record<string, Partial<Record<SectorKey, BeamDemandPoint>>>;
+  partial?: boolean;
+}
+export type BeamDesignResultsAllResult = BeamDesignResultsAllOk | ApiError;
+
 export interface RunAnalysisOk {
   ok: true;
   data?: unknown;
@@ -159,6 +168,15 @@ export function getModelUnit(conn: ConnInfo): Promise<UnitResult> {
 
 export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<BeamDesignResultResult> {
   return post<BeamDesignResultResult>("/api/beam-design-result", { elemKey, ...conn });
+}
+
+// Batch demand fetch for the whole board — one representative element per
+// section. The backend queries each element separately (BC-TABLE's MEMB
+// column can't be trusted to demux a multi-element response), so this can
+// take a few seconds on a many-section model; it returns whatever completed
+// within its time budget with `partial: true` if it had to stop early.
+export function getAllBeamDesignResults(elemKeys: string[], conn: ConnInfo): Promise<BeamDesignResultsAllResult> {
+  return post<BeamDesignResultsAllResult>("/api/beam-design-results-batch", { elemKeys, ...conn });
 }
 
 // Runs the model's structural analysis (/doc/ANAL). A long solve can outlast

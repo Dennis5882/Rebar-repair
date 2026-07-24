@@ -215,6 +215,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .board-mat-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; align-self: center; }
 .board-mat-fld { display: flex; flex-direction: column; gap: 3px; font-size: 10.5px; color: var(--ink-2); margin: 0; }
 .board-mat-fld input { width: 72px; margin: 0; font-family: var(--mono); }
+.board-fetch-all { margin-left: auto; align-self: center; white-space: nowrap; }
 .board-editor-card input, .board-editor-card select { font-family: var(--mono); }
 .detail-el, .judge-val, .judge-name span { font-family: var(--mono); }
 
@@ -270,7 +271,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .verdict.ok { color: var(--good); background: color-mix(in srgb, var(--good) 13%, transparent); }
 .verdict.ng { color: var(--critical); background: color-mix(in srgb, var(--critical) 13%, transparent); }
 .verdict.none { color: var(--muted); }
-.board-empty { text-align: center; color: var(--muted); padding: 34px; font-size: 12.5px; }
+.board-empty { text-align: center; color: var(--muted); padding: 34px; font-size: 12.5px; font-family: var(--sans); }
 
 /* Editor (input) on the left, section preview (graphic) on the right — the
    preview card is DOM-first but placed second visually via `order`. */

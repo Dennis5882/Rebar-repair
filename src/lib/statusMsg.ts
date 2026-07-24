@@ -41,7 +41,12 @@ export type StatusMsg =
   // Design-result (BC-TABLE) fetch feedback for the "결과값 불러오기" button.
   | { ok: true; kind: "demandLoaded"; count: number }
   | { ok: false; kind: "demandEmpty" }
-  | { ok: false; kind: "demandFail"; res: ApiError };
+  | { ok: false; kind: "demandFail"; res: ApiError }
+  // Board-wide batch demand fetch ("전 단면 수요 불러오기"). `loaded` = sections
+  // that got a result, `total` = sections queried (loaded < total is normal:
+  // some sections have no design result yet).
+  | { ok: true; kind: "demandAllLoaded"; loaded: number; total: number }
+  | { ok: true; kind: "demandAllLoading" };
 
 const LIST_KINDS = new Set(["listLoaded", "sectionsLoaded", "listFail", "listError"]);
 
@@ -105,6 +110,10 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("board.demandEmpty");
     case "demandFail":
       return t("board.demandFail", { error: errText(t, s.res) });
+    case "demandAllLoading":
+      return t("board.fetchingAll");
+    case "demandAllLoaded":
+      return t("board.demandAllLoaded", { loaded: s.loaded, total: s.total });
   }
 }
 
