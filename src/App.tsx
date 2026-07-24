@@ -1,4 +1,7 @@
 import { useState } from "react";
+// Vite + React app (NOT Next.js), so the correct entrypoint is /react —
+// @vercel/analytics/next only works under a Next.js runtime.
+import { Analytics } from "@vercel/analytics/react";
 import "./style.css";
 import { I18nProvider } from "./i18n/I18nProvider";
 import { useI18n } from "./i18n/useI18n";
@@ -51,6 +54,7 @@ function AppShell() {
 
       <FooterHint />
       <Byline />
+      <Analytics />
     </div>
   );
 }
