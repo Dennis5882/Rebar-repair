@@ -14,8 +14,48 @@ export interface SectorDemand {
   muNeg?: number; // hogging (top steel) demand, kN·m
   muPos?: number; // sagging (bottom steel) demand, kN·m
   vu?: number; // shear demand, kN
+  // Gen NX's own design-check verdict for this station, read from BC-TABLE
+  // (present only on a KDS model after a check has run). chk/chkRbr = CHK_STR/
+  // CHK_RBR; ratN/ratP/ratV = demand/capacity ratios (neg moment/pos/shear).
+  chk?: string;
+  chkRbr?: string;
+  ratN?: number;
+  ratP?: number;
+  ratV?: number;
 }
 export type DemandBySector = Partial<Record<SectorKey, SectorDemand>>;
+
+// Gen NX's authoritative verdict for a section, reduced from its I/M/J stations
+// — the worst (max) ratio across stations, OK only if every station's strength
+// AND rebar-detail check passed. Returns null when the demand carries no Gen NX
+// verdict at all (non-KDS model, or check not yet run) so the board can fall
+// back to the in-browser formula. Kept pure + exported for unit testing.
+export interface GenVerdict {
+  ok: boolean;
+  ratFlex?: number;
+  ratShear?: number;
+}
+const isOk = (s?: string): boolean => s != null && /^ok/i.test(s.trim());
+export function genVerdictFromDemand(demand: DemandBySector): GenVerdict | null {
+  let sawChk = false;
+  let anyNg = false;
+  let ratFlex: number | undefined;
+  let ratShear: number | undefined;
+  for (const key of SECTORS) {
+    const d = demand[key];
+    if (!d) continue;
+    if (d.chk != null) {
+      sawChk = true;
+      if (!isOk(d.chk)) anyNg = true;
+    }
+    if (d.chkRbr != null && !isOk(d.chkRbr)) anyNg = true;
+    if (d.ratN != null) ratFlex = Math.max(ratFlex ?? 0, d.ratN);
+    if (d.ratP != null) ratFlex = Math.max(ratFlex ?? 0, d.ratP);
+    if (d.ratV != null) ratShear = Math.max(ratShear ?? 0, d.ratV);
+  }
+  if (!sawChk) return null;
+  return { ok: !anyNg, ratFlex, ratShear };
+}
 
 export interface MatProps {
   fck: number;

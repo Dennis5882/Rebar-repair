@@ -281,6 +281,15 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .verdict.ok { color: var(--good); background: color-mix(in srgb, var(--good) 13%, transparent); }
 .verdict.ng { color: var(--critical); background: color-mix(in srgb, var(--critical) 13%, transparent); }
 .verdict.none { color: var(--muted); }
+/* Source tag on a verdict: Gen NX's authoritative check vs the in-browser
+   formula estimate. Small, low-emphasis — the OK/NG stays the focus. */
+.vsrc { font-family: var(--sans); font-weight: 600; font-size: 8.5px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 4px; border-radius: 4px; opacity: .9; }
+.vsrc.gennx { color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.vsrc.formula { color: var(--muted); background: var(--surface-2); }
+.vsrc.none { display: none; }
+.judge-src { margin-left: 8px; font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px; letter-spacing: .03em; vertical-align: middle; }
+.judge-src.gennx { color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.judge-src.formula { color: var(--muted); background: var(--surface-2); }
 .board-empty { text-align: center; color: var(--muted); padding: 34px; font-size: 12.5px; font-family: var(--sans); }
 
 /* Editor (input) on the left, section preview (graphic) on the right — the

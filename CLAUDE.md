@@ -75,12 +75,20 @@ alongside when you touch one of these.
   (`MAIN_BAR_TOP:{LAYER1:{NAME,NUM}}` + item-level `DT`/`DB`) via **PUT**. The
   manual's `vMAIN_BAR_*` "legacy" shape is silently dropped (200 no-op). Always
   read back to confirm a write applied.
-- **NEVER call the design-check "perform" family (`BC-ANAL`/`CC-ANAL`/`WD-ANAL`/
-  any `*-ANAL` in `design/rc_kds`).** It reproducibly hangs/crashes the Gen NX
-  desktop app. Only read already-computed results (`BC-TABLE`, in
-  `api/beam-design-result.ts`). `/doc/ANAL` (plain FE analysis, in `api/model.ts`
-  action `analyze`) is the *safe* "해석 실행" — it can be slow (90s+), so a
-  timeout means "still solving", not failure.
+- **`*-ANAL` (design-check perform) — RE-VERIFIED 2026-07-25: no longer hangs on
+  current Gen NX builds.** The old rule was "NEVER call `BC-ANAL`/`CC-ANAL`/…" —
+  it reproducibly hung/crashed the app on Gen NX 2026 v2.1. A live re-test on the
+  current build ran `CC-ANAL` (incl. `PERFORM_TYPE:"ALL"`) and `BC-ANAL` cleanly
+  4/4, app stayed connected. `BC-ANAL` is now wired behind the beam board's
+  **"Gen NX 재검토"** button (`api/beam-design-result.ts`, `recheck` flag →
+  `BC-ANAL ALL` then read `BC-TABLE` `CHK_STR`/`Rat-N`/`Rat-P`/`Rat-V`). Still
+  treat it with care: it's design-code-scoped to **KDS-41-20-2022** only (non-KDS
+  models fall back to the in-browser formula), and the re-test is one build/model
+  — keep the short timeout + "results may have committed even on timeout"
+  readback pattern. `/doc/ANAL` (plain FE analysis, `api/model.ts` action
+  `analyze`) remains the safe "해석 실행"; a timeout there means "still solving".
+  Design results are also readable without any perform call (`*-TABLE` of what
+  the user computed in Gen NX's GUI) — the zero-risk path.
 - **Beam vs column is orientation-based**, not element `TYPE` (all frame elements
   are `TYPE:"BEAM"`). Vertical (`dz>dxy`) ⇒ column. Walls are often `TYPE:"PLATE"`.
   `api/member-sections.ts` uses this: **COLUMN** lists sections used by a vertical

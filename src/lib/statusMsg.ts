@@ -46,7 +46,14 @@ export type StatusMsg =
   // that got a result, `total` = sections queried (loaded < total is normal:
   // some sections have no design result yet).
   | { ok: true; kind: "demandAllLoaded"; loaded: number; total: number }
-  | { ok: true; kind: "demandAllLoading" };
+  | { ok: true; kind: "demandAllLoading" }
+  // "Gen NX 재검토" — run BC-ANAL then read every section's verdict. recheckEmpty
+  // = the read returned nothing (typically a non-KDS model), so the board keeps
+  // its in-browser formula estimate.
+  | { ok: true; kind: "recheckRunning" }
+  | { ok: true; kind: "recheckDone"; loaded: number; total: number }
+  | { ok: false; kind: "recheckEmpty" }
+  | { ok: false; kind: "recheckFail"; res: ApiError };
 
 const LIST_KINDS = new Set(["listLoaded", "sectionsLoaded", "listFail", "listError"]);
 
@@ -114,6 +121,14 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("board.fetchingAll");
     case "demandAllLoaded":
       return t("board.demandAllLoaded", { loaded: s.loaded, total: s.total });
+    case "recheckRunning":
+      return t("board.rechecking");
+    case "recheckDone":
+      return t("board.recheckDone", { loaded: s.loaded, total: s.total });
+    case "recheckEmpty":
+      return t("board.recheckEmpty");
+    case "recheckFail":
+      return t("board.recheckFail", { error: errText(t, s.res) });
   }
 }
 

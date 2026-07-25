@@ -24,6 +24,14 @@ import { fetchMidas, resolveBase, setCorsPost } from "./lib/midas.js";
 // namespace by hand.
 const BC_TABLE_PATH = "/DESIGN/RC/KDS-41-20-2022/BC-TABLE";
 
+// The design-check PERFORM endpoint. Long documented as a Gen NX crash risk,
+// but live re-verified 2026-07-25 to run cleanly on current builds (see
+// genxn-api-schema-findings) — used only when the caller explicitly asks for a
+// recheck. PERFORM_TYPE "ALL" re-checks the whole model in ~2s; reading is
+// still per-element below. Kept as its own literal in the same KDS namespace.
+const BC_ANAL_PATH = "/DESIGN/RC/KDS-41-20-2022/BC-ANAL";
+const ANAL_TIMEOUT_MS = 25000;
+
 // Batch needs headroom: a many-section model runs one BC-TABLE call per
 // section. Query timeout stays short; the whole loop stops before the
 // function ceiling and returns a clean partial result.
@@ -38,6 +46,15 @@ interface DemandPoint {
   muNeg?: number;
   muPos?: number;
   vu?: number;
+  // Gen NX's own design-check verdict for this position (read straight from
+  // BC-TABLE, no in-browser formula). `chk` = CHK_STR (strength), `chkRbr` =
+  // CHK_RBR (rebar detailing); ratN/ratP/ratV = demand/capacity ratios for
+  // negative moment / positive moment / shear.
+  chk?: string;
+  chkRbr?: string;
+  ratN?: number;
+  ratP?: number;
+  ratV?: number;
 }
 
 // The single-element BC-TABLE request body. Requesting UNIT explicitly makes
@@ -67,6 +84,14 @@ function readAbsNum(row: string[], idx: number): number | undefined {
   return Number.isFinite(v) ? v : undefined;
 }
 
+// String cell (CHK_STR/CHK_RBR), trimmed; undefined when blank or absent.
+function readStr(row: string[], idx: number): string | undefined {
+  if (idx < 0) return undefined;
+  const raw = row[idx];
+  if (raw == null || String(raw).trim() === "") return undefined;
+  return String(raw).trim();
+}
+
 // Response top-level key is the requested TABLE_NAME but has been observed to
 // vary ("Result Table") — read the first value. Column positions come from
 // HEAD at runtime, not hardcoded indices.
@@ -81,6 +106,14 @@ function parseBcTable(data: any): Record<SectorKey, DemandPoint> {
   const negMuIdx = head.indexOf("Neg_Mu");
   const posMuIdx = head.indexOf("Pos_Mu");
   const vuIdx = head.indexOf("Sh_Vu");
+  // Gen NX verdict columns (live HEAD 2026-07-25): CHK_STR / CHK_RBR and the
+  // demand/capacity ratios Rat-N (neg moment) / Rat-P (pos moment) / Rat-V
+  // (shear). Note the hyphens — not underscores.
+  const chkIdx = head.indexOf("CHK_STR");
+  const chkRbrIdx = head.indexOf("CHK_RBR");
+  const ratNIdx = head.indexOf("Rat-N");
+  const ratPIdx = head.indexOf("Rat-P");
+  const ratVIdx = head.indexOf("Rat-V");
   if (posIdx < 0) return out;
 
   for (const row of rows) {
@@ -93,6 +126,16 @@ function parseBcTable(data: any): Record<SectorKey, DemandPoint> {
     if (muPos !== undefined) point.muPos = muPos;
     const vu = readAbsNum(row, vuIdx);
     if (vu !== undefined) point.vu = vu;
+    const chk = readStr(row, chkIdx);
+    if (chk !== undefined) point.chk = chk;
+    const chkRbr = readStr(row, chkRbrIdx);
+    if (chkRbr !== undefined) point.chkRbr = chkRbr;
+    const ratN = readAbsNum(row, ratNIdx);
+    if (ratN !== undefined) point.ratN = ratN;
+    const ratP = readAbsNum(row, ratPIdx);
+    if (ratP !== undefined) point.ratP = ratP;
+    const ratV = readAbsNum(row, ratVIdx);
+    if (ratV !== undefined) point.ratV = ratV;
     out[pos as SectorKey] = point;
   }
   return out;
@@ -128,12 +171,32 @@ async function fetchOne(base: string, apiKey: string, elemNum: number): Promise<
   }
 }
 
+// Run the model-wide beam design check (BC-ANAL). Best-effort: a hang/timeout
+// is swallowed because the check has been observed to complete and persist even
+// when the HTTP ack is lost (see genxn-api-schema-findings) — the caller reads
+// BC-TABLE afterward regardless.
+async function runBeamCheck(base: string, apiKey: string): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ANAL_TIMEOUT_MS);
+  try {
+    await fetchMidas(`${base}${BC_ANAL_PATH}`, apiKey, {
+      method: "POST",
+      signal: controller.signal,
+      body: { Argument: { PERFORM_TYPE: "ALL" } },
+    });
+  } catch {
+    /* hang/timeout: results may already be committed — fall through to read */
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { product, apiKey, baseUrl, elemKey, elemKeys } = req.body || {};
+  const { product, apiKey, baseUrl, elemKey, elemKeys, recheck } = req.body || {};
   const base = resolveBase(product, baseUrl);
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
@@ -150,6 +213,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const num = Number(raw);
       if (Number.isFinite(num)) targets.push({ key, num });
     }
+    // Recheck once for the whole model before reading — one BC-ANAL "ALL" is
+    // cheaper and more consistent than per-element checks.
+    if (recheck) await runBeamCheck(base, apiKey);
     const byElem: Record<string, Record<SectorKey, DemandPoint>> = {};
     let partial = false;
     const start = Date.now();
@@ -169,8 +235,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const elemNum = Number(elemKey);
   if (!Number.isFinite(elemNum)) return res.status(400).json({ ok: false, code: "missing_key_id" });
 
-  // BC-TABLE hung once in prior testing, but only for an element whose own
-  // BC-ANAL call had left the server bad — a case this app never creates.
+  if (recheck) await runBeamCheck(base, apiKey);
+
   // Keep well under the platform timeout to return a clean, translatable error.
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);

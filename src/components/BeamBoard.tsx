@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { getAllBeamDesignResults, getBeamDesignResult, listBeamSections, runAnalysis, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
+import { getAllBeamDesignResults, getBeamDesignResult, listBeamSections, runAnalysis, runBeamCheck, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
 import { formulaFamily } from "../lib/rcBeamCheck";
 import { lenToMm as coverToMm, lenToModel as coverToModel, mmPerUnit } from "../lib/units";
 import {
@@ -14,7 +14,7 @@ import {
   type SectorFormValues,
 } from "../lib/beamRebarForm";
 import type { TFn } from "../i18n/types";
-import { judgeSection, type DemandBySector, type MatProps } from "../lib/beamBoard";
+import { genVerdictFromDemand, judgeSection, type DemandBySector, type GenVerdict, type MatProps } from "../lib/beamBoard";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
@@ -36,6 +36,11 @@ interface RowState {
   mode: BeamInputMode;
   dirty: boolean;
 }
+
+// The verdict actually rendered for a section, plus where it came from:
+// "gennx" = Gen NX's own design check (authoritative), "formula" = the
+// in-browser φMn/φVn estimate (fallback/preview), "none" = no verdict yet.
+type EffVerdict = { ok?: boolean; source: "gennx" | "formula" | "none"; ratFlex?: number; ratShear?: number };
 
 const DEFAULT_B = "400";
 const DEFAULT_H = "600";
@@ -141,6 +146,7 @@ export function BeamBoard() {
   const [savingSid, setSavingSid] = useState<string | null>(null);
   const [fetchingSid, setFetchingSid] = useState<string | null>(null);
   const [fetchingAll, setFetchingAll] = useState(false);
+  const [rechecking, setRechecking] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   // Per-section action feedback (save / analyze / fetch results). Kept
   // separate from the top-of-board `status` (which only reports the list
@@ -203,20 +209,48 @@ export function BeamBoard() {
     return out;
   }, [family, order, rows, mat, materialDB, demand]);
 
+  // Gen NX's own verdict per section, derived from the fetched BC-TABLE data
+  // (null when the model isn't KDS or no check has run yet).
+  const genVerdicts = useMemo(() => {
+    const out: Record<string, GenVerdict | null> = {};
+    for (const sid of order) out[sid] = genVerdictFromDemand(demand[sid] || {});
+    return out;
+  }, [order, demand]);
+
+  // Effective verdict shown per section. Gen NX's is authoritative when present
+  // and the row isn't mid-edit — an unsaved edit makes the last Gen NX result
+  // stale, so fall back to the in-browser formula "estimate" until re-saved and
+  // re-checked. Otherwise the formula verdict; otherwise none.
+  const verdicts = useMemo(() => {
+    const out: Record<string, EffVerdict> = {};
+    for (const sid of order) {
+      const dirty = rows[sid]?.dirty;
+      const gv = !dirty ? genVerdicts[sid] : null;
+      if (gv) {
+        out[sid] = { ok: gv.ok, source: "gennx", ratFlex: gv.ratFlex, ratShear: gv.ratShear };
+        continue;
+      }
+      const j = judgments[sid];
+      if (j?.ok != null) out[sid] = { ok: j.ok, source: "formula", ratFlex: j.ratioFlex, ratShear: j.ratioShear };
+      else out[sid] = { source: "none" };
+    }
+    return out;
+  }, [order, rows, genVerdicts, judgments]);
+
   const summary = useMemo(() => {
     let ok = 0;
     let ng = 0;
     let judged = 0;
     let dirty = 0;
     for (const sid of order) {
-      const j = judgments[sid];
-      if (j?.ok === true) ok++;
-      else if (j?.ok === false) ng++;
-      if (j?.ok != null) judged++;
+      const v = verdicts[sid];
+      if (v?.ok === true) ok++;
+      else if (v?.ok === false) ng++;
+      if (v?.ok != null) judged++;
       if (rows[sid]?.dirty) dirty++;
     }
     return { total: order.length, ok, ng, judged, dirty };
-  }, [order, judgments, rows]);
+  }, [order, verdicts, rows]);
 
   // Filtered + sorted view of `order`. `order` stays the canonical model
   // order; only what the table renders changes. Verdict rank puts NG first
@@ -224,7 +258,7 @@ export function BeamBoard() {
   const visibleOrder = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = order.filter((sid) => {
-      if (ngOnly && judgments[sid]?.ok !== false) return false;
+      if (ngOnly && verdicts[sid]?.ok !== false) return false;
       if (q) {
         const name = (sections[sid]?.name || sid.replace(/^elem:/, "")).toLowerCase();
         if (!name.includes(q)) return false;
@@ -233,7 +267,7 @@ export function BeamBoard() {
     });
     if (sortKey !== "default") {
       const rank = (sid: string) => {
-        const ok = judgments[sid]?.ok;
+        const ok = verdicts[sid]?.ok;
         return ok === false ? 0 : ok === true ? 1 : 2; // NG, OK, unjudged
       };
       list = [...list].sort((a, b) => {
@@ -245,7 +279,7 @@ export function BeamBoard() {
       });
     }
     return list;
-  }, [order, query, ngOnly, sortKey, judgments, sections]);
+  }, [order, query, ngOnly, sortKey, verdicts, sections]);
 
   function patchRow(sid: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [sid]: { ...prev[sid], ...patch, dirty: true } }));
@@ -340,8 +374,9 @@ export function BeamBoard() {
   // multi-element response), so a many-section model takes a few seconds.
   // Merges into existing demand so a section the batch skips keeps whatever
   // was already loaded for it.
-  async function fetchAllDemand() {
-    if (!order.length) return;
+  // One representative element (lowest id) per section — the deterministic key
+  // used for every board-wide BC-TABLE read (demand fetch and recheck alike).
+  function collectReps(): { repBySid: Record<string, string>; repKeys: string[] } {
     const repBySid: Record<string, string> = {};
     const repKeys: string[] = [];
     for (const sid of order) {
@@ -351,6 +386,28 @@ export function BeamBoard() {
       repBySid[sid] = rep;
       repKeys.push(rep);
     }
+    return { repBySid, repKeys };
+  }
+
+  // Map a per-element batch response back onto section ids, keeping only the
+  // sections the batch actually returned data for.
+  function mapByElemToSid(byElem: Record<string, DemandBySector>, repBySid: Record<string, string>) {
+    const next: Record<string, DemandBySector> = {};
+    let loaded = 0;
+    for (const sid of order) {
+      const rep = repBySid[sid];
+      const bySector = rep ? byElem[rep] : undefined;
+      if (bySector && Object.keys(bySector).length) {
+        next[sid] = bySector;
+        loaded++;
+      }
+    }
+    return { next, loaded };
+  }
+
+  async function fetchAllDemand() {
+    if (!order.length) return;
+    const { repBySid, repKeys } = collectReps();
     if (!repKeys.length) return;
     setFetchingAll(true);
     setStatus({ ok: true, kind: "demandAllLoading" });
@@ -360,22 +417,40 @@ export function BeamBoard() {
         setStatus({ ok: false, kind: "demandFail", res });
         return;
       }
-      const next: Record<string, DemandBySector> = {};
-      let loaded = 0;
-      for (const sid of order) {
-        const rep = repBySid[sid];
-        const bySector = rep ? res.byElem[rep] : undefined;
-        if (bySector && Object.keys(bySector).length) {
-          next[sid] = bySector;
-          loaded++;
-        }
-      }
+      const { next, loaded } = mapByElemToSid(res.byElem, repBySid);
       setDemand((prev) => ({ ...prev, ...next }));
       setStatus({ ok: true, kind: "demandAllLoaded", loaded, total: order.length });
     } catch (e) {
       setStatus({ ok: false, kind: "demandFail", res: { ok: false, error: String(e) } });
     } finally {
       setFetchingAll(false);
+    }
+  }
+
+  // "Gen NX 재검토": re-run the beam design check (BC-ANAL "ALL") and read every
+  // section's verdict in one round-trip, then merge into demand — genVerdicts
+  // recomputes and those sections switch to Gen NX's authoritative OK/NG. KDS
+  // models only; on a non-KDS model the read comes back empty and rows keep
+  // their in-browser formula estimate.
+  async function handleRecheck() {
+    if (!order.length) return;
+    const { repBySid, repKeys } = collectReps();
+    if (!repKeys.length) return;
+    setRechecking(true);
+    setStatus({ ok: true, kind: "recheckRunning" });
+    try {
+      const res = await runBeamCheck(repKeys, conn);
+      if (!res.ok) {
+        setStatus({ ok: false, kind: "recheckFail", res });
+        return;
+      }
+      const { next, loaded } = mapByElemToSid(res.byElem, repBySid);
+      setDemand((prev) => ({ ...prev, ...next }));
+      setStatus(loaded ? { ok: true, kind: "recheckDone", loaded, total: order.length } : { ok: false, kind: "recheckEmpty" });
+    } catch (e) {
+      setStatus({ ok: false, kind: "recheckFail", res: { ok: false, error: String(e) } });
+    } finally {
+      setRechecking(false);
     }
   }
 
@@ -408,6 +483,7 @@ export function BeamBoard() {
   const selected = selectedSid ? rows[selectedSid] : null;
   const selectedGrp = selectedSid ? sections[selectedSid] : null;
   const selectedJudge = selectedSid ? judgments[selectedSid] : null;
+  const selectedVerdict = selectedSid ? verdicts[selectedSid] : null;
   // Stable reference (SectionPreview memoizes on `before` identity) with cover
   // normalized to mm so the loaded diagram matches the current one.
   const beforePreview = useMemo(
@@ -437,6 +513,11 @@ export function BeamBoard() {
           <button className="btn primary" type="button" onClick={handleList} disabled={listLoading}>
             {listLoading ? t("board.loadingBtn") : t("board.loadBtn")}
           </button>
+          {order.length > 0 && (
+            <button className="btn primary board-recheck" type="button" onClick={handleRecheck} disabled={rechecking} title={t("board.recheckHint")}>
+              {rechecking ? t("board.rechecking") : t("board.recheckBtn")}
+            </button>
+          )}
           {order.length > 0 && (
             <button className="btn board-fetch-all" type="button" onClick={fetchAllDemand} disabled={fetchingAll}>
               {fetchingAll ? t("board.fetchingAll") : t("board.fetchAllBtn")}
@@ -537,14 +618,16 @@ export function BeamBoard() {
                 const grp = sections[sid];
                 if (!r || !grp) return null;
                 const rep = repSector(r);
-                const j = judgments[sid];
+                const v = verdicts[sid];
+                const srcTag = v.source === "gennx" ? t("board.verdictGenNx") : v.source === "formula" ? t("board.verdictEstimate") : "";
                 const verdict =
-                  j?.ok == null ? (
+                  v.ok == null ? (
                     <span className="verdict none">—</span>
-                  ) : j.ok ? (
-                    <span className="verdict ok">OK <span className="rr">{(j.ratioFlex ?? 0).toFixed(2)}/{(j.ratioShear ?? 0).toFixed(2)}</span></span>
                   ) : (
-                    <span className="verdict ng">NG <span className="rr">{(j.ratioFlex ?? 0).toFixed(2)}/{(j.ratioShear ?? 0).toFixed(2)}</span></span>
+                    <span className={"verdict " + (v.ok ? "ok" : "ng")} title={srcTag}>
+                      {v.ok ? "OK" : "NG"} <span className="rr">{(v.ratFlex ?? 0).toFixed(2)}/{(v.ratShear ?? 0).toFixed(2)}</span>
+                      <span className={"vsrc " + v.source}>{srcTag}</span>
+                    </span>
                   );
                 return (
                   <tr key={sid} className={sid === selectedSid ? "sel" : ""} onClick={() => setSelectedSid(sid)}>
@@ -684,12 +767,26 @@ export function BeamBoard() {
             <div className="hint board-actions-hint">{t("board.fetchDemandHint")}</div>
             {actionMsg && <div className={"status show " + statusClass(actionMsg)}>{statusText(t, actionMsg)}</div>}
 
-            {/* --- live judgment (실시간 판정), directly under the action bar --- */}
-            {selectedJudge && (
+            {/* --- judgment: Gen NX verdict when available, else formula estimate --- */}
+            {selectedSid && selectedVerdict && selectedVerdict.source !== "none" && (
               <div className="judge-block">
-                <div className="judge-title">{t("board.judgeTitle")}</div>
-                <JudgeBar label={t("board.flexLabel")} sym="φMn" ratio={selectedJudge.ratioFlex} cap={selectedJudge.phiMnPos ?? selectedJudge.phiMnNeg} unit="kN·m" t={t} />
-                <JudgeBar label={t("board.shearLabel")} sym="φVn" ratio={selectedJudge.ratioShear} cap={selectedJudge.phiVn} unit="kN" t={t} />
+                <div className="judge-title">
+                  {t("board.judgeTitle")}
+                  <span className={"judge-src " + selectedVerdict.source}>
+                    {selectedVerdict.source === "gennx" ? t("board.verdictGenNx") : t("board.verdictEstimate")}
+                  </span>
+                </div>
+                {selectedVerdict.source === "gennx" ? (
+                  <>
+                    <JudgeBar label={t("board.flexLabel")} sym="Rat" ratio={selectedVerdict.ratFlex} cap={null} unit="" t={t} />
+                    <JudgeBar label={t("board.shearLabel")} sym="Rat" ratio={selectedVerdict.ratShear} cap={null} unit="" t={t} />
+                  </>
+                ) : (
+                  <>
+                    <JudgeBar label={t("board.flexLabel")} sym="φMn" ratio={selectedJudge?.ratioFlex} cap={selectedJudge?.phiMnPos ?? selectedJudge?.phiMnNeg ?? null} unit="kN·m" t={t} />
+                    <JudgeBar label={t("board.shearLabel")} sym="φVn" ratio={selectedJudge?.ratioShear} cap={selectedJudge?.phiVn ?? null} unit="kN" t={t} />
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -134,6 +134,15 @@ export interface BeamDemandPoint {
   muNeg?: number;
   muPos?: number;
   vu?: number;
+  // Gen NX's own design-check verdict for this position (present only after a
+  // BC-TABLE read against a KDS model whose check has been run). `chk`/`chkRbr`
+  // are CHK_STR/CHK_RBR ("OK"/"NG"…); ratN/ratP/ratV are demand/capacity ratios
+  // for negative moment / positive moment / shear.
+  chk?: string;
+  chkRbr?: string;
+  ratN?: number;
+  ratP?: number;
+  ratV?: number;
 }
 export interface BeamDesignResultOk {
   ok: true;
@@ -200,6 +209,15 @@ export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<Be
 // within its time budget with `partial: true` if it had to stop early.
 export function getAllBeamDesignResults(elemKeys: string[], conn: ConnInfo): Promise<BeamDesignResultsAllResult> {
   return post<BeamDesignResultsAllResult>("/api/beam-design-result", { elemKeys, ...conn });
+}
+
+// Re-run the model's beam design check (BC-ANAL "ALL") and read every section's
+// verdict in one round-trip — the "Gen NX 재검토" button. Same batch response
+// shape as getAllBeamDesignResults, but each element's points now carry Gen NX's
+// own chk/ratN/ratP/ratV. KDS-only: on a non-KDS model the read comes back
+// empty and the board falls back to the in-browser formula.
+export function runBeamCheck(elemKeys: string[], conn: ConnInfo): Promise<BeamDesignResultsAllResult> {
+  return post<BeamDesignResultsAllResult>("/api/beam-design-result", { elemKeys, recheck: true, ...conn });
 }
 
 // Runs the model's structural analysis (/doc/ANAL). A long solve can outlast
