@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
+import { useLoadAll } from "../context/LoadAllContext";
 import { getAllBeamDesignResults, listBeamSections, runAnalysis, runBeamCheck, runBeamCheckSection, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
 import { formulaFamily } from "../lib/rcBeamCheck";
 import { lenToMm as coverToMm, lenToModel as coverToModel, mmPerUnit } from "../lib/units";
@@ -102,6 +103,7 @@ export function BeamBoard() {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
   const { designCode, materialDB } = useDesignCode();
+  const { nonce: loadAllNonce } = useLoadAll();
 
   const [sections, setSections] = useState<Record<string, BeamSectionGroup>>({});
   // Length unit for cover/spacing conversion. The /api/beam-sections response
@@ -132,6 +134,12 @@ export function BeamBoard() {
       setListLoading(false);
     }
   }
+
+  // Respond to the Project Review "모든 정보 한번에 불러오기" button.
+  useEffect(() => {
+    if (loadAllNonce > 0) handleList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAllNonce]);
 
   const [fck, setFck] = useState("24");
   const [fy, setFy] = useState("400");

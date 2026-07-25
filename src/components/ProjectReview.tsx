@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
+import { useLoadAll } from "../context/LoadAllContext";
 import { getProjectSummary } from "../lib/api";
 import { errText } from "../lib/errText";
 import type { ProjectSummary } from "../types/project";
@@ -10,6 +11,7 @@ import { Geometry3DSection } from "./Geometry3DSection";
 export function ProjectReview() {
   const { t } = useI18n();
   const { payload } = useConn();
+  const { nonce: loadAllNonce, requestLoadAll } = useLoadAll();
   const [summary, setSummary] = useState<ProjectSummary | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,12 +36,31 @@ export function ProjectReview() {
     }
   }
 
+  // "모든 정보 한번에 불러오기" also loads this tab's own summary (its nonce
+  // effect below fires alongside every board's).
+  useEffect(() => {
+    if (loadAllNonce > 0) handleLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAllNonce]);
+
   // Same stacked-card board layout as the member tabs (.beam-board): a toolbar
   // card with the load control, an optional summary strip, then one bordered
   // .board-wrap card per data list — so switching to this tab reads as the
   // same app, not a differently-styled page.
   return (
     <div className="beam-board">
+      <div className="board-toolbar panel">
+        <div className="board-toolbar-row loadall-row">
+          <div>
+            <div className="board-mat-title">{t("project.loadAllTitle")}</div>
+            <div className="hint" style={{ margin: "3px 0 0" }}>{t("project.loadAllHint")}</div>
+          </div>
+          <button className="btn primary" type="button" onClick={requestLoadAll}>
+            {t("project.loadAllBtn")}
+          </button>
+        </div>
+      </div>
+
       <Geometry3DSection />
 
       <div className="board-toolbar panel">

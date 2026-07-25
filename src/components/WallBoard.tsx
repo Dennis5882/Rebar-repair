@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
+import { useLoadAll } from "../context/LoadAllContext";
 import { getModelUnit, listRebar, saveRebar } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, segmentLabel, type WallFormState } from "../lib/wallRebarForm";
@@ -42,6 +43,7 @@ function mapWallItemLen(it: WallItem, conv: (v: number | undefined) => number | 
 export function WallBoard() {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
+  const { nonce: loadAllNonce } = useLoadAll();
 
   const [orig, setOrig] = useState<Record<string, WallPayload>>({});
   const [names, setNames] = useState<Record<string, string>>({});
@@ -85,6 +87,12 @@ export function WallBoard() {
       setListLoading(false);
     }
   }
+
+  // Respond to the Project Review "모든 정보 한번에 불러오기" button.
+  useEffect(() => {
+    if (loadAllNonce > 0) handleList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAllNonce]);
 
   // Rebuild working rows from a fresh list, converting each segment's lengths
   // model-unit -> mm (the board edits in mm). The copy also means edits never

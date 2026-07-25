@@ -7,6 +7,7 @@ import { I18nProvider } from "./i18n/I18nProvider";
 import { useI18n } from "./i18n/useI18n";
 import { ConnProvider } from "./context/ConnContext";
 import { DesignCodeProvider } from "./context/DesignCodeContext";
+import { LoadAllProvider } from "./context/LoadAllContext";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ConnDrawer } from "./components/ConnDrawer";
 import { DesignCodeSelector } from "./components/DesignCodeSelector";
@@ -64,7 +65,9 @@ export default function App() {
     <I18nProvider>
       <ConnProvider>
         <DesignCodeProvider>
-          <AppShell />
+          <LoadAllProvider>
+            <AppShell />
+          </LoadAllProvider>
         </DesignCodeProvider>
       </ConnProvider>
     </I18nProvider>

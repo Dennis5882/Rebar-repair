@@ -1,6 +1,7 @@
-import { Component, lazy, Suspense, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
+import { useLoadAll } from "../context/LoadAllContext";
 import { getProjectGeometry } from "../lib/api";
 import { errText } from "../lib/errText";
 import type { ModelGeometry } from "../types/geometry";
@@ -42,6 +43,7 @@ const CHIPS: { key: keyof GeoVisibility; labelKey: string; color: string }[] = [
 export function Geometry3DSection() {
   const { t } = useI18n();
   const { payload } = useConn();
+  const { nonce: loadAllNonce } = useLoadAll();
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [geometry, setGeometry] = useState<ModelGeometry | null>(null);
@@ -75,6 +77,12 @@ export function Geometry3DSection() {
       setLoading(false);
     }
   }
+
+  // Respond to the Project Review "모든 정보 한번에 불러오기" button.
+  useEffect(() => {
+    if (loadAllNonce > 0) handleLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAllNonce]);
 
   return (
     <div className="subhead-block">

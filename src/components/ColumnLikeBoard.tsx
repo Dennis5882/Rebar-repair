@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
+import { useLoadAll } from "../context/LoadAllContext";
 import { listMemberSections, saveRebar, sectionGroupLabel, type MemberSectionGroup } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
@@ -97,6 +98,7 @@ interface Props {
 export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlaceholder }: Props) {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
+  const { nonce: loadAllNonce } = useLoadAll();
   const k = (suffix: string) => `${ns}.${suffix}`;
 
   const [sections, setSections] = useState<Record<string, ColGroup>>({});
@@ -137,6 +139,12 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
       setListLoading(false);
     }
   }
+
+  // Respond to the Project Review "모든 정보 한번에 불러오기" button.
+  useEffect(() => {
+    if (loadAllNonce > 0) handleList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadAllNonce]);
 
   useEffect(() => {
     const sids = Object.keys(sections);
