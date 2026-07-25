@@ -15,14 +15,28 @@ their own MAPI key and edits their own running Gen NX model. Deployed at
   lazily at runtime by `src/i18n/`.
 - **State**: React context — `ConnContext` (MAPI key/product/lengthUnit),
   `DesignCodeContext` (design code + rebar material DB).
+- **Tabs are all section-centric "boards"** (row = section, summary strip,
+  search/sort, detail editor drawer): `BeamBoard.tsx` (with live OK/NG verdict),
+  `ColumnLikeBoard.tsx` (COLUMN + BRACE, `isColumn` flag, no verdict),
+  `WallBoard.tsx` (row = Wall ID, edits one segment at a time), and
+  `ProjectReview.tsx` (read-only). Form<->payload conversion is pure and lives in
+  `src/lib/*RebarForm.ts`; capacity/verdict math in `rcBeamCheck.ts`/`beamBoard.ts`.
+- **Analytics**: `@vercel/analytics` `<Analytics/>` from the **`/react`** entry
+  (this is a Vite SPA, not Next — `/next` fails at runtime). Needs Web Analytics
+  enabled in the Vercel dashboard to collect.
 
 ## Commands
 
 ```bash
 npm run dev            # vite dev server
 npm run build          # tsc --noEmit && vite build  (frontend only)
+npm test               # vitest run — pure-logic unit tests in src/lib/__tests__/
 npx vercel build       # REQUIRED for any api/ change — see below
 ```
+
+Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
+`beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`. Add a test
+alongside when you touch one of these.
 
 ## ⚠️ Deploy / api rules — read before touching `api/` or deploying
 
@@ -33,6 +47,12 @@ npx vercel build       # REQUIRED for any api/ change — see below
    "Deploying outputs" (after a green build) and prod freezes at the last good
    deploy. Need a new endpoint? Consolidate an existing one. Verify:
    `npx vercel build && find .vercel/output/functions -name "*.func" | wc -l`.
+   Currently **9 functions**: routes `beam-design-result`, `beam-sections`,
+   `geo-lang`, `member-sections`, `model`, `project-geometry`, `project-summary`,
+   `rebar` + `lib/midas`. Several routes are **multiplexed on an `action`/type
+   field** to save slots — `model` = verify | unit | analyze; `rebar` =
+   list | update; `member-sections` = COLUMN | BRACE. Extend the switch inside
+   one of these before adding a new file.
 2. **ESM**: `package.json` is `"type": "module"` and Vercel runs each `api/*.ts`
    under native ESM with no bundling. Relative imports **must** use an explicit
    `.js` extension (`./lib/midas.js`, even from a `.ts` source). Do **not**
@@ -49,7 +69,8 @@ npx vercel build       # REQUIRED for any api/ change — see below
 ## MIDAS Gen NX domain rules (hard-won, live-verified)
 
 - **REBB/REBC/REBR are keyed by SECTION number, not element id.** Save once with
-  the section id; Gen NX applies it to every element using that section.
+  the section id; Gen NX applies it to every element using that section. **REBW
+  (walls) is keyed by Wall ID** and holds multiple segments (`ITEMS[]`).
 - **BEAM REBB write shape == read shape** — send the canonical `BeamPayload`
   (`MAIN_BAR_TOP:{LAYER1:{NAME,NUM}}` + item-level `DT`/`DB`) via **PUT**. The
   manual's `vMAIN_BAR_*` "legacy" shape is silently dropped (200 no-op). Always
@@ -57,11 +78,19 @@ npx vercel build       # REQUIRED for any api/ change — see below
 - **NEVER call the design-check "perform" family (`BC-ANAL`/`CC-ANAL`/`WD-ANAL`/
   any `*-ANAL` in `design/rc_kds`).** It reproducibly hangs/crashes the Gen NX
   desktop app. Only read already-computed results (`BC-TABLE`, in
-  `api/beam-design-result.ts`). `/doc/ANAL` (plain FE analysis,
-  `api/run-analysis.ts`) is the *safe* "해석 실행" — it can be slow (90s+), so a
+  `api/beam-design-result.ts`). `/doc/ANAL` (plain FE analysis, in `api/model.ts`
+  action `analyze`) is the *safe* "해석 실행" — it can be slow (90s+), so a
   timeout means "still solving", not failure.
 - **Beam vs column is orientation-based**, not element `TYPE` (all frame elements
   are `TYPE:"BEAM"`). Vertical (`dz>dxy`) ⇒ column. Walls are often `TYPE:"PLATE"`.
+  `api/member-sections.ts` uses this: **COLUMN** lists sections used by a vertical
+  element (bare columns included); its element list must be filtered to vertical
+  elements only, or beams sharing a section leak into the count. **BRACE** is
+  diagonal → not orientation-classifiable, so it lists only sections that already
+  carry a **REBR** record (no bare brace sections). **WALL** doesn't fit the
+  SECT-grouped model at all — `WallBoard` reads **REBW** via `rebar` (`list`),
+  keyed by Wall ID, each a multi-segment `ITEMS[]`; edit one segment, preserve
+  the rest on save.
 - **Units**: the **beam board works in mm end-to-end** (cover `DT/DB` and stirrup
   `DIST` are converted model-unit↔mm at the load/save boundary in
   `BeamBoard.tsx`; `beamBoard.ts` is unit-agnostic). The **column/wall/brace tabs
