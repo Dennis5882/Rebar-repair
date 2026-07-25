@@ -165,6 +165,16 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .geo3d-chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .geo3d-chip.off { opacity: .4; }
 
+/* View presets + solid toggle row */
+.geo3d-viewbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 8px; }
+.geo3d-viewbtn {
+  min-width: 34px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink-2); font-size: 11px; font-family: var(--mono); cursor: pointer;
+}
+.geo3d-viewbtn:hover { border-color: var(--accent); color: var(--ink); }
+.geo3d-solid { margin-left: 6px; }
+.geo3d-solid.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
 .guide-tab {
   position: fixed; left: 0; top: 50%; transform: translateY(-50%);
   writing-mode: vertical-rl; text-orientation: mixed;

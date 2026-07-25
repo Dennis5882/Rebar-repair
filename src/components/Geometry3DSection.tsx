@@ -4,7 +4,7 @@ import { useConn } from "../context/ConnContext";
 import { getProjectGeometry } from "../lib/api";
 import { errText } from "../lib/errText";
 import type { ModelGeometry } from "../types/geometry";
-import type { GeoVisibility } from "./GeometryCanvas";
+import type { GeoVisibility, ViewKind, ViewRequest } from "./GeometryCanvas";
 
 // three.js + @react-three/* are a large dependency — code-split via
 // React.lazy so they only load once the 3D view is actually opened,
@@ -21,7 +21,14 @@ class GeometryErrorBoundary extends Component<{ children: ReactNode; fallback: R
   }
 }
 
-const DEFAULT_VISIBILITY: GeoVisibility = { cols: true, beams: true, braces: true, walls: true, nodes: false, supports: true };
+const DEFAULT_VISIBILITY: GeoVisibility = { cols: true, beams: true, braces: true, walls: true, nodes: false, supports: true, solid: true };
+
+const VIEW_BUTTONS: { kind: ViewKind; labelKey: string }[] = [
+  { kind: "iso", labelKey: "geo3d.viewIso" },
+  { kind: "x", labelKey: "geo3d.viewX" },
+  { kind: "y", labelKey: "geo3d.viewY" },
+  { kind: "z", labelKey: "geo3d.viewZ" },
+];
 
 const CHIPS: { key: keyof GeoVisibility; labelKey: string; color: string }[] = [
   { key: "cols", labelKey: "geo3d.legendCol", color: "#2a78d6" },
@@ -39,9 +46,14 @@ export function Geometry3DSection() {
   const [loading, setLoading] = useState(false);
   const [geometry, setGeometry] = useState<ModelGeometry | null>(null);
   const [visibility, setVisibility] = useState<GeoVisibility>(DEFAULT_VISIBILITY);
+  const [view, setView] = useState<ViewRequest | null>(null);
 
   function toggle(key: keyof GeoVisibility) {
     setVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+  // Bump a nonce each press so re-picking the same view re-frames the camera.
+  function requestView(kind: ViewKind) {
+    setView((prev) => ({ kind, nonce: (prev?.nonce ?? 0) + 1 }));
   }
 
   async function handleLoad() {
@@ -98,10 +110,25 @@ export function Geometry3DSection() {
                 </button>
               ))}
             </div>
+            <div className="geo3d-viewbar">
+              {VIEW_BUTTONS.map((v) => (
+                <button key={v.kind} type="button" className="geo3d-viewbtn" onClick={() => requestView(v.kind)}>
+                  {t(v.labelKey)}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={"geo3d-chip geo3d-solid" + (visibility.solid ? " on" : "")}
+                onClick={() => toggle("solid")}
+                aria-pressed={visibility.solid}
+              >
+                {t("geo3d.solidToggle")}
+              </button>
+            </div>
             <div className="geo3d-plot">
               <GeometryErrorBoundary fallback={<div className="hint" style={{ margin: 0 }}>{t("geo3d.sceneLoadError")}</div>}>
                 <Suspense fallback={<div className="hint" style={{ margin: 0 }}>{t("geo3d.loading")}</div>}>
-                  <GeometryCanvas geo={geometry} visibility={visibility} />
+                  <GeometryCanvas geo={geometry} visibility={visibility} view={view} />
                 </Suspense>
               </GeometryErrorBoundary>
             </div>

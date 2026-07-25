@@ -331,6 +331,11 @@
   "geo3d.legendWall": "Wall",
   "geo3d.legendSupport": "Support",
   "geo3d.legendNode": "Nodes",
+  "geo3d.viewIso": "ISO",
+  "geo3d.viewX": "X",
+  "geo3d.viewY": "Y",
+  "geo3d.viewZ": "Z",
+  "geo3d.solidToggle": "Solid",
 
   "guide.title": "User Guide",
   "guide.openBtn": "Open user guide",

@@ -331,6 +331,11 @@
   "geo3d.legendWall": "벽체",
   "geo3d.legendSupport": "지지점",
   "geo3d.legendNode": "절점",
+  "geo3d.viewIso": "전체",
+  "geo3d.viewX": "X",
+  "geo3d.viewY": "Y",
+  "geo3d.viewZ": "Z",
+  "geo3d.solidToggle": "솔리드",
 
   "guide.title": "사용 설명서",
   "guide.openBtn": "사용 설명서 열기",

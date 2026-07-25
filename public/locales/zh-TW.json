@@ -331,6 +331,11 @@
   "geo3d.legendWall": "牆體",
   "geo3d.legendSupport": "支座",
   "geo3d.legendNode": "節點",
+  "geo3d.viewIso": "整體",
+  "geo3d.viewX": "X",
+  "geo3d.viewY": "Y",
+  "geo3d.viewZ": "Z",
+  "geo3d.solidToggle": "實體",
 
   "guide.title": "使用說明",
   "guide.openBtn": "開啟使用說明",

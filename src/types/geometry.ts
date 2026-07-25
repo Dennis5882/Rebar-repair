@@ -13,15 +13,30 @@ export interface GeoNode {
 
 export type MemberPair = [string, string];
 
+// A frame member (column/beam/brace): its two end-node ids plus, when the
+// section is a solid rectangle (SB), its width/height in MODEL units and an
+// optional local rotation angle (deg). Members without w/h render as a line
+// instead of an extruded box.
+export interface FrameMember {
+  a: string;
+  b: string;
+  w?: number;
+  h?: number;
+  angle?: number;
+}
+
 export interface WallPanel {
   nodes: string[];
+  // Plate thickness in model units; extruded into a slab when present,
+  // otherwise drawn as a flat panel.
+  thickness?: number;
 }
 
 export interface ModelGeometry {
   nodes: GeoNode[];
-  cols: MemberPair[];
-  beams: MemberPair[];
-  braces: MemberPair[];
+  cols: FrameMember[];
+  beams: FrameMember[];
+  braces: FrameMember[];
   walls: WallPanel[];
   baseNodes: string[];
 }

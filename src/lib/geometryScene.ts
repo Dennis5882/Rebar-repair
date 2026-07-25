@@ -54,3 +54,50 @@ export function buildWallGeometry(byId: Map<string, GeoNode>, walls: WallPanel[]
   if (!positions.length) return null;
   return { positions: new Float32Array(positions), indices };
 }
+
+// Extrude each thickness-carrying wall panel into a slab (two offset faces +
+// sides), so walls read as volumes like Gen NX rather than paper-thin sheets.
+// Plain-array vector math (no three.js dependency) — the component computes
+// normals for lighting. Panels without a thickness are handled by
+// buildWallGeometry (flat) instead.
+type V3 = [number, number, number];
+const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+function norm(a: V3): V3 {
+  const l = Math.hypot(a[0], a[1], a[2]) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+}
+
+export function buildWallSolidGeometry(byId: Map<string, GeoNode>, walls: WallPanel[]): WallGeometryData | null {
+  const positions: number[] = [];
+  const indices: number[] = [];
+  let base = 0;
+  for (const w of walls) {
+    if (w.thickness == null || w.thickness <= 0) continue;
+    const ns = w.nodes.map((id) => byId.get(id)).filter((n): n is GeoNode => !!n).slice(0, 4);
+    if (ns.length < 3) continue;
+    const c: V3[] = ns.map((n) => toScene(n));
+    const normal = norm(cross(sub(c[1], c[0]), sub(c[2], c[0])));
+    const half = w.thickness / 2;
+    const off: V3 = [normal[0] * half, normal[1] * half, normal[2] * half];
+    const m = c.length; // 3 or 4
+    // top ring then bottom ring
+    for (const p of c) positions.push(p[0] + off[0], p[1] + off[1], p[2] + off[2]);
+    for (const p of c) positions.push(p[0] - off[0], p[1] - off[1], p[2] - off[2]);
+    const top = (i: number) => base + i;
+    const bot = (i: number) => base + m + i;
+    // top + bottom faces (fan)
+    for (let i = 1; i < m - 1; i++) {
+      indices.push(top(0), top(i), top(i + 1));
+      indices.push(bot(0), bot(i + 1), bot(i));
+    }
+    // sides
+    for (let i = 0; i < m; i++) {
+      const j = (i + 1) % m;
+      indices.push(top(i), top(j), bot(j), top(i), bot(j), bot(i));
+    }
+    base += m * 2;
+  }
+  if (!positions.length) return null;
+  return { positions: new Float32Array(positions), indices };
+}
