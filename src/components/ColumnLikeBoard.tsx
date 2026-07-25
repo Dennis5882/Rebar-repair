@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useLoadAll } from "../context/LoadAllContext";
-import { listMemberSections, runAnalysis, runColumnCheck, saveRebar, sectionGroupLabel, type MemberCheckRow, type MemberSectionGroup } from "../lib/api";
+import { listMemberSections, runAnalysis, runBraceCheck, runColumnCheck, saveRebar, sectionGroupLabel, type MemberCheckRow, type MemberSectionGroup } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { EMPTY_COLUMN_FORM, buildColumnPayload, fillColumnForm, type FormState } from "../lib/columnRebarForm";
@@ -18,12 +18,12 @@ import type { ColumnLikePayload, MemberType } from "../types/rebar";
 // one screen (row = section), summary strip, search/sort, and a per-section
 // detail editor. COLUMN and BRACE share the REBC/REBR shape (BRACE is REBC
 // minus the corner bar + hook type), so `isColumn` toggles just those two
-// extra controls. COLUMN gets a live OK/NG verdict read straight from Gen NX's
-// own design check (CC-ANAL + CC-TABLE via runColumnCheck) — there is no
-// in-browser formula for these, so the verdict is Gen NX-only (KDS models; a
-// non-KDS/empty result shows "판정 보류"). BRACE stays verdict-free (`isColumn`
-// gates all verdict UI). REBC/REBR are section-keyed, so one row = one section =
-// one saved record applied to every element using it.
+// structural controls. BOTH get a live OK/NG verdict read straight from Gen NX's
+// own design check — COLUMN via CC-ANAL/CC-TABLE, BRACE via BRC-ANAL/BRC-TABLE
+// (`runCheck` picks by `type`) — there is no in-browser formula for these, so
+// the verdict is Gen NX-only (KDS models; a non-KDS/no-rebar/empty result shows
+// "판정 보류"). REBC/REBR are section-keyed, so one row = one section = one saved
+// record applied to every element using it.
 
 type ColGroup = MemberSectionGroup<ColumnLikePayload>;
 
@@ -106,6 +106,9 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   const { payload: conn, lengthUnit } = useConn();
   const { nonce: loadAllNonce } = useLoadAll();
   const k = (suffix: string) => `${ns}.${suffix}`;
+  // Both members this board serves (COLUMN, BRACE) carry a Gen NX verdict, each
+  // via its own endpoint (CC-TABLE vs BRC-TABLE).
+  const runCheck = type === "BRACE" ? runBraceCheck : runColumnCheck;
 
   const [sections, setSections] = useState<Record<string, ColGroup>>({});
   // The model's active length unit, from the endpoint (authoritative). The board
@@ -122,8 +125,8 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   const [savingSid, setSavingSid] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<StatusMsg | null>(null);
 
-  // Gen NX design-check rows per section (CC-TABLE), reduced to a verdict below.
-  // COLUMN only — BRACE never populates this.
+  // Gen NX design-check rows per section (CC-TABLE for columns / BRC-TABLE for
+  // braces), reduced to a verdict below.
   const [check, setCheck] = useState<Record<string, MemberCheckRow[]>>({});
   const [rechecking, setRechecking] = useState(false);
   const [checkingSid, setCheckingSid] = useState<string | null>(null);
@@ -235,7 +238,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     setRechecking(true);
     setStatus({ ok: true, kind: "recheckRunning" });
     try {
-      const res = await runColumnCheck(conn, { recheck: true });
+      const res = await runCheck(conn, { recheck: true });
       if (!res.ok) {
         setStatus({ ok: false, kind: "recheckFail", res });
         return;
@@ -264,7 +267,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     try {
       // Pass this section's element ids so the CC-TABLE read is scoped to them,
       // not the whole model.
-      const res = await runColumnCheck(conn, { recheck: true, sectionId: sid, elemKeys: sections[sid]?.elementKeys });
+      const res = await runCheck(conn, { recheck: true, sectionId: sid, elemKeys: sections[sid]?.elementKeys });
       if (!res.ok) {
         setActionMsg({ ok: false, kind: "recheckFail", res });
         return;
@@ -319,7 +322,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
           <button className="btn primary" type="button" onClick={handleList} disabled={listLoading}>
             {listLoading ? t(k("loadingBtn")) : t(k("loadBtn"))}
           </button>
-          {isColumn && order.length > 0 && (
+          {order.length > 0 && (
             <button className="btn primary board-recheck" type="button" onClick={handleRecheck} disabled={rechecking} title={t("board.recheckHint")}>
               {rechecking ? t("board.rechecking") : t("board.recheckBtn")}
             </button>
@@ -336,13 +339,11 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
       {order.length > 0 && (
         <div className="board-summary">
           <div className="stat"><div className="k">{t(k("summaryTotal"))}</div><div className="v">{summary.total}</div></div>
-          {isColumn && (
-            <div className={"stat " + (summary.ng ? "ng" : summary.judged ? "ok" : "")}>
-              <div className="k">{t("board.summaryOk")}</div>
-              <div className="v">{summary.ok}<small> / {summary.judged} {t("board.judgedSuffix")}</small></div>
-            </div>
-          )}
-          {isColumn && <div className={"stat " + (summary.ng ? "ng" : "")}><div className="k">{t("board.summaryNg")}</div><div className="v">{summary.ng}</div></div>}
+          <div className={"stat " + (summary.ng ? "ng" : summary.judged ? "ok" : "")}>
+            <div className="k">{t("board.summaryOk")}</div>
+            <div className="v">{summary.ok}<small> / {summary.judged} {t("board.judgedSuffix")}</small></div>
+          </div>
+          <div className={"stat " + (summary.ng ? "ng" : "")}><div className="k">{t("board.summaryNg")}</div><div className="v">{summary.ng}</div></div>
           <div className="stat"><div className="k">{t("board.summaryChanged")}</div><div className="v">{summary.dirty}</div></div>
         </div>
       )}
@@ -392,7 +393,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                 <th>{t(k("colCenHoop"))}</th>
                 <th>{t(k("colCover"))}</th>
                 <th>{t(k("colHoopType"))}</th>
-                {isColumn && <th>{t("board.colVerdict")}</th>}
+                <th>{t("board.colVerdict")}</th>
               </tr>
             </thead>
             <tbody>
@@ -414,18 +415,18 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                     <td className="mono">{hoopCell(f.cenName, f.cenLegY, f.cenLegZ, f.cenDist)}</td>
                     <td className="mono">{f.doVal || "—"}</td>
                     <td className="mono">{f.hoopType}</td>
-                    {isColumn && <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} />}
+                    <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} />
                   </tr>
                 );
               })}
               {order.length === 0 && (
                 <tr>
-                  <td colSpan={isColumn ? 8 : 7} className="board-empty">{listLoadedOnce ? t(k("emptyList")) : t(k("notLoaded"))}</td>
+                  <td colSpan={8} className="board-empty">{listLoadedOnce ? t(k("emptyList")) : t(k("notLoaded"))}</td>
                 </tr>
               )}
               {order.length > 0 && visibleOrder.length === 0 && (
                 <tr>
-                  <td colSpan={isColumn ? 8 : 7} className="board-empty">{t("board.filterEmpty")}</td>
+                  <td colSpan={8} className="board-empty">{t("board.filterEmpty")}</td>
                 </tr>
               )}
             </tbody>
@@ -550,23 +551,19 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
               <button className="btn primary" type="button" onClick={() => saveGroup(selectedSid)} disabled={savingSid === selectedSid}>
                 {t("board.saveGroupBtn", { count: selectedGrp.elementKeys.length })}
               </button>
-              {isColumn && (
-                <>
-                  <button className="btn" type="button" onClick={runModelAnalysis} disabled={analyzing}>
-                    {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
-                  </button>
-                  <button className="btn" type="button" onClick={() => handleSectionRecheck(selectedSid)} disabled={checkingSid === selectedSid}>
-                    {checkingSid === selectedSid ? t("board.checkingSection") : t("board.checkSectionBtn")}
-                  </button>
-                </>
-              )}
+              <button className="btn" type="button" onClick={runModelAnalysis} disabled={analyzing}>
+                {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
+              </button>
+              <button className="btn" type="button" onClick={() => handleSectionRecheck(selectedSid)} disabled={checkingSid === selectedSid}>
+                {checkingSid === selectedSid ? t("board.checkingSection") : t("board.checkSectionBtn")}
+              </button>
               <span className="hint save-note">{selected.dirty ? t("board.unsavedNote") : t("board.savedNote")}</span>
             </div>
-            {isColumn && <div className="hint board-actions-hint">{t("board.checkSectionHint")}</div>}
+            <div className="hint board-actions-hint">{t("board.checkSectionHint")}</div>
             {actionMsg && <div className={"status show " + statusClass(actionMsg)}>{statusText(t, actionMsg)}</div>}
 
             {/* --- Gen NX verdict for the selected section (P-M / shear ratios) --- */}
-            {isColumn && selectedVerdict && selectedVerdict.source !== "none" && (
+            {selectedVerdict && selectedVerdict.source !== "none" && (
               <div className="judge-block">
                 <div className="judge-title">
                   {t("board.judgeTitle")}

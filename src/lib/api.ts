@@ -205,6 +205,13 @@ export function runWallCheck(conn: ConnInfo, opts?: { recheck?: boolean }): Prom
   return post<MemberCheckResult>("/api/beam-design-result", { member: "WALL", recheck: opts?.recheck, ...conn });
 }
 
+// Read/re-check brace verdicts (BRC-ANAL/BRC-TABLE, keyed by SECT like columns).
+// Same section-scoped recheck as columns. A brace that fails reads a governing-
+// mode CHK_STR ("PM-"), handled by memberVerdictFromRows.
+export function runBraceCheck(conn: ConnInfo, opts?: { recheck?: boolean; sectionId?: string; elemKeys?: string[] }): Promise<MemberCheckResult> {
+  return post<MemberCheckResult>("/api/beam-design-result", { member: "BRACE", recheck: opts?.recheck, sectionId: opts?.sectionId, elemKeys: opts?.elemKeys, ...conn });
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",

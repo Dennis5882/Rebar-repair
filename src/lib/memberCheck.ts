@@ -1,22 +1,31 @@
 import type { MemberCheckRow } from "./api";
 
-// Reduces a column/wall member's Gen NX check rows (one per element for columns,
-// one per WID+Story for walls) to a single section/wall verdict: OK only if
-// every row's strength AND rebar-detail check passed, with the worst (max) P-M
-// and shear ratios across rows. Returns null when there is no recognizable
-// verdict at all (non-KDS model, or check not run) so the board shows "판정 보류".
+// Reduces a column/wall/brace member's Gen NX check rows (one per element for
+// columns/braces, one per WID+Story for walls) to a single verdict: OK only if
+// every row's check passed, with the worst (max) P-M and shear ratios across
+// rows. Returns null when there is no recognizable verdict at all (non-KDS
+// model, or check not run) so the board shows "판정 보류".
 //
-// Only an explicit "OK"/"NG" counts — Gen NX writes placeholders like "-",
-// "----", or (for a column's CHK_RBR) a position code "M"/"I"/"J", none of which
-// are a pass/fail and must not flip the verdict. Kept pure + exported for tests.
+// Verdict field semantics (live-verified 2026-07-25): a checked member's CHK_STR
+// reads "OK…" when it passes ("OK", "OK-", "OK-#") and a **governing-mode code**
+// when it FAILS — Gen NX writes "PM-", "V-", etc., NOT the literal "NG". So the
+// rule is "OK-prefix ⇒ pass, anything else meaningful ⇒ fail", NOT "only an
+// explicit 'NG' fails" (that would miss every mode-code failure). Pure
+// placeholders ("-", "----", "N/A") are not verdicts and are ignored — a
+// column's/brace's CHK_RBR position code ("M"/"MV") is dropped at the parse step
+// so it never reaches here. Kept pure + exported for tests.
 export interface MemberVerdict {
   ok: boolean;
   ratPM?: number;
   ratShear?: number;
 }
 
-const isOk = (s?: string): boolean => s != null && /^ok/i.test(s.trim());
-const isNg = (s?: string): boolean => s != null && /ng/i.test(s.trim());
+const isOk = (s: string): boolean => /^ok/i.test(s.trim());
+// A "not a verdict" cell: blank, a dash run ("-", "----"), or N/A.
+const isPlaceholder = (s: string): boolean => { const t = s.trim(); return t === "" || /^-+$/.test(t) || /^n\/?a$/i.test(t); };
+// A verdict field that is present, meaningful, and not OK ⇒ this row failed.
+const fieldFails = (s?: string): boolean => s != null && !isPlaceholder(s) && !isOk(s);
+const fieldPasses = (s?: string): boolean => s != null && !isPlaceholder(s) && isOk(s);
 
 export function memberVerdictFromRows(rows?: MemberCheckRow[]): MemberVerdict | null {
   if (!rows || rows.length === 0) return null;
@@ -25,9 +34,10 @@ export function memberVerdictFromRows(rows?: MemberCheckRow[]): MemberVerdict | 
   let ratPM: number | undefined;
   let ratShear: number | undefined;
   for (const r of rows) {
-    if (isOk(r.chk) || isNg(r.chk)) saw = true;
-    if (isNg(r.chk)) anyNg = true;
-    if (isNg(r.chkRbr)) anyNg = true;
+    for (const field of [r.chk, r.chkRbr]) {
+      if (fieldPasses(field) || fieldFails(field)) saw = true;
+      if (fieldFails(field)) anyNg = true;
+    }
     if (r.ratPM != null) ratPM = Math.max(ratPM ?? 0, r.ratPM);
     if (r.ratShear != null) ratShear = Math.max(ratShear ?? 0, r.ratShear);
   }
@@ -81,6 +91,27 @@ export function parseColumnRows(head: string[], rows: string[][]): Record<string
     const sid = readStr(row, sectIdx);
     if (!sid) continue;
     (out[sid] ||= []).push({ chk: readStr(row, chkIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, vIdx) });
+  }
+  return out;
+}
+
+// BRC-TABLE → rows grouped by SECT (the brace board's section id, REBR is
+// section-keyed for braces too). Like columns, CHK_RBR is a position/mode code
+// ("MV") not a verdict, so only CHK_STR is used; a failing brace's CHK_STR is a
+// mode code ("PM-"), handled by memberVerdictFromRows. Columns are HYPHENATED
+// here (Rat-P/Rat-M/…/Rat-V), unlike the underscore CC-TABLE. ratPM = worst of
+// Rat-P/Rat-M/Rat-My/Rat-Mz; ratShear = Rat-V. (Single position, no end/mid.)
+export function parseBraceRows(head: string[], rows: string[][]): Record<string, MemberCheckRow[]> {
+  const sectIdx = head.indexOf("SECT");
+  const chkIdx = head.indexOf("CHK_STR");
+  const pmIdx = ["Rat-P", "Rat-M", "Rat-My", "Rat-Mz"].map((c) => head.indexOf(c));
+  const vIdx = head.indexOf("Rat-V");
+  const out: Record<string, MemberCheckRow[]> = {};
+  if (sectIdx < 0) return out;
+  for (const row of rows) {
+    const sid = readStr(row, sectIdx);
+    if (!sid) continue;
+    (out[sid] ||= []).push({ chk: readStr(row, chkIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, [vIdx]) });
   }
   return out;
 }

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { fetchMidas, resolveBase, setCorsPost } from "./lib/midas.js";
 // Pure CC/WC-TABLE parsers live in src/lib so they're unit-tested; imported here
 // with the mandatory explicit .js extension (see the ESM notes in lib/midas.ts).
-import { parseColumnRows, parseWallRows } from "../src/lib/memberCheck.js";
+import { parseColumnRows, parseWallRows, parseBraceRows } from "../src/lib/memberCheck.js";
 
 // Reads already-computed Mu/Vu demand from Gen NX's BC-TABLE (manual §55,
 // DESIGN/RC/KDS-41-20-2022/BC-TABLE) — a read of results the user already
@@ -43,6 +43,10 @@ const CC_ANAL_PATH = "/DESIGN/RC/KDS-41-20-2022/CC-ANAL";
 const CC_TABLE_PATH = "/DESIGN/RC/KDS-41-20-2022/CC-TABLE";
 const WC_ANAL_PATH = "/DESIGN/RC/KDS-41-20-2022/WC-ANAL";
 const WC_TABLE_PATH = "/DESIGN/RC/KDS-41-20-2022/WC-TABLE";
+// Brace check (BRC-ANAL/BRC-TABLE) — same shape as the column check (MEMB+SECT,
+// single position), but the ratio columns are HYPHENATED like walls (Rat-P/…).
+const BRC_ANAL_PATH = "/DESIGN/RC/KDS-41-20-2022/BRC-ANAL";
+const BRC_TABLE_PATH = "/DESIGN/RC/KDS-41-20-2022/BRC-TABLE";
 const ANAL_TIMEOUT_MS = 25000;
 
 // Batch needs headroom: a many-section model runs one BC-TABLE call per
@@ -240,11 +244,23 @@ const ccTableBody = (elems?: number[]) => ({
   },
 });
 
-const wcTableBody = () => ({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const wcTableBody = (_elems?: number[]) => ({
   Argument: {
     TABLE_TYPE: "WID+STORY",
     UNIT: { FORCE: "KN", DIST: "M" },
     COMPONENTS: ["WID", "Story", "CHK_STR", "CHK_RBR", "Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz", "Rat-V"],
+  },
+});
+
+// BRC-TABLE: like CC but hyphenated ratio columns and single position. `elems`
+// scopes the per-section read (same as columns).
+const brcTableBody = (elems?: number[]) => ({
+  Argument: {
+    TABLE_TYPE: "MEMB",
+    UNIT: { FORCE: "KN", DIST: "M" },
+    ...(elems && elems.length ? { ELEMS: { KEYS: elems } } : {}),
+    COMPONENTS: ["MEMB", "SECT", "CHK_STR", "Rat-P", "Rat-M", "Rat-My", "Rat-Mz", "Rat-V"],
   },
 });
 
@@ -264,42 +280,47 @@ async function readMemberTable(base: string, apiKey: string, tablePath: string, 
   }
 }
 
-// COLUMN / WALL check. `recheck` runs the corresponding *-ANAL first (whole
-// model, or scoped to one section for columns), then reads the table. When the
-// ANAL reports the "please perform analysis" precondition, return empty +
-// needAnalysis (never surface stale rows as authoritative). Non-KDS models
-// return an empty map → the board shows "판정 보류".
+// Per-member check config. `scoped` members (COLUMN/BRACE) support a fast
+// section-scoped recheck (BC-ANAL SECTIONS + a table read filtered to the
+// section's elements); WALL always re-runs ALL (cheap) and reads by WID+Story.
+const MEMBER_CFG = {
+  COLUMN: { anal: CC_ANAL_PATH, table: CC_TABLE_PATH, body: ccTableBody, parse: parseColumnRows, scoped: true },
+  BRACE: { anal: BRC_ANAL_PATH, table: BRC_TABLE_PATH, body: brcTableBody, parse: parseBraceRows, scoped: true },
+  WALL: { anal: WC_ANAL_PATH, table: WC_TABLE_PATH, body: wcTableBody, parse: parseWallRows, scoped: false },
+} as const;
+
+// COLUMN / WALL / BRACE check. `recheck` runs the corresponding *-ANAL first
+// (whole model, or scoped to one section for column/brace), then reads the
+// table. When the ANAL reports the "please perform analysis" precondition,
+// return empty + needAnalysis (never surface stale rows as authoritative).
+// Non-KDS / no-rebar models return an empty map → the board shows "판정 보류".
 async function handleMemberCheck(
-  member: "COLUMN" | "WALL",
+  member: "COLUMN" | "WALL" | "BRACE",
   base: string,
   apiKey: string,
   opts: { recheck?: boolean; sectionId?: unknown; elemKeys?: unknown },
   res: VercelResponse
 ) {
-  const isCol = member === "COLUMN";
-  const analPath = isCol ? CC_ANAL_PATH : WC_ANAL_PATH;
-  const tablePath = isCol ? CC_TABLE_PATH : WC_TABLE_PATH;
-  // Per-section column recheck passes the section's element ids → read only those
-  // rows instead of the whole model's CC-TABLE.
-  const elems = isCol && Array.isArray(opts.elemKeys) ? opts.elemKeys.map(Number).filter(Number.isFinite) : [];
-  const body = isCol ? ccTableBody(elems) : wcTableBody();
+  const cfg = MEMBER_CFG[member];
+  // Per-section recheck passes the section's element ids → read only those rows
+  // instead of the whole model's table.
+  const elems = cfg.scoped && Array.isArray(opts.elemKeys) ? opts.elemKeys.map(Number).filter(Number.isFinite) : [];
+  const body = cfg.body(elems);
 
   if (opts.recheck) {
-    // Columns support a fast section-scoped recheck; walls just re-run ALL (cheap).
     const sn = Number(opts.sectionId);
-    const arg = isCol && Number.isFinite(sn) ? { PERFORM_TYPE: "SECTIONS", SECTIONS: [sn] } : { PERFORM_TYPE: "ALL" };
-    const analErr = await runAnal(base, apiKey, analPath, arg);
+    const arg = cfg.scoped && Number.isFinite(sn) ? { PERFORM_TYPE: "SECTIONS", SECTIONS: [sn] } : { PERFORM_TYPE: "ALL" };
+    const analErr = await runAnal(base, apiKey, cfg.anal, arg);
     if (needsAnalysis(analErr)) return res.json({ ok: true, byKey: {}, needAnalysis: true });
   }
 
-  const { data, error } = await readMemberTable(base, apiKey, tablePath, body);
+  const { data, error } = await readMemberTable(base, apiKey, cfg.table, body);
   if (error) {
     if (error === "timeout") return res.json({ ok: false, code: "timeout" });
     return res.json({ ok: false, error });
   }
   const { head, rows } = tableHeadRows(data);
-  const byKey = isCol ? parseColumnRows(head, rows) : parseWallRows(head, rows);
-  return res.json({ ok: true, byKey });
+  return res.json({ ok: true, byKey: cfg.parse(head, rows) });
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -312,8 +333,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
 
-  // --- COLUMN / WALL member check (single read, grouped by SECT / WID)
-  if (member === "COLUMN" || member === "WALL") {
+  // --- COLUMN / WALL / BRACE member check (single read, grouped by SECT / WID)
+  if (member === "COLUMN" || member === "WALL" || member === "BRACE") {
     return handleMemberCheck(member, base, apiKey, { recheck, sectionId, elemKeys }, res);
   }
 
