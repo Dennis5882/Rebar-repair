@@ -11,7 +11,7 @@ import { Geometry3DSection } from "./Geometry3DSection";
 export function ProjectReview() {
   const { t } = useI18n();
   const { payload } = useConn();
-  const { nonce: loadAllNonce, requestLoadAll } = useLoadAll();
+  const { nonce: loadAllNonce } = useLoadAll();
   const [summary, setSummary] = useState<ProjectSummary | null>(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,18 +49,6 @@ export function ProjectReview() {
   // same app, not a differently-styled page.
   return (
     <div className="beam-board">
-      <div className="board-toolbar panel">
-        <div className="board-toolbar-row loadall-row">
-          <div>
-            <div className="board-mat-title">{t("project.loadAllTitle")}</div>
-            <div className="hint" style={{ margin: "3px 0 0" }}>{t("project.loadAllHint")}</div>
-          </div>
-          <button className="btn primary" type="button" onClick={requestLoadAll}>
-            {t("project.loadAllBtn")}
-          </button>
-        </div>
-      </div>
-
       <Geometry3DSection />
 
       <div className="board-toolbar panel">

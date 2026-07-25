@@ -67,6 +67,10 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .radio-option input { width: auto; }
 
 .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+/* Tab bar row: tabs on the left, the global "전체 불러오기" button on the right. */
+.tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tabs-row .tabs { margin-bottom: 14px; }
+.tabs-loadall { white-space: nowrap; }
 .tab-btn {
   padding: 8px 16px; border-radius: 999px; border: 1px solid var(--grid); background: var(--surface);
   color: var(--ink-2); font-size: 13px; cursor: pointer;
@@ -221,8 +225,6 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .beam-board { display: flex; flex-direction: column; gap: 16px; }
 .board-toolbar { margin-bottom: 0; }
 .board-toolbar-row { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
-/* Project Review "load everything" bar: description left, button right. */
-.loadall-row { align-items: center; justify-content: space-between; }
 .board-mat { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-left: auto; }
 .board-mat-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; align-self: center; }
 .board-mat-fld { display: flex; flex-direction: column; gap: 3px; font-size: 10.5px; color: var(--ink-2); margin: 0; }

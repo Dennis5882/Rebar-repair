@@ -7,7 +7,7 @@ import { I18nProvider } from "./i18n/I18nProvider";
 import { useI18n } from "./i18n/useI18n";
 import { ConnProvider } from "./context/ConnContext";
 import { DesignCodeProvider } from "./context/DesignCodeContext";
-import { LoadAllProvider } from "./context/LoadAllContext";
+import { LoadAllProvider, useLoadAll } from "./context/LoadAllContext";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ConnDrawer } from "./components/ConnDrawer";
 import { DesignCodeSelector } from "./components/DesignCodeSelector";
@@ -22,6 +22,7 @@ import { GuideDrawer } from "./components/GuideDrawer";
 
 function AppShell() {
   const { t } = useI18n();
+  const { requestLoadAll } = useLoadAll();
   const [active, setActive] = useState<TabKey>("BEAM");
 
   return (
@@ -35,7 +36,14 @@ function AppShell() {
       <div className="subtitle">{t("app.subtitle")}</div>
 
       <DesignCodeSelector />
-      <Tabs active={active} onChange={setActive} />
+      {/* Tab bar with a global "load everything" button on the right, so it's
+          reachable from any tab (not buried inside Project Review). */}
+      <div className="tabs-row">
+        <Tabs active={active} onChange={setActive} />
+        <button className="btn primary tabs-loadall" type="button" onClick={requestLoadAll} title={t("project.loadAllHint")}>
+          {t("project.loadAllBtn")}
+        </button>
+      </div>
 
       <div className={"tab-panel" + (active === "BEAM" ? " active" : "")}>
         <BeamBoard />
