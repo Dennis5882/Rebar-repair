@@ -5,11 +5,12 @@ import { useLoadAll } from "../context/LoadAllContext";
 import { getModelUnit, listRebar, runAnalysis, runWallCheck, saveRebar, type MemberCheckRow } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, segmentLabel, type WallFormState } from "../lib/wallRebarForm";
-import { memberVerdictFromRows, type MemberVerdict } from "../lib/memberCheck";
+import { useMemberVerdict } from "../lib/useMemberVerdict";
 import { numToMm, numToModel } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
+import { MemberVerdictCell } from "./MemberVerdictCell";
 import type { WallItem, WallPayload } from "../types/rebar";
 
 // The WALL tab's board. Walls don't fit the SECT-grouped section model the
@@ -27,8 +28,6 @@ interface WallRowState {
   dirty: boolean;
 }
 
-// The verdict rendered for a wall: Gen NX's own check ("gennx") or none yet.
-type EffVerdict = { ok?: boolean; source: "gennx" | "none"; ratPM?: number; ratShear?: number };
 
 // The board works in mm; REBW stores lengths in the model's unit. Convert every
 // length field of a segment on the load/save boundary (spacings, cover DW/DE,
@@ -154,38 +153,8 @@ export function WallBoard() {
     });
   }
 
-  // Gen NX's verdict per wall (null when no check has run / non-KDS).
-  const genVerdicts = useMemo(() => {
-    const out: Record<string, MemberVerdict | null> = {};
-    for (const id of order) out[id] = memberVerdictFromRows(check[id]);
-    return out;
-  }, [order, check]);
-
-  // Effective verdict per wall. Gen NX's is authoritative unless the wall is
-  // mid-edit (unsaved change makes the last check stale) → fall back to none.
-  const verdicts = useMemo(() => {
-    const out: Record<string, EffVerdict> = {};
-    for (const id of order) {
-      const gv = !rows[id]?.dirty ? genVerdicts[id] : null;
-      out[id] = gv ? { ok: gv.ok, source: "gennx", ratPM: gv.ratPM, ratShear: gv.ratShear } : { source: "none" };
-    }
-    return out;
-  }, [order, rows, genVerdicts]);
-
-  const summary = useMemo(() => {
-    let ok = 0;
-    let ng = 0;
-    let judged = 0;
-    let dirty = 0;
-    for (const id of order) {
-      const v = verdicts[id];
-      if (v?.ok === true) ok++;
-      else if (v?.ok === false) ng++;
-      if (v?.ok != null) judged++;
-      if (rows[id]?.dirty) dirty++;
-    }
-    return { total: order.length, ok, ng, judged, dirty };
-  }, [order, verdicts, rows]);
+  // Gen NX verdict per wall + OK/NG summary (shared with the column board).
+  const { verdicts, summary } = useMemberVerdict(order, rows, check);
 
   const visibleOrder = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -219,6 +188,14 @@ export function WallBoard() {
       // segment, same as the column board (before = the originally-loaded
       // payload), which is the intended diff baseline.
       setRows((prev) => ({ ...prev, [id]: { ...prev[id], dirty: false } }));
+      // The saved rebar no longer matches the last Gen NX verdict — drop it so
+      // the wall shows "판정 보류" (not a stale OK/NG) until re-checked.
+      setCheck((prev) => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (e) {
       setActionMsg({ ok: false, kind: "saveError", error: String(e) });
     } finally {
@@ -400,16 +377,7 @@ export function WallBoard() {
                     <td className="mono">{h.NAME ? <><span className="bar-stir">{h.NAME}</span>@{h.DIST ?? "?"}</> : "—"}</td>
                     <td className="mono">{it0.USE_END_REBAR && er.NAME ? <><b>{er.NUM ?? "?"}</b>×{er.NAME}</> : "—"}</td>
                     <td className="mono">{cc.DW ?? "?"}/{cc.DE ?? "?"}</td>
-                    <td>
-                      {vd.ok == null ? (
-                        <span className="verdict none">—</span>
-                      ) : (
-                        <span className={"verdict " + (vd.ok ? "ok" : "ng")} title={t("board.verdictGenNx")}>
-                          {vd.ok ? "OK" : "NG"} <span className="rr">{(vd.ratPM ?? 0).toFixed(2)}/{(vd.ratShear ?? 0).toFixed(2)}</span>
-                          <span className="vsrc gennx">{t("board.verdictGenNx")}</span>
-                        </span>
-                      )}
-                    </td>
+                    <MemberVerdictCell v={vd} genNxLabel={t("board.verdictGenNx")} />
                   </tr>
                 );
               })}

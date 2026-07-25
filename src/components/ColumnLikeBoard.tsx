@@ -6,11 +6,12 @@ import { listMemberSections, runAnalysis, runColumnCheck, saveRebar, sectionGrou
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { EMPTY_COLUMN_FORM, buildColumnPayload, fillColumnForm, type FormState } from "../lib/columnRebarForm";
-import { memberVerdictFromRows, type MemberVerdict } from "../lib/memberCheck";
+import { useMemberVerdict } from "../lib/useMemberVerdict";
 import { lenToMm, lenToModel, numToMm } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
+import { MemberVerdictCell } from "./MemberVerdictCell";
 import type { ColumnLikePayload, MemberType } from "../types/rebar";
 
 // Section-centric board shared by the COLUMN and BRACE tabs — every section on
@@ -33,9 +34,6 @@ interface ColRowState {
   dirty: boolean;
 }
 
-// The verdict rendered for a section: Gen NX's own check ("gennx") or none yet.
-// No "formula" source here — unlike beams, columns have no in-browser fallback.
-type EffVerdict = { ok?: boolean; source: "gennx" | "none"; ratPM?: number; ratShear?: number };
 
 const DEFAULT_B = "500";
 const DEFAULT_H = "500";
@@ -173,38 +171,8 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
 
   useEffect(() => setActionMsg(null), [selectedSid]);
 
-  // Gen NX's verdict per section (null when no check has run / non-KDS).
-  const genVerdicts = useMemo(() => {
-    const out: Record<string, MemberVerdict | null> = {};
-    for (const sid of order) out[sid] = memberVerdictFromRows(check[sid]);
-    return out;
-  }, [order, check]);
-
-  // Effective verdict per section. Gen NX's is authoritative unless the row is
-  // mid-edit (an unsaved change makes the last check stale) → fall back to none.
-  const verdicts = useMemo(() => {
-    const out: Record<string, EffVerdict> = {};
-    for (const sid of order) {
-      const gv = !rows[sid]?.dirty ? genVerdicts[sid] : null;
-      out[sid] = gv ? { ok: gv.ok, source: "gennx", ratPM: gv.ratPM, ratShear: gv.ratShear } : { source: "none" };
-    }
-    return out;
-  }, [order, rows, genVerdicts]);
-
-  const summary = useMemo(() => {
-    let ok = 0;
-    let ng = 0;
-    let judged = 0;
-    let dirty = 0;
-    for (const sid of order) {
-      const v = verdicts[sid];
-      if (v?.ok === true) ok++;
-      else if (v?.ok === false) ng++;
-      if (v?.ok != null) judged++;
-      if (rows[sid]?.dirty) dirty++;
-    }
-    return { total: order.length, ok, ng, judged, dirty };
-  }, [order, verdicts, rows]);
+  // Gen NX verdict per section + OK/NG summary (shared with the wall board).
+  const { verdicts, summary } = useMemberVerdict(order, rows, check);
 
   const visibleOrder = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -246,6 +214,14 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
       }
       setActionMsg({ ok: true, kind: "saveDone" });
       setRows((prev) => ({ ...prev, [sid]: { ...prev[sid], dirty: false } }));
+      // The saved rebar no longer matches the last Gen NX verdict — drop it so
+      // the row shows "판정 보류" (not a stale OK/NG) until re-checked.
+      setCheck((prev) => {
+        if (!prev[sid]) return prev;
+        const next = { ...prev };
+        delete next[sid];
+        return next;
+      });
     } catch (e) {
       setActionMsg({ ok: false, kind: "saveError", error: String(e) });
     } finally {
@@ -286,7 +262,9 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     setCheckingSid(sid);
     setActionMsg({ ok: true, kind: "sectionChecking" });
     try {
-      const res = await runColumnCheck(conn, { recheck: true, sectionId: sid });
+      // Pass this section's element ids so the CC-TABLE read is scoped to them,
+      // not the whole model.
+      const res = await runColumnCheck(conn, { recheck: true, sectionId: sid, elemKeys: sections[sid]?.elementKeys });
       if (!res.ok) {
         setActionMsg({ ok: false, kind: "recheckFail", res });
         return;
@@ -436,18 +414,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                     <td className="mono">{hoopCell(f.cenName, f.cenLegY, f.cenLegZ, f.cenDist)}</td>
                     <td className="mono">{f.doVal || "—"}</td>
                     <td className="mono">{f.hoopType}</td>
-                    {isColumn && (
-                      <td>
-                        {v.ok == null ? (
-                          <span className="verdict none">—</span>
-                        ) : (
-                          <span className={"verdict " + (v.ok ? "ok" : "ng")} title={t("board.verdictGenNx")}>
-                            {v.ok ? "OK" : "NG"} <span className="rr">{(v.ratPM ?? 0).toFixed(2)}/{(v.ratShear ?? 0).toFixed(2)}</span>
-                            <span className="vsrc gennx">{t("board.verdictGenNx")}</span>
-                          </span>
-                        )}
-                      </td>
-                    )}
+                    {isColumn && <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} />}
                   </tr>
                 );
               })}

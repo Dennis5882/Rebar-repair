@@ -346,6 +346,21 @@ export function BeamBoard() {
       }
       setActionMsg({ ok: true, kind: "saveDone" });
       setRows((prev) => ({ ...prev, [sid]: { ...prev[sid], dirty: false } }));
+      // The saved rebar invalidates the last Gen NX verdict, but the row is now
+      // clean (not dirty). Strip only the Gen NX check fields (keep Mu/Vu demand)
+      // so the section falls back to the fresh formula estimate instead of
+      // re-showing a stale "Gen NX" OK/NG until the user re-checks.
+      setDemand((prev) => {
+        const d = prev[sid];
+        if (!d) return prev;
+        const stripped: DemandBySector = {};
+        for (const key of SECTORS) {
+          const p = d[key];
+          if (!p) continue;
+          stripped[key] = { muNeg: p.muNeg, muPos: p.muPos, vu: p.vu }; // demand only, drop Gen NX verdict
+        }
+        return { ...prev, [sid]: stripped };
+      });
     } catch (e) {
       setActionMsg({ ok: false, kind: "saveError", error: String(e) });
     } finally {

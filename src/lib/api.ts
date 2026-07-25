@@ -179,7 +179,6 @@ export interface MemberCheckRow {
   chkRbr?: string; // CHK_RBR (walls only; a position code for columns)
   ratPM?: number; // governing axial/moment (P-M) ratio
   ratShear?: number; // governing shear ratio
-  label?: string; // story label (walls) for the detail view
 }
 export interface MemberCheckOk {
   ok: true;
@@ -193,9 +192,11 @@ export type MemberCheckResult = MemberCheckOk | ApiError;
 
 // Read/re-check column verdicts. `recheck` runs CC-ANAL first (whole model, or
 // scoped to one section when `sectionId` is given); omit it to just read the
-// results already computed in Gen NX. Non-KDS models come back with an empty map.
-export function runColumnCheck(conn: ConnInfo, opts?: { recheck?: boolean; sectionId?: string }): Promise<MemberCheckResult> {
-  return post<MemberCheckResult>("/api/beam-design-result", { member: "COLUMN", recheck: opts?.recheck, sectionId: opts?.sectionId, ...conn });
+// results already computed in Gen NX. `elemKeys`, when given, scopes the
+// CC-TABLE read to that section's elements (the per-section recheck) so the read
+// doesn't return the whole model. Non-KDS models come back with an empty map.
+export function runColumnCheck(conn: ConnInfo, opts?: { recheck?: boolean; sectionId?: string; elemKeys?: string[] }): Promise<MemberCheckResult> {
+  return post<MemberCheckResult>("/api/beam-design-result", { member: "COLUMN", recheck: opts?.recheck, sectionId: opts?.sectionId, elemKeys: opts?.elemKeys, ...conn });
 }
 
 // Read/re-check wall verdicts (keyed by WID). `recheck` runs WC-ANAL "ALL" first

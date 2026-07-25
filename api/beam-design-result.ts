@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { fetchMidas, resolveBase, setCorsPost } from "./lib/midas.js";
+// Pure CC/WC-TABLE parsers live in src/lib so they're unit-tested; imported here
+// with the mandatory explicit .js extension (see the ESM notes in lib/midas.ts).
+import { parseColumnRows, parseWallRows } from "../src/lib/memberCheck.js";
 
 // Reads already-computed Mu/Vu demand from Gen NX's BC-TABLE (manual §55,
 // DESIGN/RC/KDS-41-20-2022/BC-TABLE) — a read of results the user already
@@ -213,31 +216,12 @@ async function runAnal(base: string, apiKey: string, analPath: string, arg: Reco
 // a prompt to press "해석 실행" (the middle button in the detail drawer).
 const needsAnalysis = (msg: string | null): boolean => !!msg && /perform analysis/i.test(msg);
 
-// --- COLUMN / WALL member checks (compact rows the client reduces to a verdict).
-// One row per element (column) or per WID+Story (wall). `chk`/`chkRbr` are the
-// raw CHK_STR/CHK_RBR strings; ratPM/ratShear are the governing (max) ratios the
-// board renders. Reduction to OK/NG lives in src/lib/memberCheck.ts (tested).
-interface MemberRow {
-  chk?: string;
-  chkRbr?: string;
-  ratPM?: number;
-  ratShear?: number;
-  label?: string; // story label (walls) — for the detail view
-}
+// --- COLUMN / WALL member checks. The CC/WC-TABLE column-name mapping + row
+// grouping is pure and lives in src/lib/memberCheck.ts (parseColumnRows /
+// parseWallRows), unit-tested there; this file only builds the request bodies,
+// extracts HEAD/DATA, and runs the ANAL/read round-trip.
 
-// Largest finite abs value across the given column indices (a section/wall's
-// governing ratio), or undefined if none are numeric.
-function maxAbs(row: string[], idxs: number[]): number | undefined {
-  let m: number | undefined;
-  for (const i of idxs) {
-    const v = readAbsNum(row, i);
-    if (v !== undefined) m = m === undefined ? v : Math.max(m, v);
-  }
-  return m;
-}
-
-// Find the HEAD/DATA table (top key varies, e.g. "Result Table") — same shape
-// helper the beam parser relies on.
+// Extract the HEAD/DATA table (top key varies, e.g. "Result Table").
 function tableHeadRows(data: any): { head: string[]; rows: string[][] } {
   const first = data && typeof data === "object" ? Object.values(data)[0] : undefined;
   const head: string[] = (first as any)?.HEAD ?? [];
@@ -245,32 +229,16 @@ function tableHeadRows(data: any): { head: string[]; rows: string[][] } {
   return { head, rows };
 }
 
-const ccTableBody = () => ({
+// `elems`, when given, scopes the read to those elements (the per-section
+// recheck) so CC-TABLE returns only the section's rows, not the whole model.
+const ccTableBody = (elems?: number[]) => ({
   Argument: {
     TABLE_TYPE: "MEMB",
     UNIT: { FORCE: "KN", DIST: "M" },
+    ...(elems && elems.length ? { ELEMS: { KEYS: elems } } : {}),
     COMPONENTS: ["MEMB", "SECT", "CHK_STR", "Rat_P", "Rat_M", "Rat_My", "Rat_Mz", "Rat_V_end", "Rat_V_mid"],
   },
 });
-
-// CC-TABLE → rows grouped by SECT (the board's section id). CHK_RBR is a
-// position code for columns (not OK/NG), so only CHK_STR is used. ratPM = worst
-// of Rat_P/Rat_M/Rat_My/Rat_Mz; ratShear = worst of Rat_V_end/Rat_V_mid.
-function parseColumnTable(data: any): Record<string, MemberRow[]> {
-  const { head, rows } = tableHeadRows(data);
-  const sectIdx = head.indexOf("SECT");
-  const chkIdx = head.indexOf("CHK_STR");
-  const pmIdx = ["Rat_P", "Rat_M", "Rat_My", "Rat_Mz"].map((c) => head.indexOf(c));
-  const vIdx = ["Rat_V_end", "Rat_V_mid"].map((c) => head.indexOf(c));
-  const out: Record<string, MemberRow[]> = {};
-  if (sectIdx < 0) return out;
-  for (const row of rows) {
-    const sid = readStr(row, sectIdx);
-    if (!sid) continue;
-    (out[sid] ||= []).push({ chk: readStr(row, chkIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, vIdx) });
-  }
-  return out;
-}
 
 const wcTableBody = () => ({
   Argument: {
@@ -279,33 +247,6 @@ const wcTableBody = () => ({
     COMPONENTS: ["WID", "Story", "CHK_STR", "CHK_RBR", "Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz", "Rat-V"],
   },
 });
-
-// WC-TABLE → rows grouped by WID (the board's wall id), one per Story. Both
-// CHK_STR (strength) and CHK_RBR (rebar detail) are real OK/NG for walls. ratPM
-// = worst of Rat-Py/Rat-Pz/Rat-My/Rat-Mz; ratShear = Rat-V. Note the hyphens.
-function parseWallTable(data: any): Record<string, MemberRow[]> {
-  const { head, rows } = tableHeadRows(data);
-  const widIdx = head.indexOf("WID");
-  const storyIdx = head.indexOf("Story");
-  const chkIdx = head.indexOf("CHK_STR");
-  const chkRbrIdx = head.indexOf("CHK_RBR");
-  const pmIdx = ["Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz"].map((c) => head.indexOf(c));
-  const vIdx = head.indexOf("Rat-V");
-  const out: Record<string, MemberRow[]> = {};
-  if (widIdx < 0) return out;
-  for (const row of rows) {
-    const wid = readStr(row, widIdx);
-    if (!wid) continue;
-    (out[wid] ||= []).push({
-      chk: readStr(row, chkIdx),
-      chkRbr: readStr(row, chkRbrIdx),
-      ratPM: maxAbs(row, pmIdx),
-      ratShear: maxAbs(row, [vIdx]),
-      label: readStr(row, storyIdx),
-    });
-  }
-  return out;
-}
 
 // Read a member table (already-committed results — no ANAL), or an error body.
 async function readMemberTable(base: string, apiKey: string, tablePath: string, body: unknown): Promise<{ data?: any; error?: string }> {
@@ -332,13 +273,16 @@ async function handleMemberCheck(
   member: "COLUMN" | "WALL",
   base: string,
   apiKey: string,
-  opts: { recheck?: boolean; sectionId?: unknown },
+  opts: { recheck?: boolean; sectionId?: unknown; elemKeys?: unknown },
   res: VercelResponse
 ) {
   const isCol = member === "COLUMN";
   const analPath = isCol ? CC_ANAL_PATH : WC_ANAL_PATH;
   const tablePath = isCol ? CC_TABLE_PATH : WC_TABLE_PATH;
-  const body = isCol ? ccTableBody() : wcTableBody();
+  // Per-section column recheck passes the section's element ids → read only those
+  // rows instead of the whole model's CC-TABLE.
+  const elems = isCol && Array.isArray(opts.elemKeys) ? opts.elemKeys.map(Number).filter(Number.isFinite) : [];
+  const body = isCol ? ccTableBody(elems) : wcTableBody();
 
   if (opts.recheck) {
     // Columns support a fast section-scoped recheck; walls just re-run ALL (cheap).
@@ -353,7 +297,8 @@ async function handleMemberCheck(
     if (error === "timeout") return res.json({ ok: false, code: "timeout" });
     return res.json({ ok: false, error });
   }
-  const byKey = isCol ? parseColumnTable(data) : parseWallTable(data);
+  const { head, rows } = tableHeadRows(data);
+  const byKey = isCol ? parseColumnRows(head, rows) : parseWallRows(head, rows);
   return res.json({ ok: true, byKey });
 }
 
@@ -369,7 +314,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // --- COLUMN / WALL member check (single read, grouped by SECT / WID)
   if (member === "COLUMN" || member === "WALL") {
-    return handleMemberCheck(member, base, apiKey, { recheck, sectionId }, res);
+    return handleMemberCheck(member, base, apiKey, { recheck, sectionId, elemKeys }, res);
   }
 
   // --- batch mode: one element per call, sequentially, within a time budget
