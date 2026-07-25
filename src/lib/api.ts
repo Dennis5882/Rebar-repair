@@ -204,10 +204,6 @@ export function getModelUnit(conn: ConnInfo): Promise<UnitResult> {
   return post<UnitResult>("/api/model", { action: "unit", ...conn });
 }
 
-export function getBeamDesignResult(elemKey: string, conn: ConnInfo): Promise<BeamDesignResultResult> {
-  return post<BeamDesignResultResult>("/api/beam-design-result", { elemKey, ...conn });
-}
-
 // Batch demand fetch for the whole board — one representative element per
 // section. The backend queries each element separately (BC-TABLE's MEMB
 // column can't be trusted to demux a multi-element response), so this can

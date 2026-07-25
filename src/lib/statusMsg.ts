@@ -38,9 +38,7 @@ export type StatusMsg =
   | { ok: true; kind: "analyzeDone" }
   | { ok: false; kind: "analyzeRunning" }
   | { ok: false; kind: "analyzeFail"; res: ApiError }
-  // Design-result (BC-TABLE) fetch feedback for the "결과값 불러오기" button.
-  | { ok: true; kind: "demandLoaded"; count: number }
-  | { ok: false; kind: "demandEmpty" }
+  // Design-result (BC-TABLE) fetch failure (board-wide batch read).
   | { ok: false; kind: "demandFail"; res: ApiError }
   // Board-wide batch demand fetch ("전 단면 수요 불러오기"). `loaded` = sections
   // that got a result, `total` = sections queried (loaded < total is normal:
@@ -116,10 +114,6 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("board.analyzeRunning");
     case "analyzeFail":
       return t("board.analyzeFail", { error: errText(t, s.res) });
-    case "demandLoaded":
-      return t("board.demandLoaded", { count: s.count });
-    case "demandEmpty":
-      return t("board.demandEmpty");
     case "demandFail":
       return t("board.demandFail", { error: errText(t, s.res) });
     case "demandAllLoading":

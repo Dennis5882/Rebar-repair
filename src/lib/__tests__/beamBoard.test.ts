@@ -32,6 +32,21 @@ describe("genVerdictFromDemand", () => {
     expect(v.ok).toBe(true);
   });
 
+  it("ignores non-OK/NG placeholders like '-' (does not flag NG)", () => {
+    // A station Gen NX didn't govern reads "-"/"N/A", not a verdict — it must not
+    // turn an otherwise-OK section into NG.
+    const d: DemandBySector = {
+      I: { chk: "OK", chkRbr: "OK", ratN: 0.3, ratV: 0.2 },
+      M: { chk: "-", chkRbr: "N/A", ratP: 0.1, ratV: 0.15 },
+    };
+    const v = genVerdictFromDemand(d)!;
+    expect(v.ok).toBe(true);
+  });
+
+  it("returns null when every station is a placeholder (falls back to formula)", () => {
+    expect(genVerdictFromDemand({ M: { chk: "-", ratN: 0.4 } })).toBeNull();
+  });
+
   it("is NG when any station's strength check fails", () => {
     const d: DemandBySector = {
       I: { chk: "OK", ratN: 0.9, ratV: 0.5 },

@@ -225,12 +225,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const num = Number(raw);
       if (Number.isFinite(num)) targets.push({ key, num });
     }
+    // Budget from here so BC-ANAL's own time counts against the total — the read
+    // loop must fit under the function's maxDuration alongside a slow recheck.
+    const start = Date.now();
     // Recheck once for the whole model before reading — one BC-ANAL "ALL" is
     // cheaper and more consistent than per-element checks.
     const analErr = recheck ? await runBeamCheck(base, apiKey) : null;
+    // A rebar/member edit invalidated the solve: BC-TABLE would only return the
+    // stale pre-edit verdict, which must not be surfaced as authoritative. Skip
+    // the (wasted) reads and tell the frontend to run "해석 실행" first.
+    if (needsAnalysis(analErr)) return res.json({ ok: true, byElem: {}, needAnalysis: true });
     const byElem: Record<string, Record<SectorKey, DemandPoint>> = {};
     let partial = false;
-    const start = Date.now();
     for (const { key, num } of targets) {
       if (Date.now() - start > TOTAL_BUDGET_MS) {
         partial = true; // out of time — return what we have
@@ -239,10 +245,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const bySector = await fetchOne(base, apiKey, num);
       if (bySector && Object.keys(bySector).length > 0) byElem[key] = bySector;
     }
-    // Nothing came back and BC-ANAL said the model needs re-analysis → tell the
-    // frontend so it can point the user at "해석 실행" instead of implying non-KDS.
-    const needAnalysis = Object.keys(byElem).length === 0 && needsAnalysis(analErr);
-    return res.json({ ok: true, byElem, partial, needAnalysis });
+    return res.json({ ok: true, byElem, partial });
   }
 
   // --- single mode

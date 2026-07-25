@@ -35,7 +35,11 @@ export interface GenVerdict {
   ratFlex?: number;
   ratShear?: number;
 }
+// Only an explicit "OK"/"NG" is a verdict — Gen NX writes placeholders like "-"
+// or "N/A" for a station it didn't govern/check, and those must count as neither
+// (treating them as NG would flag a passing member).
 const isOk = (s?: string): boolean => s != null && /^ok/i.test(s.trim());
+const isNg = (s?: string): boolean => s != null && /ng/i.test(s.trim());
 export function genVerdictFromDemand(demand: DemandBySector): GenVerdict | null {
   let sawChk = false;
   let anyNg = false;
@@ -44,11 +48,9 @@ export function genVerdictFromDemand(demand: DemandBySector): GenVerdict | null 
   for (const key of SECTORS) {
     const d = demand[key];
     if (!d) continue;
-    if (d.chk != null) {
-      sawChk = true;
-      if (!isOk(d.chk)) anyNg = true;
-    }
-    if (d.chkRbr != null && !isOk(d.chkRbr)) anyNg = true;
+    if (isOk(d.chk) || isNg(d.chk)) sawChk = true; // a recognizable verdict
+    if (isNg(d.chk)) anyNg = true;
+    if (isNg(d.chkRbr)) anyNg = true;
     if (d.ratN != null) ratFlex = Math.max(ratFlex ?? 0, d.ratN);
     if (d.ratP != null) ratFlex = Math.max(ratFlex ?? 0, d.ratP);
     if (d.ratV != null) ratShear = Math.max(ratShear ?? 0, d.ratV);
