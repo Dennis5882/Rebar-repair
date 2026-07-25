@@ -5,6 +5,7 @@ import { listMemberSections, saveRebar, sectionGroupLabel, type MemberSectionGro
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { EMPTY_COLUMN_FORM, buildColumnPayload, fillColumnForm, type FormState } from "../lib/columnRebarForm";
+import { lenToMm, lenToModel, numToMm } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import type { ColumnLikePayload, MemberType } from "../types/rebar";
@@ -30,9 +31,38 @@ interface ColRowState {
 const DEFAULT_B = "500";
 const DEFAULT_H = "500";
 
-function colRowFromGroup(grp: ColGroup, isColumn: boolean): ColRowState {
+// REBC/REBR store these as lengths in the model's unit; the board edits in mm.
+// Only cover DO + the two hoop spacings are lengths — counts/legs are not, and
+// B/H already arrive in mm from member-sections.
+function formLenTo(form: FormState, unit: string, conv: (s: string, u: string) => string): FormState {
   return {
-    form: fillColumnForm(grp.payload, isColumn, EMPTY_COLUMN_FORM.hoopType),
+    ...form,
+    doVal: conv(form.doVal, unit),
+    endDist: conv(form.endDist, unit),
+    cenDist: conv(form.cenDist, unit),
+  };
+}
+// A loaded payload with its length fields converted model-unit -> mm, so the
+// "before" diagram matches the mm-based "after".
+function payloadLenToMm(p: ColumnLikePayload, unit: string): ColumnLikePayload {
+  const it = p.ITEMS?.[0];
+  if (!it) return p;
+  return {
+    ...p,
+    ITEMS: [
+      {
+        ...it,
+        DO: numToMm(it.DO, unit),
+        SHEAR_BAR_END: it.SHEAR_BAR_END ? { ...it.SHEAR_BAR_END, DIST: numToMm(it.SHEAR_BAR_END.DIST, unit) } : it.SHEAR_BAR_END,
+        SHEAR_BAR_CEN: it.SHEAR_BAR_CEN ? { ...it.SHEAR_BAR_CEN, DIST: numToMm(it.SHEAR_BAR_CEN.DIST, unit) } : it.SHEAR_BAR_CEN,
+      },
+    ],
+  };
+}
+
+function colRowFromGroup(grp: ColGroup, isColumn: boolean, unit: string): ColRowState {
+  return {
+    form: formLenTo(fillColumnForm(grp.payload, isColumn, EMPTY_COLUMN_FORM.hoopType), unit, lenToMm),
     b: grp.dimB != null ? String(Math.round(grp.dimB)) : DEFAULT_B,
     h: grp.dimH != null ? String(Math.round(grp.dimH)) : DEFAULT_H,
     dirty: false,
@@ -70,9 +100,9 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   const k = (suffix: string) => `${ns}.${suffix}`;
 
   const [sections, setSections] = useState<Record<string, ColGroup>>({});
-  // The model's active length unit, from the endpoint (authoritative). COLUMN/
-  // BRACE cover (DO) and hoop DIST are shown in this unit, not converted to mm,
-  // matching the footer disclaimer and the old forms.
+  // The model's active length unit, from the endpoint (authoritative). The board
+  // edits in mm; this unit is only used to convert cover (DO) + hoop DIST
+  // model-unit<->mm at the load/save boundary (see formLenTo / payloadLenToMm).
   const [boardUnit, setBoardUnit] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
@@ -111,11 +141,11 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   useEffect(() => {
     const sids = Object.keys(sections);
     const next: Record<string, ColRowState> = {};
-    for (const sid of sids) next[sid] = colRowFromGroup(sections[sid], isColumn);
+    for (const sid of sids) next[sid] = colRowFromGroup(sections[sid], isColumn, unit);
     setRows(next);
     setOrder(sids);
     setSelectedSid(sids.length ? sids[0] : null);
-  }, [sections, isColumn]);
+  }, [sections, isColumn, unit]);
 
   useEffect(() => setActionMsg(null), [selectedSid]);
 
@@ -150,7 +180,9 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     const r = rows[sid];
     const grp = sections[sid];
     if (!r || !grp) return;
-    const payload = buildColumnPayload(r.form, isColumn);
+    // Row form is mm; REBC/REBR expect the model's length unit — convert the
+    // length fields back on the way out.
+    const payload = buildColumnPayload(formLenTo(r.form, unit, lenToModel), isColumn);
     setSavingSid(sid);
     setActionMsg({ ok: true, kind: "saving" });
     try {
@@ -172,8 +204,10 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
 
   const selected = selectedSid ? rows[selectedSid] : null;
   const selectedGrp = selectedSid ? sections[selectedSid] : null;
+  // Both preview payloads in mm: `after` is built from the mm form; `before`
+  // is the loaded (model-unit) payload converted to mm so the diagrams match.
   const afterPayload = useMemo(() => (selected ? buildColumnPayload(selected.form, isColumn) : null), [selected, isColumn]);
-  const unitSuffix = unit ? ` (${unit})` : "";
+  const beforePreview = useMemo(() => (selectedGrp ? payloadLenToMm(selectedGrp.payload, unit) : null), [selectedGrp, unit]);
 
   return (
     <div className="beam-board">
@@ -295,7 +329,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
             <SectionPreview
               type={type}
               titleKey="common.previewTitleSimple"
-              before={selectedGrp.payload}
+              before={beforePreview}
               after={afterPayload}
               dims={{ B: selected.b, H: selected.h }}
               legend={
@@ -348,7 +382,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
               </div>
               <div className="field"><label>{t("common.legY")}</label><input type="number" value={selected.form.endLegY} onChange={(e) => updateField(selectedSid, "endLegY", e.target.value)} /></div>
               <div className="field"><label>{t("common.legZ")}</label><input type="number" value={selected.form.endLegZ} onChange={(e) => updateField(selectedSid, "endLegZ", e.target.value)} /></div>
-              <div className="field"><label>{t("common.dist")}{unitSuffix}</label><input type="number" step="any" value={selected.form.endDist} onChange={(e) => updateField(selectedSid, "endDist", e.target.value)} /></div>
+              <div className="field"><label>{t("common.dist")} (mm)</label><input type="number" step="any" value={selected.form.endDist} onChange={(e) => updateField(selectedSid, "endDist", e.target.value)} /></div>
             </div>
 
             <div className="subhead">{t("common.cenHoopTitle")}</div>
@@ -359,13 +393,13 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
               </div>
               <div className="field"><label>{t("common.legY")}</label><input type="number" value={selected.form.cenLegY} onChange={(e) => updateField(selectedSid, "cenLegY", e.target.value)} /></div>
               <div className="field"><label>{t("common.legZ")}</label><input type="number" value={selected.form.cenLegZ} onChange={(e) => updateField(selectedSid, "cenLegZ", e.target.value)} /></div>
-              <div className="field"><label>{t("common.dist")}{unitSuffix}</label><input type="number" step="any" value={selected.form.cenDist} onChange={(e) => updateField(selectedSid, "cenDist", e.target.value)} /></div>
+              <div className="field"><label>{t("common.dist")} (mm)</label><input type="number" step="any" value={selected.form.cenDist} onChange={(e) => updateField(selectedSid, "cenDist", e.target.value)} /></div>
             </div>
 
             <div className="subhead">{t("common.etcTitle")}</div>
             <div className={isColumn ? "row3" : "row2"}>
               <div className="field">
-                <label>{t("common.coverDO")}{unitSuffix}</label>
+                <label>{t("common.coverDO")} (mm)</label>
                 <input type="number" step="any" value={selected.form.doVal} onChange={(e) => updateField(selectedSid, "doVal", e.target.value)} />
               </div>
               <div className="field">

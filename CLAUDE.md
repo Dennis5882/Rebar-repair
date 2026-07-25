@@ -91,11 +91,13 @@ alongside when you touch one of these.
   SECT-grouped model at all — `WallBoard` reads **REBW** via `rebar` (`list`),
   keyed by Wall ID, each a multi-segment `ITEMS[]`; edit one segment, preserve
   the rest on save.
-- **Units**: the **beam board works in mm end-to-end** (cover `DT/DB` and stirrup
-  `DIST` are converted model-unit↔mm at the load/save boundary in
-  `BeamBoard.tsx`; `beamBoard.ts` is unit-agnostic). The **column/wall/brace tabs
-  still display the model's active length unit.** Keep `app.footerHint` honest if
-  this changes.
+- **Units**: **every board works in mm end-to-end.** REBB/REBC/REBR/REBW store
+  lengths (cover, spacing, thickness…) in the model's active unit; each board
+  converts them model-unit↔mm at the load/save boundary via `src/lib/units.ts`
+  (`lenToMm`/`lenToModel` for form strings, `numToMm`/`numToModel` for payload
+  numbers used by the "before" diagram). Convert **lengths only** — counts, legs,
+  ids, story labels pass through. `app.footerHint` states the mm convention; keep
+  it honest if this changes.
 - OK/NG is computed **in-browser** (`rcBeamCheck.ts`, KDS 41 20:2022 + TWN-USD112
   only). Only demand (Mu/Vu) comes from Gen NX. Design-code check is never needed.
 

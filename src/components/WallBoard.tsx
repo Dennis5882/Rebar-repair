@@ -4,6 +4,7 @@ import { useConn } from "../context/ConnContext";
 import { getModelUnit, listRebar, saveRebar } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, segmentLabel, type WallFormState } from "../lib/wallRebarForm";
+import { numToMm, numToModel } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import type { WallItem, WallPayload } from "../types/rebar";
@@ -17,8 +18,25 @@ import type { WallItem, WallPayload } from "../types/rebar";
 // no live verdict — REBW editing only.
 
 interface WallRowState {
-  items: WallItem[]; // working copy (edited); saved as { ITEMS: items }
+  items: WallItem[]; // working copy, in mm (edited); saved back in model unit
   dirty: boolean;
+}
+
+// The board works in mm; REBW stores lengths in the model's unit. Convert every
+// length field of a segment on the load/save boundary (spacings, cover DW/DE,
+// BE length, thickness). Names/ids/story labels are not lengths — left alone.
+function mapWallItemLen(it: WallItem, conv: (v: number | undefined) => number | undefined): WallItem {
+  const out: WallItem = { ...it };
+  if (it.VERTICAL_REBAR) out.VERTICAL_REBAR = { ...it.VERTICAL_REBAR, DIST: conv(it.VERTICAL_REBAR.DIST) };
+  if (it.HORIZONTAL_REBAR) out.HORIZONTAL_REBAR = { ...it.HORIZONTAL_REBAR, DIST: conv(it.HORIZONTAL_REBAR.DIST) };
+  if (it.END_REBAR) out.END_REBAR = { ...it.END_REBAR, DIST: conv(it.END_REBAR.DIST) };
+  if (it.BE_HORIZONTAL_REBAR) out.BE_HORIZONTAL_REBAR = { ...it.BE_HORIZONTAL_REBAR, DIST: conv(it.BE_HORIZONTAL_REBAR.DIST) };
+  if (it.BOUNDARY_ELEMENT_LENGTH != null) out.BOUNDARY_ELEMENT_LENGTH = conv(it.BOUNDARY_ELEMENT_LENGTH);
+  if (it.CONCRETE_FACE_TO_CENTER_OF_REBAR) {
+    out.CONCRETE_FACE_TO_CENTER_OF_REBAR = { DW: conv(it.CONCRETE_FACE_TO_CENTER_OF_REBAR.DW), DE: conv(it.CONCRETE_FACE_TO_CENTER_OF_REBAR.DE) };
+  }
+  if (it.THICKNESS != null) out.THICKNESS = conv(it.THICKNESS);
+  return out;
 }
 
 export function WallBoard() {
@@ -47,7 +65,6 @@ export function WallBoard() {
   const [sortKey, setSortKey] = useState<"default" | "name">("default");
 
   const unit = boardUnit || lengthUnit;
-  const unitSuffix = unit ? ` (${unit})` : "";
 
   async function handleList() {
     setListLoading(true);
@@ -69,16 +86,18 @@ export function WallBoard() {
     }
   }
 
-  // Rebuild working rows from a fresh list (deep-ish copy of each segment so
-  // edits never mutate the `orig` used to draw the "before" preview).
+  // Rebuild working rows from a fresh list, converting each segment's lengths
+  // model-unit -> mm (the board edits in mm). The copy also means edits never
+  // mutate the `orig` kept for the "before" preview baseline.
   useEffect(() => {
     const ids = Object.keys(orig);
     const next: Record<string, WallRowState> = {};
-    for (const id of ids) next[id] = { items: (orig[id]?.ITEMS || []).map((it) => ({ ...it })), dirty: false };
+    for (const id of ids) next[id] = { items: (orig[id]?.ITEMS || []).map((it) => mapWallItemLen(it, (v) => numToMm(v, unit))), dirty: false };
     setRows(next);
     setOrder(ids);
     setSelectedId(ids.length ? ids[0] : null);
-  }, [orig]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orig, unit]);
 
   // Load the selected wall's first segment into the editable form.
   useEffect(() => {
@@ -131,7 +150,9 @@ export function WallBoard() {
   async function saveWall(id: string) {
     const row = rows[id];
     if (!row) return;
-    const payload: WallPayload = { ITEMS: row.items };
+    // Working items are mm; REBW expects the model's length unit — convert
+    // every segment's lengths back on the way out.
+    const payload: WallPayload = { ITEMS: row.items.map((it) => mapWallItemLen(it, (v) => numToModel(v, unit))) };
     setSavingId(id);
     setActionMsg({ ok: true, kind: "saving" });
     try {
@@ -158,7 +179,9 @@ export function WallBoard() {
   const selectedRow = selectedId ? rows[selectedId] : null;
   const segCount = selectedRow?.items.length || 0;
   const beforeItem = selectedId ? orig[selectedId]?.ITEMS?.[segIndex] : undefined;
-  const beforePayload = useMemo(() => (beforeItem ? { ITEMS: [beforeItem] } : null), [beforeItem]);
+  // `before` is the loaded (model-unit) segment converted to mm; `after` comes
+  // from the mm form — both mm so the diagram is consistent.
+  const beforePayload = useMemo(() => (beforeItem ? { ITEMS: [mapWallItemLen(beforeItem, (v) => numToMm(v, unit))] } : null), [beforeItem, unit]);
   const afterPayload = useMemo(() => ({ ITEMS: [buildWallItem(form)] }), [form]);
 
   return (
@@ -312,11 +335,11 @@ export function WallBoard() {
             <div className="subhead">{t("wall.vhRebarTitle")}</div>
             <div className="row2">
               <div className="field"><label>{t("wall.vSpec")}</label><BarSelect id="wb-vName" placeholder="D16" value={form.vName} onChange={(v) => setField("vName", v)} /></div>
-              <div className="field"><label>{t("wall.vDistLabel")}{unitSuffix}</label><input type="number" step="any" value={form.vDist} onChange={(e) => setField("vDist", e.target.value)} /></div>
+              <div className="field"><label>{t("wall.vDistLabel")} (mm)</label><input type="number" step="any" value={form.vDist} onChange={(e) => setField("vDist", e.target.value)} /></div>
             </div>
             <div className="row2">
               <div className="field"><label>{t("wall.hSpec")}</label><BarSelect id="wb-hName" placeholder="D13" value={form.hName} onChange={(v) => setField("hName", v)} /></div>
-              <div className="field"><label>{t("wall.hDistLabel")}{unitSuffix}</label><input type="number" step="any" value={form.hDist} onChange={(e) => setField("hDist", e.target.value)} /></div>
+              <div className="field"><label>{t("wall.hDistLabel")} (mm)</label><input type="number" step="any" value={form.hDist} onChange={(e) => setField("hDist", e.target.value)} /></div>
             </div>
 
             <div className="checkline">
@@ -327,28 +350,28 @@ export function WallBoard() {
               <div className="row3">
                 <div className="field"><label>{t("common.spec")}</label><BarSelect id="wb-endName" placeholder="D22" value={form.endName} onChange={(v) => setField("endName", v)} /></div>
                 <div className="field"><label>{t("common.count")}</label><input type="number" value={form.endNum} onChange={(e) => setField("endNum", e.target.value)} /></div>
-                <div className="field"><label>{t("common.dist")}{unitSuffix}</label><input type="number" step="any" value={form.endDist} onChange={(e) => setField("endDist", e.target.value)} /></div>
+                <div className="field"><label>{t("common.dist")} (mm)</label><input type="number" step="any" value={form.endDist} onChange={(e) => setField("endDist", e.target.value)} /></div>
               </div>
             )}
 
             <div className="subhead">{t("wall.beTitle")}</div>
             <div className="row3">
               <div className="field"><label>{t("wall.hSpec")}</label><BarSelect id="wb-beName" placeholder="D13" value={form.beName} onChange={(v) => setField("beName", v)} /></div>
-              <div className="field"><label>{t("wall.hDistLabel")}{unitSuffix}</label><input type="number" step="any" value={form.beDist} onChange={(e) => setField("beDist", e.target.value)} /></div>
-              <div className="field"><label>{t("wall.beLen")}{unitSuffix}</label><input type="number" step="any" value={form.beLen} onChange={(e) => setField("beLen", e.target.value)} /></div>
+              <div className="field"><label>{t("wall.hDistLabel")} (mm)</label><input type="number" step="any" value={form.beDist} onChange={(e) => setField("beDist", e.target.value)} /></div>
+              <div className="field"><label>{t("wall.beLen")} (mm)</label><input type="number" step="any" value={form.beLen} onChange={(e) => setField("beLen", e.target.value)} /></div>
             </div>
 
             <div className="subhead">{t("wall.coverThkTitle")}</div>
             <div className="row2">
-              <div className="field"><label>{t("wall.dw")}{unitSuffix}</label><input type="number" step="any" value={form.dw} onChange={(e) => setField("dw", e.target.value)} /></div>
-              <div className="field"><label>{t("wall.de")}{unitSuffix}</label><input type="number" step="any" value={form.de} onChange={(e) => setField("de", e.target.value)} /></div>
+              <div className="field"><label>{t("wall.dw")} (mm)</label><input type="number" step="any" value={form.dw} onChange={(e) => setField("dw", e.target.value)} /></div>
+              <div className="field"><label>{t("wall.de")} (mm)</label><input type="number" step="any" value={form.de} onChange={(e) => setField("de", e.target.value)} /></div>
             </div>
             <div className="checkline">
               <input id="wb-useModelThk" type="checkbox" checked={form.useModelThk} onChange={(e) => setField("useModelThk", e.target.checked)} />
               <label htmlFor="wb-useModelThk" style={{ margin: 0 }}>{t("wall.useModelThk")}</label>
             </div>
             {!form.useModelThk && (
-              <div className="field"><label>{t("wall.thickness")}{unitSuffix}</label><input type="number" step="any" value={form.thickness} onChange={(e) => setField("thickness", e.target.value)} /></div>
+              <div className="field"><label>{t("wall.thickness")} (mm)</label><input type="number" step="any" value={form.thickness} onChange={(e) => setField("thickness", e.target.value)} /></div>
             )}
 
             <div className="subhead">{t("common.dimsHintTitle")}</div>

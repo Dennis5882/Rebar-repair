@@ -4,7 +4,7 @@ import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
 import { getAllBeamDesignResults, getBeamDesignResult, listBeamSections, runAnalysis, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
 import { formulaFamily } from "../lib/rcBeamCheck";
-import { MM_PER_UNIT } from "../data/rcCodePresets";
+import { lenToMm as coverToMm, lenToModel as coverToModel, mmPerUnit } from "../lib/units";
 import {
   buildBeamPayload,
   detectInputMode,
@@ -64,21 +64,6 @@ function rowFromGroup(grp: BeamSectionGroup, defB: string, defH: string, lengthU
 function n(s: string): number {
   const v = Number(s);
   return Number.isFinite(v) ? v : 0;
-}
-const mmPerUnit = (unit: string): number => MM_PER_UNIT[unit] ?? 1;
-// model-unit string -> mm string (blank stays blank; float noise trimmed)
-function coverToMm(s: string, unit: string): string {
-  if (s.trim() === "") return "";
-  const v = Number(s);
-  if (!Number.isFinite(v)) return "";
-  return String(Math.round(v * mmPerUnit(unit) * 100) / 100);
-}
-// mm string -> model-unit string, for writing REBB back
-function coverToModel(s: string, unit: string): string {
-  if (s.trim() === "") return "";
-  const v = Number(s);
-  if (!Number.isFinite(v)) return "";
-  return String(v / mmPerUnit(unit));
 }
 // Shear spacing (SHEAR_BAR.DIST) is stored in the model's native length unit
 // just like cover. The board works entirely in mm, so convert each sector's
