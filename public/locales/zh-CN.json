@@ -159,7 +159,7 @@
   "board.checkSectionBtn": "校核此截面",
   "board.checkingSection": "正在校核此截面…",
   "board.sectionChecked": "此截面校核完成",
-  "board.checkSectionHint": "仅对此截面运行 Gen NX 设计校核并更新判定。",
+  "board.checkSectionHint": "修改配筋并保存后，先点击“运行分析”一次，再点击“校核此截面”更新判定。",
   "board.needAnalysis": "请先点击“运行分析”——配筋修改使分析结果需要重新计算。",
   "board.searchPlaceholder": "搜索截面",
   "board.ngOnly": "仅 NG",

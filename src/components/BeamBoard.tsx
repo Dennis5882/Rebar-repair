@@ -474,18 +474,18 @@ export function BeamBoard() {
   async function runModelAnalysis() {
     if (!window.confirm(t("board.analyzeConfirm"))) return;
     setAnalyzing(true);
-    setStatus({ ok: true, kind: "analyzing" });
+    setActionMsg({ ok: true, kind: "analyzing" });
     try {
       const res = await runAnalysis(conn);
       if (res.ok) {
-        setStatus({ ok: true, kind: "analyzeDone" });
+        setActionMsg({ ok: true, kind: "analyzeDone" });
       } else if (res.code === "timeout" || res.code === "parse_error") {
-        setStatus({ ok: false, kind: "analyzeRunning" });
+        setActionMsg({ ok: false, kind: "analyzeRunning" });
       } else {
-        setStatus({ ok: false, kind: "analyzeFail", res });
+        setActionMsg({ ok: false, kind: "analyzeFail", res });
       }
     } catch (e) {
-      setStatus({ ok: false, kind: "analyzeFail", res: { ok: false, error: String(e) } });
+      setActionMsg({ ok: false, kind: "analyzeFail", res: { ok: false, error: String(e) } });
     } finally {
       setAnalyzing(false);
     }
@@ -532,11 +532,6 @@ export function BeamBoard() {
           {order.length > 0 && (
             <button className="btn board-fetch-all" type="button" onClick={fetchAllDemand} disabled={fetchingAll}>
               {fetchingAll ? t("board.fetchingAll") : t("board.fetchAllBtn")}
-            </button>
-          )}
-          {order.length > 0 && (
-            <button className="btn board-analyze" type="button" onClick={runModelAnalysis} disabled={analyzing}>
-              {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
             </button>
           )}
           <div className="board-mat">
@@ -767,10 +762,15 @@ export function BeamBoard() {
                 <input type="number" value={selected.h} onChange={(e) => patchRow(selectedSid, { h: e.target.value })} /></div>
             </div>
 
-            {/* --- action bar: save this section · re-check just this section --- */}
+            {/* --- action bar: save · run analysis · re-check this section.
+                   The 3-step workflow: a rebar save invalidates Gen NX's solve,
+                   so 해석 실행 (whole-model, once) must run before 검토 실행. --- */}
             <div className="board-actions">
               <button className="btn primary" type="button" onClick={() => saveGroup(selectedSid)} disabled={savingSid === selectedSid}>
                 {t("board.saveGroupBtn", { count: selectedGrp.elementKeys.length })}
+              </button>
+              <button className="btn" type="button" onClick={runModelAnalysis} disabled={analyzing}>
+                {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
               </button>
               <button className="btn" type="button" onClick={() => handleSectionRecheck(selectedSid)} disabled={checkingSid === selectedSid}>
                 {checkingSid === selectedSid ? t("board.checkingSection") : t("board.checkSectionBtn")}

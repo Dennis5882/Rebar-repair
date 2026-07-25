@@ -159,7 +159,7 @@
   "board.checkSectionBtn": "이 단면 검토 실행",
   "board.checkingSection": "이 단면 검토 중…",
   "board.sectionChecked": "이 단면 검토 완료",
-  "board.checkSectionHint": "이 단면만 Gen NX 설계검토를 실행해 판정을 갱신합니다.",
+  "board.checkSectionHint": "배근을 바꿔 저장했으면 '해석 실행'을 한 번 돌린 뒤 '이 단면 검토 실행'으로 판정을 갱신하세요.",
   "board.needAnalysis": "먼저 '해석 실행'을 눌러주세요 — 배근 변경으로 해석 결과를 다시 계산해야 합니다.",
   "board.searchPlaceholder": "단면 검색",
   "board.ngOnly": "NG만",

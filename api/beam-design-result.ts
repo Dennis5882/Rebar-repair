@@ -198,7 +198,9 @@ async function runBeamCheck(base: string, apiKey: string, arg: Record<string, un
 }
 
 // BC-ANAL's "please perform analysis" precondition error — a rebar/member edit
-// invalidated the last solve, so the user must run /doc/ANAL ("해석 실행") first.
+// invalidated the last solve, so the FE analysis ("해석 실행" /doc/ANAL) must run
+// again before the design check can produce results. The board surfaces this as
+// a prompt to press "해석 실행" (the middle button in the detail drawer).
 const needsAnalysis = (msg: string | null): boolean => !!msg && /perform analysis/i.test(msg);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
