@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useLoadAll } from "../context/LoadAllContext";
-import { getModelUnit, listRebar, saveRebar } from "../lib/api";
+import { getModelUnit, listRebar, runAnalysis, runWallCheck, saveRebar, type MemberCheckRow } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, segmentLabel, type WallFormState } from "../lib/wallRebarForm";
+import { memberVerdictFromRows, type MemberVerdict } from "../lib/memberCheck";
 import { numToMm, numToModel } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
+import { JudgeBar } from "./JudgeBar";
 import type { WallItem, WallPayload } from "../types/rebar";
 
 // The WALL tab's board. Walls don't fit the SECT-grouped section model the
@@ -15,13 +17,18 @@ import type { WallItem, WallPayload } from "../types/rebar";
 // segments (ITEMS: WallItem[], one per SUB_WALL_ID / story range). So this
 // board lists REBW records (walls that already have rebar) with row = wall,
 // and its detail editor edits one segment at a time, preserving the others on
-// save (the exact concern the old WallForm handled). Like the other boards,
-// no live verdict — REBW editing only.
+// save (the exact concern the old WallForm handled). Each wall carries a live
+// OK/NG verdict read from Gen NX's own wall check (WC-ANAL + WC-TABLE, keyed by
+// WID = the board's wall id) — the worst case across the wall's stories. KDS
+// models only; a non-KDS/empty result shows "판정 보류".
 
 interface WallRowState {
   items: WallItem[]; // working copy, in mm (edited); saved back in model unit
   dirty: boolean;
 }
+
+// The verdict rendered for a wall: Gen NX's own check ("gennx") or none yet.
+type EffVerdict = { ok?: boolean; source: "gennx" | "none"; ratPM?: number; ratShear?: number };
 
 // The board works in mm; REBW stores lengths in the model's unit. Convert every
 // length field of a segment on the load/save boundary (spacings, cover DW/DE,
@@ -59,6 +66,13 @@ export function WallBoard() {
   const [form, setForm] = useState<WallFormState>({ ...EMPTY_WALL_FORM });
   const [savingId, setSavingId] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<StatusMsg | null>(null);
+
+  // Gen NX wall-check rows per WID (WC-TABLE, one per Story), reduced to a
+  // verdict below.
+  const [check, setCheck] = useState<Record<string, MemberCheckRow[]>>({});
+  const [rechecking, setRechecking] = useState(false);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const [dispThk, setDispThk] = useState("300");
   const [dispLen, setDispLen] = useState("3000");
@@ -104,6 +118,7 @@ export function WallBoard() {
     setRows(next);
     setOrder(ids);
     setSelectedId(ids.length ? ids[0] : null);
+    setCheck({}); // fresh list — drop any prior verdicts until re-checked
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orig, unit]);
 
@@ -139,11 +154,38 @@ export function WallBoard() {
     });
   }
 
+  // Gen NX's verdict per wall (null when no check has run / non-KDS).
+  const genVerdicts = useMemo(() => {
+    const out: Record<string, MemberVerdict | null> = {};
+    for (const id of order) out[id] = memberVerdictFromRows(check[id]);
+    return out;
+  }, [order, check]);
+
+  // Effective verdict per wall. Gen NX's is authoritative unless the wall is
+  // mid-edit (unsaved change makes the last check stale) → fall back to none.
+  const verdicts = useMemo(() => {
+    const out: Record<string, EffVerdict> = {};
+    for (const id of order) {
+      const gv = !rows[id]?.dirty ? genVerdicts[id] : null;
+      out[id] = gv ? { ok: gv.ok, source: "gennx", ratPM: gv.ratPM, ratShear: gv.ratShear } : { source: "none" };
+    }
+    return out;
+  }, [order, rows, genVerdicts]);
+
   const summary = useMemo(() => {
+    let ok = 0;
+    let ng = 0;
+    let judged = 0;
     let dirty = 0;
-    for (const id of order) if (rows[id]?.dirty) dirty++;
-    return { total: order.length, dirty };
-  }, [order, rows]);
+    for (const id of order) {
+      const v = verdicts[id];
+      if (v?.ok === true) ok++;
+      else if (v?.ok === false) ng++;
+      if (v?.ok != null) judged++;
+      if (rows[id]?.dirty) dirty++;
+    }
+    return { total: order.length, ok, ng, judged, dirty };
+  }, [order, verdicts, rows]);
 
   const visibleOrder = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -184,7 +226,80 @@ export function WallBoard() {
     }
   }
 
+  // "Gen NX 재검토": WC-ANAL "ALL" then read every wall's WC-TABLE verdict.
+  async function handleRecheck() {
+    if (!order.length) return;
+    setRechecking(true);
+    setStatus({ ok: true, kind: "recheckRunning" });
+    try {
+      const res = await runWallCheck(conn, { recheck: true });
+      if (!res.ok) {
+        setStatus({ ok: false, kind: "recheckFail", res });
+        return;
+      }
+      setCheck(res.byKey);
+      const loaded = order.filter((id) => (res.byKey[id]?.length ?? 0) > 0).length;
+      setStatus(
+        loaded
+          ? { ok: true, kind: "recheckDone", loaded, total: order.length }
+          : res.needAnalysis
+            ? { ok: false, kind: "needAnalysis" }
+            : { ok: false, kind: "recheckEmptyMember" }
+      );
+    } catch (e) {
+      setStatus({ ok: false, kind: "recheckFail", res: { ok: false, error: String(e) } });
+    } finally {
+      setRechecking(false);
+    }
+  }
+
+  // "이 벽 검토 실행": WC-ANAL "ALL" (walls have no section scope; it's cheap),
+  // then read back just this wall's verdict.
+  async function handleWallRecheck(id: string) {
+    setCheckingId(id);
+    setActionMsg({ ok: true, kind: "sectionChecking" });
+    try {
+      const res = await runWallCheck(conn, { recheck: true });
+      if (!res.ok) {
+        setActionMsg({ ok: false, kind: "recheckFail", res });
+        return;
+      }
+      const rowsForId = res.byKey[id];
+      setCheck((prev) => ({ ...prev, [id]: rowsForId || [] }));
+      setActionMsg(
+        rowsForId && rowsForId.some((r) => r.chk != null)
+          ? { ok: true, kind: "sectionChecked" }
+          : res.needAnalysis
+            ? { ok: false, kind: "needAnalysis" }
+            : { ok: false, kind: "recheckEmptyMember" }
+      );
+    } catch (e) {
+      setActionMsg({ ok: false, kind: "recheckFail", res: { ok: false, error: String(e) } });
+    } finally {
+      setCheckingId(null);
+    }
+  }
+
+  // Run the whole model's structural analysis (/doc/ANAL) — required after a
+  // rebar save before the wall check can produce fresh results.
+  async function runModelAnalysis() {
+    if (!window.confirm(t("board.analyzeConfirm"))) return;
+    setAnalyzing(true);
+    setActionMsg({ ok: true, kind: "analyzing" });
+    try {
+      const res = await runAnalysis(conn);
+      if (res.ok) setActionMsg({ ok: true, kind: "analyzeDone" });
+      else if (res.code === "timeout" || res.code === "parse_error") setActionMsg({ ok: false, kind: "analyzeRunning" });
+      else setActionMsg({ ok: false, kind: "analyzeFail", res });
+    } catch (e) {
+      setActionMsg({ ok: false, kind: "analyzeFail", res: { ok: false, error: String(e) } });
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   const selectedRow = selectedId ? rows[selectedId] : null;
+  const selectedVerdict = selectedId ? verdicts[selectedId] : null;
   const segCount = selectedRow?.items.length || 0;
   const beforeItem = selectedId ? orig[selectedId]?.ITEMS?.[segIndex] : undefined;
   // `before` is the loaded (model-unit) segment converted to mm; `after` comes
@@ -200,6 +315,11 @@ export function WallBoard() {
           <button className="btn primary" type="button" onClick={handleList} disabled={listLoading}>
             {listLoading ? t("wboard.loadingBtn") : t("wboard.loadBtn")}
           </button>
+          {order.length > 0 && (
+            <button className="btn primary board-recheck" type="button" onClick={handleRecheck} disabled={rechecking} title={t("board.recheckHint")}>
+              {rechecking ? t("board.rechecking") : t("board.recheckBtn")}
+            </button>
+          )}
         </div>
         {status && <div className={"status show " + statusClass(status)} style={{ marginTop: 8 }}>{statusText(t, status)}</div>}
       </div>
@@ -208,6 +328,11 @@ export function WallBoard() {
       {order.length > 0 && (
         <div className="board-summary">
           <div className="stat"><div className="k">{t("wboard.summaryTotal")}</div><div className="v">{summary.total}</div></div>
+          <div className={"stat " + (summary.ng ? "ng" : summary.judged ? "ok" : "")}>
+            <div className="k">{t("board.summaryOk")}</div>
+            <div className="v">{summary.ok}<small> / {summary.judged} {t("board.judgedSuffix")}</small></div>
+          </div>
+          <div className={"stat " + (summary.ng ? "ng" : "")}><div className="k">{t("board.summaryNg")}</div><div className="v">{summary.ng}</div></div>
           <div className="stat"><div className="k">{t("board.summaryChanged")}</div><div className="v">{summary.dirty}</div></div>
         </div>
       )}
@@ -247,6 +372,7 @@ export function WallBoard() {
                 <th>{t("wboard.colHorizontal")}</th>
                 <th>{t("wboard.colEnd")}</th>
                 <th>{t("wboard.colCover")}</th>
+                <th>{t("board.colVerdict")}</th>
               </tr>
             </thead>
             <tbody>
@@ -262,6 +388,7 @@ export function WallBoard() {
                 const h = it0.HORIZONTAL_REBAR || {};
                 const er = it0.END_REBAR || {};
                 const cc = it0.CONCRETE_FACE_TO_CENTER_OF_REBAR || {};
+                const vd = verdicts[id];
                 return (
                   <tr key={id} className={id === selectedId ? "sel" : ""} onClick={() => setSelectedId(id)}>
                     <td className="cell-section">
@@ -273,14 +400,24 @@ export function WallBoard() {
                     <td className="mono">{h.NAME ? <><span className="bar-stir">{h.NAME}</span>@{h.DIST ?? "?"}</> : "—"}</td>
                     <td className="mono">{it0.USE_END_REBAR && er.NAME ? <><b>{er.NUM ?? "?"}</b>×{er.NAME}</> : "—"}</td>
                     <td className="mono">{cc.DW ?? "?"}/{cc.DE ?? "?"}</td>
+                    <td>
+                      {vd.ok == null ? (
+                        <span className="verdict none">—</span>
+                      ) : (
+                        <span className={"verdict " + (vd.ok ? "ok" : "ng")} title={t("board.verdictGenNx")}>
+                          {vd.ok ? "OK" : "NG"} <span className="rr">{(vd.ratPM ?? 0).toFixed(2)}/{(vd.ratShear ?? 0).toFixed(2)}</span>
+                          <span className="vsrc gennx">{t("board.verdictGenNx")}</span>
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {order.length === 0 && (
-                <tr><td colSpan={6} className="board-empty">{listLoadedOnce ? t("wboard.emptyList") : t("wboard.notLoaded")}</td></tr>
+                <tr><td colSpan={7} className="board-empty">{listLoadedOnce ? t("wboard.emptyList") : t("wboard.notLoaded")}</td></tr>
               )}
               {order.length > 0 && visibleOrder.length === 0 && (
-                <tr><td colSpan={6} className="board-empty">{t("board.filterEmpty")}</td></tr>
+                <tr><td colSpan={7} className="board-empty">{t("board.filterEmpty")}</td></tr>
               )}
             </tbody>
           </table>
@@ -388,14 +525,35 @@ export function WallBoard() {
               <div className="field"><label>{t("wall.dispLen")}</label><input type="number" value={dispLen} onChange={(e) => setDispLen(e.target.value)} /></div>
             </div>
 
-            {/* --- action bar --- */}
+            {/* --- action bar: save · run analysis · re-check this wall.
+                   A rebar save invalidates Gen NX's solve, so 해석 실행 (once)
+                   must run before 이 벽 검토 실행. --- */}
             <div className="board-actions">
               <button className="btn primary" type="button" onClick={() => saveWall(selectedId)} disabled={savingId === selectedId}>
                 {t("common.saveBtn")}
               </button>
+              <button className="btn" type="button" onClick={runModelAnalysis} disabled={analyzing}>
+                {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
+              </button>
+              <button className="btn" type="button" onClick={() => handleWallRecheck(selectedId)} disabled={checkingId === selectedId}>
+                {checkingId === selectedId ? t("board.checkingWall") : t("board.checkWallBtn")}
+              </button>
               <span className="hint save-note">{selectedRow.dirty ? t("board.unsavedNote") : t("board.savedNote")}</span>
             </div>
+            <div className="hint board-actions-hint">{t("board.checkWallHint")}</div>
             {actionMsg && <div className={"status show " + statusClass(actionMsg)}>{statusText(t, actionMsg)}</div>}
+
+            {/* --- Gen NX verdict for the selected wall (P-M / shear ratios) --- */}
+            {selectedVerdict && selectedVerdict.source !== "none" && (
+              <div className="judge-block">
+                <div className="judge-title">
+                  {t("board.judgeTitle")}
+                  <span className="judge-src gennx">{t("board.verdictGenNx")}</span>
+                </div>
+                <JudgeBar label={t("board.axialFlexLabel")} sym="Rat" ratio={selectedVerdict.ratPM} cap={null} unit="" t={t} />
+                <JudgeBar label={t("board.shearLabel")} sym="Rat" ratio={selectedVerdict.ratShear} cap={null} unit="" t={t} />
+              </div>
+            )}
           </div>
         </div>
       )}

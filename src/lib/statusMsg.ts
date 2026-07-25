@@ -51,6 +51,8 @@ export type StatusMsg =
   | { ok: true; kind: "recheckRunning" }
   | { ok: true; kind: "recheckDone"; loaded: number; total: number }
   | { ok: false; kind: "recheckEmpty" }
+  // Column/wall variant: no in-browser formula fallback, so a different message.
+  | { ok: false; kind: "recheckEmptyMember" }
   | { ok: false; kind: "recheckFail"; res: ApiError }
   // Per-section "이 단면 검토 실행" (BC-ANAL scoped to one section, then read).
   | { ok: true; kind: "sectionChecking" }
@@ -126,6 +128,8 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("board.recheckDone", { loaded: s.loaded, total: s.total });
     case "recheckEmpty":
       return t("board.recheckEmpty");
+    case "recheckEmptyMember":
+      return t("board.recheckEmptyMember");
     case "recheckFail":
       return t("board.recheckFail", { error: errText(t, s.res) });
     case "sectionChecking":

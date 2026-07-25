@@ -171,6 +171,39 @@ export interface RunAnalysisOk {
 }
 export type RunAnalysisResult = RunAnalysisOk | ApiError;
 
+// --- COLUMN / WALL design check (CC-TABLE / WC-TABLE via /api/beam-design-result
+// with member set). One compact row per element (column) or per WID+Story (wall);
+// the board reduces a key's rows to a single OK/NG via memberVerdictFromRows.
+export interface MemberCheckRow {
+  chk?: string; // CHK_STR ("OK"/"NG"…); "M"/placeholders are ignored downstream
+  chkRbr?: string; // CHK_RBR (walls only; a position code for columns)
+  ratPM?: number; // governing axial/moment (P-M) ratio
+  ratShear?: number; // governing shear ratio
+  label?: string; // story label (walls) for the detail view
+}
+export interface MemberCheckOk {
+  ok: true;
+  // Column: keyed by SECT (the board's section id). Wall: keyed by WID.
+  byKey: Record<string, MemberCheckRow[]>;
+  // True when *-ANAL reported the "please perform analysis" precondition — run
+  // "해석 실행" first (distinct from a non-KDS/empty result).
+  needAnalysis?: boolean;
+}
+export type MemberCheckResult = MemberCheckOk | ApiError;
+
+// Read/re-check column verdicts. `recheck` runs CC-ANAL first (whole model, or
+// scoped to one section when `sectionId` is given); omit it to just read the
+// results already computed in Gen NX. Non-KDS models come back with an empty map.
+export function runColumnCheck(conn: ConnInfo, opts?: { recheck?: boolean; sectionId?: string }): Promise<MemberCheckResult> {
+  return post<MemberCheckResult>("/api/beam-design-result", { member: "COLUMN", recheck: opts?.recheck, sectionId: opts?.sectionId, ...conn });
+}
+
+// Read/re-check wall verdicts (keyed by WID). `recheck` runs WC-ANAL "ALL" first
+// (cheap; walls have no section-scoped recheck).
+export function runWallCheck(conn: ConnInfo, opts?: { recheck?: boolean }): Promise<MemberCheckResult> {
+  return post<MemberCheckResult>("/api/beam-design-result", { member: "WALL", recheck: opts?.recheck, ...conn });
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",

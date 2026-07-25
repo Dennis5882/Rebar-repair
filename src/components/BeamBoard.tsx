@@ -14,12 +14,12 @@ import {
   type BeamInputMode,
   type SectorFormValues,
 } from "../lib/beamRebarForm";
-import type { TFn } from "../i18n/types";
 import { genVerdictFromDemand, judgeSection, type DemandBySector, type GenVerdict, type MatProps } from "../lib/beamBoard";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
+import { JudgeBar } from "./JudgeBar";
 import { SECTORS, type SectorKey } from "../types/rebar";
 
 // The BEAM tab's primary interface: every beam section on one board (row =
@@ -813,28 +813,6 @@ export function BeamBoard() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function JudgeBar({ label, sym, ratio, cap, unit, t }: { label: string; sym: string; ratio?: number; cap: number | null; unit: string; t: TFn }) {
-  const has = ratio != null;
-  const ok = (ratio ?? 0) <= 1;
-  const pct = Math.min(ratio ?? 0, 1.15) * (100 / 1.15);
-  return (
-    <div className="judge-row">
-      <div className="judge-row-top">
-        <span className="judge-name">{label} <span>{sym}</span></span>
-        <span className="judge-val">
-          {cap != null ? `${cap.toFixed(0)} ${unit}` : "—"}
-          {has && <b className={ok ? "ok" : "ng"}> · {ratio!.toFixed(2)}</b>}
-        </span>
-      </div>
-      <div className="judge-track">
-        {has && <div className={"judge-fill " + (ok ? "ok" : "ng")} style={{ width: pct.toFixed(1) + "%" }} />}
-        <div className="judge-mark" style={{ left: (100 / 1.15).toFixed(1) + "%" }} />
-      </div>
-      {!has && <div className="judge-nodem">{t("board.noDemand")}</div>}
     </div>
   );
 }
