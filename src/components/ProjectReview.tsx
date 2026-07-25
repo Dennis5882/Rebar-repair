@@ -7,13 +7,6 @@ import type { ProjectSummary } from "../types/project";
 import type { TFn } from "../i18n/types";
 import { Geometry3DSection } from "./Geometry3DSection";
 
-const LIST_CAP = 30;
-
-function capped<T>(items: T[]): { shown: T[]; hiddenCount: number } {
-  if (items.length <= LIST_CAP) return { shown: items, hiddenCount: 0 };
-  return { shown: items.slice(0, LIST_CAP), hiddenCount: items.length - LIST_CAP };
-}
-
 export function ProjectReview() {
   const { t } = useI18n();
   const { payload } = useConn();
@@ -47,6 +40,8 @@ export function ProjectReview() {
   // same app, not a differently-styled page.
   return (
     <div className="beam-board">
+      <Geometry3DSection />
+
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">
           <button className="btn primary" type="button" onClick={handleLoad} disabled={loading}>
@@ -56,8 +51,6 @@ export function ProjectReview() {
         <div className="hint" style={{ marginTop: 8, marginBottom: 0 }}>{t("project.hint")}</div>
         {status && <div className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{status}</div>}
       </div>
-
-      <Geometry3DSection />
 
       {summary && (
         <>
@@ -134,14 +127,13 @@ function SummaryStat({ label, value }: { label: string; value: number }) {
 }
 
 // One bordered board card: uppercase title + inline count in the head, table
-// (or an empty note) below — the same shell the member boards use.
-function DataSection({ title, total, empty, emptyLabel, moreHidden, moreLabel, children }: {
+// (or an empty note) below — the same shell the member boards use. The table
+// scrolls inside .table-scroll, so the full list is shown (no row cap).
+function DataSection({ title, total, empty, emptyLabel, children }: {
   title: string;
   total: number;
   empty: boolean;
   emptyLabel: string;
-  moreHidden?: number;
-  moreLabel?: string;
   children: ReactNode;
 }) {
   return (
@@ -150,7 +142,6 @@ function DataSection({ title, total, empty, emptyLabel, moreHidden, moreLabel, c
         <h2>
           {title} <span className="board-count">({total})</span>
         </h2>
-        {moreHidden ? <span className="board-hint">{moreLabel}</span> : null}
       </div>
       {empty ? <div className="board-empty">{emptyLabel}</div> : <div className="table-scroll">{children}</div>}
     </div>
@@ -202,16 +193,8 @@ function SummaryTable<T>({
   columns: Column<T>[];
   t: TFn;
 }) {
-  const { shown, hiddenCount } = capped(items);
   return (
-    <DataSection
-      title={t(titleKey)}
-      total={total}
-      empty={shown.length === 0}
-      emptyLabel={t("project.emptyList")}
-      moreHidden={hiddenCount}
-      moreLabel={t("project.moreHidden", { count: hiddenCount })}
-    >
+    <DataSection title={t(titleKey)} total={total} empty={items.length === 0} emptyLabel={t("project.emptyList")}>
       <table className="data-table">
         <thead>
           <tr>
@@ -221,7 +204,7 @@ function SummaryTable<T>({
           </tr>
         </thead>
         <tbody>
-          {shown.map((item) => (
+          {items.map((item) => (
             <tr key={rowKey(item)}>
               {columns.map((c, i) => (
                 <td key={c.header} className={c.numeric ? "num-col" : i === 0 ? "id-cell" : undefined}>{c.cell(item)}</td>

@@ -662,9 +662,9 @@ export function BeamBoard() {
                 <input type="number" step="any" value={selected.db} onChange={(e) => patchRow(selectedSid, { db: e.target.value })} /></div>
             </div>
             <div className="row2">
-              <div className="field"><label>{t("common.widthB")} (mm)</label>
+              <div className="field"><label>{t("common.widthB")}</label>
                 <input type="number" value={selected.b} onChange={(e) => patchRow(selectedSid, { b: e.target.value })} /></div>
-              <div className="field"><label>{t("common.heightH")} (mm)</label>
+              <div className="field"><label>{t("common.heightH")}</label>
                 <input type="number" value={selected.h} onChange={(e) => patchRow(selectedSid, { h: e.target.value })} /></div>
             </div>
 

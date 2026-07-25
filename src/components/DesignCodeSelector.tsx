@@ -19,7 +19,6 @@ export function DesignCodeSelector() {
 
   return (
     <section className="panel">
-      <h2>{t("guide.codeDesignLabel")}</h2>
       <div className="row2">
         <div className="field">
           <label htmlFor="designCode">{t("guide.codeDesignLabel")}</label>
