@@ -75,36 +75,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const unitObj = unitRes.UNIT ? Object.values(unitRes.UNIT)[0] : undefined;
     const dist = ((unitObj as any)?.DIST || "M").toUpperCase();
     const mmPer = MM_PER_DIST[dist] ?? 1000;
+    // A 200 from the MIDAS API can still be a failure body ({error:{message}})
+    // — surface it instead of parsing it into a bogus section (CLAUDE.md rule).
+    if (rebRes && rebRes.error && rebRes.error.message) {
+      return res.json({ ok: false, error: String(rebRes.error.message) });
+    }
     // REBC/REBR items are keyed by SECTION number (same as REBB — see
     // genxn-api-schema-findings), each value {ITEMS:[ColumnLikeItem]}.
     const rebTop = rebRes ? Object.keys(rebRes)[0] : null;
     const reb: Record<string, any> = rebTop && rebRes[rebTop] && typeof rebRes[rebTop] === "object" ? rebRes[rebTop] : {};
 
-    // All frame elements grouped by section (used to attach element counts).
+    // Frame elements grouped by section, per member type — this is what
+    // populates each section's elementKeys (count + "applies to" list), so it
+    // must contain ONLY elements of the requested type:
+    //  - COLUMN: VERTICAL (dz>dxy) frame elements — the orientation classifier
+    //    (mirror of beam-sections). Grouping only vertical elements means a
+    //    section shared with beams doesn't leak those beams into the column's
+    //    element count, and bare columns still show (rebar not required).
+    //  - BRACE: braces are diagonal and NOT reliably orientation-classifiable
+    //    (a sloped beam/column looks the same), so the section LIST is driven
+    //    by which sections carry a REBR record; the element count is every
+    //    frame element on that section (best available without a brace
+    //    classifier). Cost: bare brace sections aren't surfaced.
+    // One pass over ELEM either way.
     const elemsBySect: Record<string, string[]> = {};
     for (const [key, el] of Object.entries(elems)) {
       if (el?.TYPE !== "BEAM") continue; // all frame elements report TYPE "BEAM"
       const sid = el?.SECT;
       if (sid == null) continue;
-      (elemsBySect[String(sid)] = elemsBySect[String(sid)] || []).push(key);
-    }
-
-    // Which section ids to list, per member type:
-    //  - COLUMN: every section used by a VERTICAL (dz>dxy) frame element — the
-    //    orientation classifier (mirror of beam-sections), so bare columns
-    //    without rebar still show up.
-    //  - BRACE: braces are diagonal frame elements and NOT reliably
-    //    orientation-classifiable (a sloped beam/column looks the same), so
-    //    instead list exactly the sections that already carry a REBR record.
-    //    Reliable (zero misclassification) at the cost of not surfacing
-    //    bare brace sections — acceptable for editing existing brace rebar.
-    let sectionIds: string[];
-    if (memberType === "COLUMN") {
-      const cols = new Set<string>();
-      for (const el of Object.values(elems)) {
-        if (el?.TYPE !== "BEAM") continue;
-        const sid = el?.SECT;
-        if (sid == null) continue;
+      if (memberType === "COLUMN") {
         const nodeIds = el?.NODE;
         if (!Array.isArray(nodeIds) || nodeIds.length < 2) continue;
         const a = nodes[nodeIds[0]];
@@ -113,12 +112,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const dz = Math.abs(Number(a.Z) - Number(b.Z));
         const dxy = Math.hypot(Number(a.X) - Number(b.X), Number(a.Y) - Number(b.Y));
         if (dz <= dxy) continue; // horizontal ⇒ beam, not a column
-        cols.add(String(sid));
       }
-      sectionIds = [...cols];
-    } else {
-      sectionIds = Object.keys(reb); // BRACE: rebar-driven
+      (elemsBySect[String(sid)] = elemsBySect[String(sid)] || []).push(key);
     }
+
+    // COLUMN lists every section with a vertical element (bare ones included);
+    // BRACE lists only sections that already carry a REBR record.
+    const sectionIds = memberType === "COLUMN" ? Object.keys(elemsBySect) : Object.keys(reb);
 
     const emptyPayload = { ITEMS: [{}] };
     const sections: Record<string, { name?: string; elementKeys: string[]; payload: any; dimB?: number; dimH?: number }> = {};

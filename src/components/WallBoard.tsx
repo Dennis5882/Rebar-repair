@@ -21,13 +21,6 @@ interface WallRowState {
   dirty: boolean;
 }
 
-function segSummary(items: WallItem[]) {
-  const it = items[0] || {};
-  const v = it.VERTICAL_REBAR || {};
-  const h = it.HORIZONTAL_REBAR || {};
-  return { v, h };
-}
-
 export function WallBoard() {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
@@ -148,9 +141,12 @@ export function WallBoard() {
         return;
       }
       setActionMsg({ ok: true, kind: "saveDone" });
-      // Adopt the saved items as the new baseline so the "before" preview and
-      // dirty flag reset to the just-saved state.
-      setOrig((prev) => ({ ...prev, [id]: { ITEMS: row.items.map((it) => ({ ...it })) } }));
+      // Only clear THIS row's dirty flag. Deliberately do NOT touch `orig`:
+      // writing to it retriggers the [orig] effect, which rebuilds every row
+      // (discarding unsaved edits on other walls) and resets the selection to
+      // the first wall. The "before" preview keeps showing the as-loaded
+      // segment, same as the column board (before = the originally-loaded
+      // payload), which is the intended diff baseline.
       setRows((prev) => ({ ...prev, [id]: { ...prev[id], dirty: false } }));
     } catch (e) {
       setActionMsg({ ok: false, kind: "saveError", error: String(e) });
@@ -226,8 +222,13 @@ export function WallBoard() {
               {visibleOrder.map((id) => {
                 const row = rows[id];
                 if (!row) return null;
-                const { v, h } = segSummary(row.items);
-                const it0 = row.items[0] || {};
+                // Summarize the segment currently being edited for the selected
+                // row, else segment 0 as the representative — so an edit to a
+                // non-first segment is visible in its row, not hidden behind
+                // segment 0's (unchanged) values.
+                const it0 = row.items[id === selectedId ? segIndex : 0] || {};
+                const v = it0.VERTICAL_REBAR || {};
+                const h = it0.HORIZONTAL_REBAR || {};
                 const er = it0.END_REBAR || {};
                 const cc = it0.CONCRETE_FACE_TO_CENTER_OF_REBAR || {};
                 return (
