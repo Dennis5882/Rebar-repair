@@ -53,7 +53,12 @@ export type StatusMsg =
   | { ok: true; kind: "recheckRunning" }
   | { ok: true; kind: "recheckDone"; loaded: number; total: number }
   | { ok: false; kind: "recheckEmpty" }
-  | { ok: false; kind: "recheckFail"; res: ApiError };
+  | { ok: false; kind: "recheckFail"; res: ApiError }
+  // Per-section "이 단면 검토 실행" (BC-ANAL scoped to one section, then read).
+  | { ok: true; kind: "sectionChecking" }
+  | { ok: true; kind: "sectionChecked" }
+  // Recheck couldn't run because the model needs re-analysis first.
+  | { ok: false; kind: "needAnalysis" };
 
 const LIST_KINDS = new Set(["listLoaded", "sectionsLoaded", "listFail", "listError"]);
 
@@ -129,6 +134,12 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("board.recheckEmpty");
     case "recheckFail":
       return t("board.recheckFail", { error: errText(t, s.res) });
+    case "sectionChecking":
+      return t("board.checkingSection");
+    case "sectionChecked":
+      return t("board.sectionChecked");
+    case "needAnalysis":
+      return t("board.needAnalysis");
   }
 }
 

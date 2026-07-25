@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { getAllBeamDesignResults, getBeamDesignResult, listBeamSections, runAnalysis, runBeamCheck, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
+import { getAllBeamDesignResults, listBeamSections, runAnalysis, runBeamCheck, runBeamCheckSection, saveRebar, sectionGroupLabel, type BeamSectionGroup } from "../lib/api";
 import { formulaFamily } from "../lib/rcBeamCheck";
 import { lenToMm as coverToMm, lenToModel as coverToModel, mmPerUnit } from "../lib/units";
 import {
@@ -144,7 +144,7 @@ export function BeamBoard() {
   const [demand, setDemand] = useState<Record<string, DemandBySector>>({});
   const [selectedSid, setSelectedSid] = useState<string | null>(null);
   const [savingSid, setSavingSid] = useState<string | null>(null);
-  const [fetchingSid, setFetchingSid] = useState<string | null>(null);
+  const [checkingSid, setCheckingSid] = useState<string | null>(null);
   const [fetchingAll, setFetchingAll] = useState(false);
   const [rechecking, setRechecking] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -345,26 +345,31 @@ export function BeamBoard() {
     }
   }
 
-  async function fetchDemand(sid: string) {
+  // "이 단면 검토 실행": re-run the Gen NX design check for just this section
+  // (BC-ANAL scoped to it) and read back its verdict — near-instant, and gives
+  // OK/NG directly, so no separate "load results" step is needed. Updates only
+  // this section's demand, so genVerdict recomputes for this row alone.
+  async function handleSectionRecheck(sid: string) {
     const grp = sections[sid];
     if (!grp) return;
-    // REBB/design tables are keyed per element, so query a representative
-    // element of the section group (lowest id, deterministic).
+    // BC-TABLE reads are keyed per element, so read back a representative
+    // element (lowest id, deterministic) of the section group.
     const repKey = [...grp.elementKeys].sort((a, b) => Number(a) - Number(b))[0];
-    setFetchingSid(sid);
+    setCheckingSid(sid);
+    setActionMsg({ ok: true, kind: "sectionChecking" });
     try {
-      const res = await getBeamDesignResult(repKey, conn);
+      const res = await runBeamCheckSection(repKey, sid, conn);
       if (!res.ok) {
-        setActionMsg({ ok: false, kind: "demandFail", res });
+        setActionMsg(res.code === "need_analysis" ? { ok: false, kind: "needAnalysis" } : { ok: false, kind: "recheckFail", res });
         return;
       }
       setDemand((prev) => ({ ...prev, [sid]: res.bySector }));
-      const count = Object.keys(res.bySector).length;
-      setActionMsg(count ? { ok: true, kind: "demandLoaded", count } : { ok: false, kind: "demandEmpty" });
+      const hasVerdict = Object.values(res.bySector).some((p) => p?.chk != null);
+      setActionMsg(hasVerdict ? { ok: true, kind: "sectionChecked" } : { ok: false, kind: "recheckEmpty" });
     } catch (e) {
-      setActionMsg({ ok: false, kind: "demandFail", res: { ok: false, error: String(e) } });
+      setActionMsg({ ok: false, kind: "recheckFail", res: { ok: false, error: String(e) } });
     } finally {
-      setFetchingSid(null);
+      setCheckingSid(null);
     }
   }
 
@@ -446,7 +451,13 @@ export function BeamBoard() {
       }
       const { next, loaded } = mapByElemToSid(res.byElem, repBySid);
       setDemand((prev) => ({ ...prev, ...next }));
-      setStatus(loaded ? { ok: true, kind: "recheckDone", loaded, total: order.length } : { ok: false, kind: "recheckEmpty" });
+      setStatus(
+        loaded
+          ? { ok: true, kind: "recheckDone", loaded, total: order.length }
+          : res.needAnalysis
+            ? { ok: false, kind: "needAnalysis" }
+            : { ok: false, kind: "recheckEmpty" }
+      );
     } catch (e) {
       setStatus({ ok: false, kind: "recheckFail", res: { ok: false, error: String(e) } });
     } finally {
@@ -463,18 +474,18 @@ export function BeamBoard() {
   async function runModelAnalysis() {
     if (!window.confirm(t("board.analyzeConfirm"))) return;
     setAnalyzing(true);
-    setActionMsg({ ok: true, kind: "analyzing" });
+    setStatus({ ok: true, kind: "analyzing" });
     try {
       const res = await runAnalysis(conn);
       if (res.ok) {
-        setActionMsg({ ok: true, kind: "analyzeDone" });
+        setStatus({ ok: true, kind: "analyzeDone" });
       } else if (res.code === "timeout" || res.code === "parse_error") {
-        setActionMsg({ ok: false, kind: "analyzeRunning" });
+        setStatus({ ok: false, kind: "analyzeRunning" });
       } else {
-        setActionMsg({ ok: false, kind: "analyzeFail", res });
+        setStatus({ ok: false, kind: "analyzeFail", res });
       }
     } catch (e) {
-      setActionMsg({ ok: false, kind: "analyzeFail", res: { ok: false, error: String(e) } });
+      setStatus({ ok: false, kind: "analyzeFail", res: { ok: false, error: String(e) } });
     } finally {
       setAnalyzing(false);
     }
@@ -521,6 +532,11 @@ export function BeamBoard() {
           {order.length > 0 && (
             <button className="btn board-fetch-all" type="button" onClick={fetchAllDemand} disabled={fetchingAll}>
               {fetchingAll ? t("board.fetchingAll") : t("board.fetchAllBtn")}
+            </button>
+          )}
+          {order.length > 0 && (
+            <button className="btn board-analyze" type="button" onClick={runModelAnalysis} disabled={analyzing}>
+              {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
             </button>
           )}
           <div className="board-mat">
@@ -751,20 +767,17 @@ export function BeamBoard() {
                 <input type="number" value={selected.h} onChange={(e) => patchRow(selectedSid, { h: e.target.value })} /></div>
             </div>
 
-            {/* --- action bar: save · run analysis · load results --- */}
+            {/* --- action bar: save this section · re-check just this section --- */}
             <div className="board-actions">
               <button className="btn primary" type="button" onClick={() => saveGroup(selectedSid)} disabled={savingSid === selectedSid}>
                 {t("board.saveGroupBtn", { count: selectedGrp.elementKeys.length })}
               </button>
-              <button className="btn" type="button" onClick={runModelAnalysis} disabled={analyzing}>
-                {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
-              </button>
-              <button className="btn" type="button" onClick={() => fetchDemand(selectedSid)} disabled={fetchingSid === selectedSid}>
-                {fetchingSid === selectedSid ? t("board.fetchingDemand") : t("board.fetchDemandBtn")}
+              <button className="btn" type="button" onClick={() => handleSectionRecheck(selectedSid)} disabled={checkingSid === selectedSid}>
+                {checkingSid === selectedSid ? t("board.checkingSection") : t("board.checkSectionBtn")}
               </button>
               <span className="hint save-note">{selected.dirty ? t("board.unsavedNote") : t("board.savedNote")}</span>
             </div>
-            <div className="hint board-actions-hint">{t("board.fetchDemandHint")}</div>
+            <div className="hint board-actions-hint">{t("board.checkSectionHint")}</div>
             {actionMsg && <div className={"status show " + statusClass(actionMsg)}>{statusText(t, actionMsg)}</div>}
 
             {/* --- judgment: Gen NX verdict when available, else formula estimate --- */}

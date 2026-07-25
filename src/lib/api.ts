@@ -19,7 +19,10 @@ export type ErrorCode =
   | "mismatch"
   | "http"
   | "parse_error"
-  | "timeout";
+  | "timeout"
+  // BC-ANAL precondition: a rebar/member edit invalidated the solve, so the
+  // model needs "해석 실행" (/doc/ANAL) run before the design check can succeed.
+  | "need_analysis";
 
 export interface ApiError {
   ok: false;
@@ -156,6 +159,9 @@ export interface BeamDesignResultsAllOk {
   // section). `partial` is true if the batch stopped early on its time budget.
   byElem: Record<string, Partial<Record<SectorKey, BeamDemandPoint>>>;
   partial?: boolean;
+  // True when the batch got nothing back because the model needs re-analysis
+  // (BC-ANAL "please perform analysis") — distinct from a non-KDS empty result.
+  needAnalysis?: boolean;
 }
 export type BeamDesignResultsAllResult = BeamDesignResultsAllOk | ApiError;
 
@@ -218,6 +224,15 @@ export function getAllBeamDesignResults(elemKeys: string[], conn: ConnInfo): Pro
 // empty and the board falls back to the in-browser formula.
 export function runBeamCheck(elemKeys: string[], conn: ConnInfo): Promise<BeamDesignResultsAllResult> {
   return post<BeamDesignResultsAllResult>("/api/beam-design-result", { elemKeys, recheck: true, ...conn });
+}
+
+// Re-check a SINGLE section (the detail drawer's "이 단면 검토 실행") — BC-ANAL
+// scoped to that section/element, then read just its verdict. Near-instant vs
+// the whole-model runBeamCheck above. `sectionId` is the section id when numeric
+// (BC-ANAL SECTIONS); the backend falls back to the element otherwise. `elemKey`
+// is the section's representative element, used for the BC-TABLE read-back.
+export function runBeamCheckSection(elemKey: string, sectionId: string, conn: ConnInfo): Promise<BeamDesignResultResult> {
+  return post<BeamDesignResultResult>("/api/beam-design-result", { elemKey, sectionId, recheck: true, ...conn });
 }
 
 // Runs the model's structural analysis (/doc/ANAL). A long solve can outlast

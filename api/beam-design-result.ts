@@ -171,32 +171,42 @@ async function fetchOne(base: string, apiKey: string, elemNum: number): Promise<
   }
 }
 
-// Run the model-wide beam design check (BC-ANAL). Best-effort: a hang/timeout
-// is swallowed because the check has been observed to complete and persist even
-// when the HTTP ack is lost (see genxn-api-schema-findings) — the caller reads
-// BC-TABLE afterward regardless.
-async function runBeamCheck(base: string, apiKey: string): Promise<void> {
+// Run the beam design check (BC-ANAL). `arg` selects the scope: whole model
+// (PERFORM_TYPE "ALL", the board-wide "전체 재검토") or a single section/element
+// (SECTIONS/ELEMS, the per-section "이 단면 검토 실행" — far faster). Returns
+// BC-ANAL's error message if it reported one (notably " Please perform
+// analysis." — HTTP 200 with an error body — when a rebar/member change has
+// invalidated the model's analysis results), else null. A hang/timeout returns
+// null: the check may have committed anyway, so the caller reads BC-TABLE
+// regardless (see genxn-api-schema-findings).
+async function runBeamCheck(base: string, apiKey: string, arg: Record<string, unknown> = { PERFORM_TYPE: "ALL" }): Promise<string | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ANAL_TIMEOUT_MS);
   try {
-    await fetchMidas(`${base}${BC_ANAL_PATH}`, apiKey, {
+    const r = await fetchMidas(`${base}${BC_ANAL_PATH}`, apiKey, {
       method: "POST",
       signal: controller.signal,
-      body: { Argument: { PERFORM_TYPE: "ALL" } },
+      body: { Argument: arg },
     });
+    if (!r.ok) return r.error;
+    return r.data?.error?.message ? String(r.data.error.message) : null;
   } catch {
-    /* hang/timeout: results may already be committed — fall through to read */
+    return null; // hang/timeout: results may already be committed
   } finally {
     clearTimeout(timeout);
   }
 }
+
+// BC-ANAL's "please perform analysis" precondition error — a rebar/member edit
+// invalidated the last solve, so the user must run /doc/ANAL ("해석 실행") first.
+const needsAnalysis = (msg: string | null): boolean => !!msg && /perform analysis/i.test(msg);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { product, apiKey, baseUrl, elemKey, elemKeys, recheck } = req.body || {};
+  const { product, apiKey, baseUrl, elemKey, elemKeys, recheck, sectionId } = req.body || {};
   const base = resolveBase(product, baseUrl);
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
@@ -215,7 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     // Recheck once for the whole model before reading — one BC-ANAL "ALL" is
     // cheaper and more consistent than per-element checks.
-    if (recheck) await runBeamCheck(base, apiKey);
+    const analErr = recheck ? await runBeamCheck(base, apiKey) : null;
     const byElem: Record<string, Record<SectorKey, DemandPoint>> = {};
     let partial = false;
     const start = Date.now();
@@ -227,7 +237,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const bySector = await fetchOne(base, apiKey, num);
       if (bySector && Object.keys(bySector).length > 0) byElem[key] = bySector;
     }
-    return res.json({ ok: true, byElem, partial });
+    // Nothing came back and BC-ANAL said the model needs re-analysis → tell the
+    // frontend so it can point the user at "해석 실행" instead of implying non-KDS.
+    const needAnalysis = Object.keys(byElem).length === 0 && needsAnalysis(analErr);
+    return res.json({ ok: true, byElem, partial, needAnalysis });
   }
 
   // --- single mode
@@ -235,7 +248,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const elemNum = Number(elemKey);
   if (!Number.isFinite(elemNum)) return res.status(400).json({ ok: false, code: "missing_key_id" });
 
-  if (recheck) await runBeamCheck(base, apiKey);
+  // Per-section recheck: re-run BC-ANAL for just this section (SECTIONS by
+  // number) — or, when the id isn't a real numeric SECT (an "elem:" fallback),
+  // for just this element (ELEMS). Either way it targets one member, not the
+  // whole model, so it's near-instant.
+  let analErr: string | null = null;
+  if (recheck) {
+    const sn = Number(sectionId);
+    const arg = Number.isFinite(sn)
+      ? { PERFORM_TYPE: "SECTIONS", SECTIONS: [sn] }
+      : { PERFORM_TYPE: "ELEMS", ELEMS: { KEYS: [elemNum] } };
+    analErr = await runBeamCheck(base, apiKey, arg);
+  }
 
   // Keep well under the platform timeout to return a clean, translatable error.
   const controller = new AbortController();
@@ -246,9 +270,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       signal: controller.signal,
       body: bcTableBody(elemNum),
     });
+    const tableErr = result.ok ? bcTableErrorMessage(result.data) : result.error;
+    // A rebar edit invalidated the solve — surface a dedicated code so the UI
+    // can tell the user to run "해석 실행" first, not a generic failure.
+    if (needsAnalysis(analErr) || needsAnalysis(tableErr)) return res.json({ ok: false, code: "need_analysis" });
     if (!result.ok) return res.json({ ok: false, error: result.error });
-    const errMsg = bcTableErrorMessage(result.data);
-    if (errMsg) return res.json({ ok: false, error: errMsg });
+    if (tableErr) return res.json({ ok: false, error: tableErr });
     return res.json({ ok: true, bySector: parseBcTable(result.data) });
   } catch (e: any) {
     if (e?.name === "AbortError") return res.json({ ok: false, code: "timeout" });
