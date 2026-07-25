@@ -16,11 +16,17 @@ their own MAPI key and edits their own running Gen NX model. Deployed at
 - **State**: React context — `ConnContext` (MAPI key/product/lengthUnit),
   `DesignCodeContext` (design code + rebar material DB).
 - **Tabs are all section-centric "boards"** (row = section, summary strip,
-  search/sort, detail editor drawer): `BeamBoard.tsx` (with live OK/NG verdict),
-  `ColumnLikeBoard.tsx` (COLUMN + BRACE, `isColumn` flag, no verdict),
-  `WallBoard.tsx` (row = Wall ID, edits one segment at a time), and
-  `ProjectReview.tsx` (read-only). Form<->payload conversion is pure and lives in
-  `src/lib/*RebarForm.ts`; capacity/verdict math in `rcBeamCheck.ts`/`beamBoard.ts`.
+  search/sort, detail editor drawer), and **all four member types now show a live
+  Gen NX OK/NG verdict** (재검토 button → `*-ANAL` then read `*-TABLE`):
+  `BeamBoard.tsx` (Gen NX verdict + in-browser formula fallback),
+  `ColumnLikeBoard.tsx` (COLUMN + BRACE, `isColumn` flag now only toggles the
+  corner-bar/hook structural controls; both get Gen NX verdicts, `runCheck` picks
+  CC vs BRC by `type`), `WallBoard.tsx` (row = Wall ID, edits one segment at a
+  time, Gen NX verdict per WID), and `ProjectReview.tsx` (read-only). Form<->
+  payload conversion is pure in `src/lib/*RebarForm.ts`; beam capacity/formula in
+  `rcBeamCheck.ts`/`beamBoard.ts`; the shared column/wall/brace verdict reducer +
+  CC/WC/BRC-TABLE parsers are pure in `src/lib/memberCheck.ts` (with a shared
+  `useMemberVerdict` hook + `MemberVerdictCell`).
 - **Analytics**: `@vercel/analytics` `<Analytics/>` from the **`/react`** entry
   (this is a Vite SPA, not Next — `/next` fails at runtime). Needs Web Analytics
   enabled in the Vercel dashboard to collect.
@@ -35,8 +41,9 @@ npx vercel build       # REQUIRED for any api/ change — see below
 ```
 
 Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
-`beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`. Add a test
-alongside when you touch one of these.
+`beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`, `beamBoard`
+(`genVerdictFromDemand`), `memberCheck` (`memberVerdictFromRows` + the CC/WC/BRC
+table parsers). Add a test alongside when you touch one of these.
 
 ## ⚠️ Deploy / api rules — read before touching `api/` or deploying
 
@@ -51,14 +58,21 @@ alongside when you touch one of these.
    `geo-lang`, `member-sections`, `model`, `project-geometry`, `project-summary`,
    `rebar` + `lib/midas`. Several routes are **multiplexed on an `action`/type
    field** to save slots — `model` = verify | unit | analyze; `rebar` =
-   list | update; `member-sections` = COLUMN | BRACE. Extend the switch inside
-   one of these before adding a new file.
+   list | update; `member-sections` = COLUMN | BRACE; **`beam-design-result` =
+   beam (`elemKey`/`elemKeys[]`) | member check (`member` = COLUMN | WALL |
+   BRACE)** — the one endpoint runs every design check (BC/CC/WC/BRC-ANAL +
+   `*-TABLE`). Extend the switch inside one of these before adding a new file.
 2. **ESM**: `package.json` is `"type": "module"` and Vercel runs each `api/*.ts`
    under native ESM with no bundling. Relative imports **must** use an explicit
    `.js` extension (`./lib/midas.js`, even from a `.ts` source). Do **not**
    underscore-prefix the lib dir (`api/_lib` is excluded from output → imports
    crash at runtime). `tsc`/`vite` do NOT catch either — only `vercel build`
-   + inspecting `.vercel/output/functions/api/<name>.func/` does.
+   + inspecting `.vercel/output/functions/api/<name>.func/` does. **An `api/*.ts`
+   may import a PURE module from `src/lib/` (e.g. `../src/lib/memberCheck.js`,
+   note the `.js`) — verified it rides along inside the importer's `.func` and
+   does NOT add a function; the shared module must be dependency-free (only
+   `import type` from elsewhere, which erases) or its transitive value imports
+   get traced in too. Re-inspect the `.func` after adding such an import.**
 3. **A 200 from the MIDAS API does not mean success.** Several endpoints return
    HTTP 200 with an `{error:{message}}` body. Check for it explicitly.
 4. **Deploy**: plain `git push` auto-deploys via the GitHub↔Vercel integration —
@@ -77,18 +91,32 @@ alongside when you touch one of these.
   read back to confirm a write applied.
 - **`*-ANAL` (design-check perform) — RE-VERIFIED 2026-07-25: no longer hangs on
   current Gen NX builds.** The old rule was "NEVER call `BC-ANAL`/`CC-ANAL`/…" —
-  it reproducibly hung/crashed the app on Gen NX 2026 v2.1. A live re-test on the
-  current build ran `CC-ANAL` (incl. `PERFORM_TYPE:"ALL"`) and `BC-ANAL` cleanly
-  4/4, app stayed connected. `BC-ANAL` is now wired behind the beam board's
-  **"Gen NX 재검토"** button (`api/beam-design-result.ts`, `recheck` flag →
-  `BC-ANAL ALL` then read `BC-TABLE` `CHK_STR`/`Rat-N`/`Rat-P`/`Rat-V`). Still
-  treat it with care: it's design-code-scoped to **KDS-41-20-2022** only (non-KDS
-  models fall back to the in-browser formula), and the re-test is one build/model
-  — keep the short timeout + "results may have committed even on timeout"
-  readback pattern. `/doc/ANAL` (plain FE analysis, `api/model.ts` action
-  `analyze`) remains the safe "해석 실행"; a timeout there means "still solving".
-  Design results are also readable without any perform call (`*-TABLE` of what
-  the user computed in Gen NX's GUI) — the zero-risk path.
+  it reproducibly hung/crashed the app on Gen NX 2026 v2.1. On the current build
+  `BC/CC/WC/BRC-ANAL` all run cleanly. **All four are now wired** behind each
+  board's **"Gen NX 재검토"** button (`api/beam-design-result.ts`, `recheck` flag
+  → `*-ANAL` then read `*-TABLE`). Scope via `PERFORM_TYPE`: `"ALL"` (whole board)
+  or `"SECTIONS":[n]`/`"ELEMS":{KEYS}` (per-section recheck; column/brace also
+  scope the `*-TABLE` read with `ELEMS` to that section's elements). Still treat
+  with care: design-code-scoped to **KDS-41-20-2022** only (non-KDS ⇒ empty ⇒
+  "판정 보류", except beam which falls back to its in-browser formula), keep the
+  short timeout + "results may have committed even on timeout" readback.
+  `/doc/ANAL` (plain FE analysis, `api/model.ts` action `analyze`) is the "해석
+  실행" step — required after a rebar save before a recheck (`*-ANAL` returns 200
+  `{error:"…Please perform analysis."}` until then). Reading `*-TABLE` without any
+  perform is the zero-risk path (shows what the user computed in Gen NX's GUI).
+- **`*-TABLE` verdict-string semantics (live-verified — easy to get wrong).**
+  `CHK_STR` reads **"OK…"** on pass ("OK", "OK-", "OK-#") and a **governing-mode
+  code on FAIL** ("PM-", "V-", …) — **NOT literal "NG"**. So the verdict rule is
+  **OK-prefix ⇒ pass, any other meaningful value ⇒ NG** (ignoring `""`/`"-"`/
+  `"----"`/`"N/A"` placeholders); "only explicit NG fails" silently misses
+  mode-code failures. `CHK_RBR` is a real OK/NG only for **beam & wall**; for
+  **column & brace it's a position code** ("M"/"MV") → the column/brace parsers
+  drop it. Ratio column naming differs by member: **beam** `Rat-N`/`Rat-P`/`Rat-V`
+  (hyphen), **column** `Rat_P`/`Rat_M`/`Rat_V_end`/`Rat_V_mid` (underscore),
+  **wall & brace** `Rat-Py`/`Rat-My`/`Rat-V` & `Rat-P`/`Rat-M`/`Rat-V` (hyphen).
+  Column/brace keyed by MEMB+SECT (group by SECT); wall by WID+Story (group by
+  WID); the board shows the worst case across a section's elements / a wall's
+  stories.
 - **Beam vs column is orientation-based**, not element `TYPE` (all frame elements
   are `TYPE:"BEAM"`). Vertical (`dz>dxy`) ⇒ column. Walls are often `TYPE:"PLATE"`.
   `api/member-sections.ts` uses this: **COLUMN** lists sections used by a vertical
@@ -106,8 +134,15 @@ alongside when you touch one of these.
   numbers used by the "before" diagram). Convert **lengths only** — counts, legs,
   ids, story labels pass through. `app.footerHint` states the mm convention; keep
   it honest if this changes.
-- OK/NG is computed **in-browser** (`rcBeamCheck.ts`, KDS 41 20:2022 + TWN-USD112
-  only). Only demand (Mu/Vu) comes from Gen NX. Design-code check is never needed.
+- **OK/NG now comes from Gen NX's own design check** (`*-ANAL`+`*-TABLE`) for all
+  four members — the authoritative verdict. **Beam additionally has an in-browser
+  formula** (`rcBeamCheck.ts`, KDS 41 20:2022 + TWN-USD112 only, single-rebar
+  approx) used as a **fallback/preview**: shown when there's no Gen NX verdict
+  (non-KDS, or before a recheck) and forced on a dirty (unsaved) row; the board
+  badges each verdict "Gen NX" vs "예상". Column/wall/brace have **no** in-browser
+  formula — Gen NX-only. On save, a section's stale Gen NX verdict is cleared
+  (member boards) / stripped keeping Mu/Vu (beam) so it can't show as authoritative
+  until re-checked.
 
 ## i18n rules
 
