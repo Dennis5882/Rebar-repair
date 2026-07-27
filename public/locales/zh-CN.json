@@ -395,6 +395,10 @@
   "guide.codeBarsHeaderXref": "对应规格（美国）",
   "guide.codeConfirmWarning": "该设计规范的材料规格对应关系可能存在地区差异 — 建议在实际项目中再次确认。",
 
+  "guide.release.d260727.item1": "改进所有构件标签页的空白看板——显示截面示意图与缺少的内容，并可直接在该处载入或打开 API 设置",
+  "guide.release.d260727.item2": "使用说明与 API 设置抽屉改为从屏幕边缘平滑滑出",
+  "guide.release.d260727.item3": "项目概览的「载入 3D 形状」改为与「读取模型信息」相同的卡片与主按钮样式",
+  "guide.release.d260727.item4": "重新校订简体/繁体中文结构术语——依据 Gen NX 中文资源及 GB／台湾规范术语，统一截面、验算、支撑等表述",
   "guide.release.d260725.item1": "所有构件标签页（梁/柱/墙/支撑）改版为截面看板——每行一个截面、摘要条、搜索/排序及详情编辑抽屉",
   "guide.release.d260725.item2": "梁 OK/NG 改为读取 Gen NX 自身设计验算（BC-ANAL + BC-TABLE），浏览器内公式保留为回退/预览",
   "guide.release.d260725.item3": "柱与墙新增基于 Gen NX 设计验算的即时 OK/NG 判定——含「Gen NX 重新验算」按钮及按截面/按墙重新验算",

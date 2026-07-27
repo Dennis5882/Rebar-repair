@@ -395,6 +395,10 @@
   "guide.codeBarsHeaderXref": "US Cross-ref",
   "guide.codeConfirmWarning": "This design code's material mapping has regional variation — please double-check for your actual project.",
 
+  "guide.release.d260727.item1": "Every member tab's empty board now shows a section sketch with what is missing, and loads — or opens API settings — right from there",
+  "guide.release.d260727.item2": "The guide and API settings drawers slide in from the screen edge instead of appearing instantly",
+  "guide.release.d260727.item3": "Project Review's “Load 3D shape” now uses the same card and primary button as “Read model info”",
+  "guide.release.d260727.item4": "Chinese (Simplified/Traditional) structural terminology reworked against Gen NX’s own Chinese resources and the GB / Taiwan code glossaries",
   "guide.release.d260725.item1": "All member tabs (Beam/Column/Wall/Brace) redesigned as section boards — one row per section, a summary strip, search/sort, and a detail editor drawer",
   "guide.release.d260725.item2": "Beam OK/NG now reads Gen NX's own design check (BC-ANAL + BC-TABLE), with the in-browser formula kept as a fallback/preview",
   "guide.release.d260725.item3": "Column and wall now show a live OK/NG verdict from Gen NX's design check, with a \"Re-check in Gen NX\" button plus per-section / per-wall recheck",
