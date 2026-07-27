@@ -84,19 +84,21 @@ export function Geometry3DSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAllNonce]);
 
+  // Same toolbar card as the model-summary block below it (.board-toolbar
+  // panel + primary button), so both loaders on this tab read as one control.
+  // Fragment, not a wrapper: each block is then a .beam-board flex child and
+  // picks up the board's own 16px gap.
   return (
-    <div className="subhead-block">
-      <div className="subhead">{t("geo3d.title")}</div>
-      <div className="hint" style={{ margin: "0 0 8px" }}>
-        {t("geo3d.hint")}
-      </div>
-      <div className="btn-row" style={{ marginTop: 0 }}>
-        <button className="btn" type="button" onClick={handleLoad} disabled={loading}>
-          {t("geo3d.loadBtn")}
-        </button>
-        <span className="hint" style={{ margin: 0 }}>
-          {status}
-        </span>
+    <>
+      <div className="board-toolbar panel">
+        <div className="subhead">{t("geo3d.title")}</div>
+        <div className="board-toolbar-row">
+          <button className="btn primary" type="button" onClick={handleLoad} disabled={loading}>
+            {t("geo3d.loadBtn")}
+          </button>
+        </div>
+        <div className="hint" style={{ marginTop: 8, marginBottom: 0 }}>{t("geo3d.hint")}</div>
+        {status && <div className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{status}</div>}
       </div>
       {geometry &&
         (geometry.nodes.length === 0 ? (
@@ -104,7 +106,7 @@ export function Geometry3DSection() {
             {t("project.emptyList")}
           </div>
         ) : (
-          <>
+          <div>
             <div className="geo3d-legend">
               {CHIPS.map((c) => (
                 <button
@@ -140,8 +142,8 @@ export function Geometry3DSection() {
                 </Suspense>
               </GeometryErrorBoundary>
             </div>
-          </>
+          </div>
         ))}
-    </div>
+    </>
   );
 }
