@@ -68,6 +68,8 @@ export function GuideDrawer() {
                       <li>{t("guide.release.d260725.item3")}</li>
                       <li>{t("guide.release.d260725.item4")}</li>
                       <li>{t("guide.release.d260725.item5")}</li>
+                      <li>{t("guide.release.d260725.item6")}</li>
+                      <li>{t("guide.release.d260725.item7")}</li>
                     </ul>
                   </div>
                   <div className="release-entry">
