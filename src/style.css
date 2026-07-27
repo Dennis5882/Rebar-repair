@@ -185,12 +185,23 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
   padding: 14px 8px; font-size: 12px; letter-spacing: .04em; cursor: pointer; z-index: 40;
 }
 .guide-tab:hover { filter: brightness(1.08); }
-.guide-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 45; }
+/* Both drawers stay mounted and slide in on .open — mounting them only while
+   open left nothing for a transition to animate. Closed they are visibility:
+   hidden, so they stay out of the tab order and the a11y tree. */
+.guide-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 45;
+  opacity: 0; pointer-events: none; transition: opacity .24s ease; }
+.guide-backdrop.open { opacity: 1; pointer-events: auto; }
 .guide-drawer {
   position: fixed; left: 0; top: 0; bottom: 0; width: min(360px, 90vw);
   background: var(--page); border-right: 1px solid var(--border);
   box-shadow: 4px 0 24px rgba(0,0,0,0.25); z-index: 46;
   display: flex; flex-direction: column; overflow-y: auto;
+  transform: translateX(-100%); visibility: hidden;
+  transition: transform .28s cubic-bezier(.22,.61,.36,1), visibility .28s;
+}
+.guide-drawer.open { transform: translateX(0); visibility: visible; }
+@media (prefers-reduced-motion: reduce) {
+  .guide-backdrop, .guide-drawer { transition: none; }
 }
 .guide-drawer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--grid); background: var(--page); position: sticky; top: 0; }
 .guide-drawer-tabs { display: flex; gap: 6px; }
@@ -198,7 +209,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .guide-close:hover { color: var(--ink); }
 .guide-drawer-body { padding: 14px; }
 
-.conn-drawer { left: auto; right: 0; border-right: none; border-left: 1px solid var(--border); box-shadow: -4px 0 24px rgba(0,0,0,0.25); }
+/* Mirrored to the right edge — including which way it slides out from. */
+.conn-drawer { left: auto; right: 0; border-right: none; border-left: 1px solid var(--border);
+  box-shadow: -4px 0 24px rgba(0,0,0,0.25); transform: translateX(100%); }
 
 .conn-pill {
   display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
