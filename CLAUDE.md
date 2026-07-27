@@ -154,9 +154,17 @@ table parsers). Add a test alongside when you touch one of these.
 - **Missing key falls back to the raw key string** (shown to the user) — so an
   incomplete locale is visible, not silent.
 - **Structural terminology**: match MIDAS Gen NX's own terms, not literal
-  translations. Authoritative KO/EN/zh-TW source is the sibling
-  `MIDAS-GEN-NX-UI-Local/glossary/` (this machine). KO terms are already mostly
-  correct; zh polish still pending.
+  translations. Two glossaries decide it — **zh-CN**:
+  `docs/Structural_Engineer_zh-CN_Glossary_3000.json` (in-repo; Gen NX CN UI
+  resources + GB codes, each term carries `genNxOccurrences` — use it as the
+  oracle, a zero-occurrence term is a wrong term); **zh-TW / KO / EN**: the
+  sibling `MIDAS-GEN-NX-UI-Local/glossary/` (this machine), whose
+  `mainland_to_taiwan` table is authoritative for CN↔TW splits. All three
+  passes are done (KO 2026-07-24, zh-CN/zh-TW 2026-07-27). **CN and TW are
+  opposite for several core terms** — Section 截面(CN)/斷面(TW), Load
+  荷载(CN)/載重(TW), Check 验算(CN)/檢核(TW) — never copy a term across the two
+  files. Also: Brace = 支撑/支撐 (not 斜撑), 加载 means *applying load* so UI
+  "load data" is 载入, Element = 单元/單元 vs Member = 构件/構件.
 - Footer byline: `기획자: Gavi · 개발자: Dennis · 최신업데이트: {__BUILD_DATE__}`
   (build-time constant — do not hardcode the date).
 
