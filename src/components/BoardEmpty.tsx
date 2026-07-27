@@ -4,49 +4,50 @@ import { useConn } from "../context/ConnContext";
 export type GlyphKind = "beam" | "column" | "wall" | "brace";
 
 // Decorative section sketches for the empty boards — schematic on purpose
-// (SectionPreview draws the real thing, but that needs loaded data). Strokes
-// inherit currentColor so the parent's muted colour drives them.
+// (SectionPreview draws the real thing, but that needs loaded data). Uses the
+// same tokens as the real previews — concrete fill, main-bar dots, stirrup
+// dashes — so an empty board still reads as a rebar section, not a grey box.
 function SectionGlyph({ kind }: { kind: GlyphKind }) {
-  const dot = (cx: number, cy: number, i: number) => <circle key={i} cx={cx} cy={cy} r="3" fill="currentColor" />;
+  const dot = (cx: number, cy: number, i: number) => <circle key={i} cx={cx} cy={cy} r="3.2" fill="var(--main-bar)" stroke="none" />;
   return (
-    <svg className="board-empty-glyph" width="104" height="72" viewBox="0 0 104 72" aria-hidden="true">
-      <g fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="board-empty-glyph" width="176" height="122" viewBox="0 0 104 72" aria-hidden="true">
+      <g fill="var(--concrete)" stroke="var(--line-strong)" strokeWidth="1.5">
         {kind === "beam" && (
           <>
-            <rect x="14" y="14" width="76" height="44" rx="3" />
-            <rect x="21" y="21" width="62" height="30" rx="2" strokeDasharray="4 3" />
-            {[30, 44, 58, 72].map((x, i) => dot(x, 27, i))}
-            {[30, 44, 58, 72].map((x, i) => dot(x, 45, i + 10))}
+            <rect x="14" y="12" width="76" height="48" rx="3" />
+            <rect x="21" y="19" width="62" height="34" rx="2" fill="none" stroke="var(--hoop)" strokeDasharray="4 3" />
+            {[30, 44, 58, 72].map((x, i) => dot(x, 25, i))}
+            {[30, 44, 58, 72].map((x, i) => dot(x, 47, i + 10))}
           </>
         )}
         {kind === "column" && (
           <>
-            <rect x="30" y="6" width="44" height="60" rx="3" />
-            <rect x="37" y="13" width="30" height="46" rx="2" strokeDasharray="4 3" />
-            {[16, 30, 44, 56].map((y, i) => dot(37, y, i))}
-            {[16, 30, 44, 56].map((y, i) => dot(67, y, i + 10))}
+            <rect x="30" y="4" width="44" height="64" rx="3" />
+            <rect x="37" y="11" width="30" height="50" rx="2" fill="none" stroke="var(--hoop)" strokeDasharray="4 3" />
+            {[14, 28, 44, 58].map((y, i) => dot(37, y, i))}
+            {[14, 28, 44, 58].map((y, i) => dot(67, y, i + 10))}
           </>
         )}
         {kind === "wall" && (
           <>
-            <rect x="8" y="26" width="88" height="20" rx="2" />
-            <line x1="26" y1="26" x2="26" y2="46" strokeDasharray="3 3" />
-            <line x1="78" y1="26" x2="78" y2="46" strokeDasharray="3 3" />
-            {[15, 34, 45, 56, 67, 89].map((x, i) => dot(x, 31, i))}
-            {[15, 34, 45, 56, 67, 89].map((x, i) => dot(x, 41, i + 10))}
+            <rect x="6" y="24" width="92" height="24" rx="2" />
+            {/* boundary elements at both ends, same tint as the real preview */}
+            <rect x="6" y="24" width="20" height="24" fill="var(--be-zone)" stroke="none" />
+            <rect x="78" y="24" width="20" height="24" fill="var(--be-zone)" stroke="none" />
+            <path d="M26 24 L26 48 M78 24 L78 48" fill="none" stroke="var(--hoop)" strokeDasharray="3 3" />
+            {[13, 19, 36, 48, 60, 85, 91].map((x, i) => dot(x, 30, i))}
+            {[13, 19, 36, 48, 60, 85, 91].map((x, i) => dot(x, 42, i + 10))}
           </>
         )}
         {kind === "brace" && (
           // Diagonal member drawn in elevation (a brace has no upright
-          // cross-section to show) — two edges, end faces, and its ties.
+          // cross-section to show) — the member band plus its ties.
           <>
-            <path d="M25 64 L85 16" />
-            <path d="M19 56 L79 8" />
-            <path d="M25 64 L19 56 M85 16 L79 8" />
-            <path
-              d="M43 50 L37 42 M55 40 L49 32 M67 30 L61 22"
-              strokeDasharray="3 2"
-            />
+            <path d="M26.4 67.5 L86.4 19.5 L77.6 8.5 L17.6 56.5 Z" />
+            {/* longitudinal bars run along the member, so they read as lines
+                here rather than the section dots the other glyphs use */}
+            <path d="M24.2 64.7 L84.2 16.7 M19.8 59.3 L79.8 11.3" fill="none" stroke="var(--main-bar)" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M44.4 53.1 L35.6 42.1 M56.4 43.5 L47.6 32.5 M68.4 33.9 L59.6 22.9" fill="none" stroke="var(--hoop)" strokeWidth="1.5" strokeDasharray="3 2" />
           </>
         )}
       </g>
