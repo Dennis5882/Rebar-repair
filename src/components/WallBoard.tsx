@@ -11,6 +11,7 @@ import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
+import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import type { WallItem, WallPayload } from "../types/rebar";
 
 // The WALL tab's board. Walls don't fit the SECT-grouped section model the
@@ -301,7 +302,8 @@ export function WallBoard() {
         {status && <div className={"status show " + statusClass(status)} style={{ marginTop: 8 }}>{statusText(t, status)}</div>}
       </div>
 
-      {/* --- summary strip --- */}
+      {/* --- summary strip (dashed stand-ins until the board has data) --- */}
+      {order.length === 0 && <BoardSummaryPlaceholder totalLabel={t("wboard.summaryTotal")} />}
       {order.length > 0 && (
         <div className="board-summary">
           <div className="stat"><div className="k">{t("wboard.summaryTotal")}</div><div className="v">{summary.total}</div></div>
@@ -325,7 +327,7 @@ export function WallBoard() {
               </span>
             )}
           </h2>
-          <span className="board-hint">{t("wboard.tableHint")}</span>
+          {order.length > 0 && <span className="board-hint">{t("wboard.tableHint")}</span>}
         </div>
         {order.length > 0 && (
           <div className="board-filter">
@@ -339,6 +341,16 @@ export function WallBoard() {
             </label>
           </div>
         )}
+        {order.length === 0 ? (
+          <BoardEmptyState
+            kind="wall"
+            title={listLoadedOnce ? t("wboard.emptyList") : t("wboard.notLoaded")}
+            loadedOnce={listLoadedOnce}
+            onLoad={handleList}
+            loading={listLoading}
+            loadLabel={listLoading ? t("wboard.loadingBtn") : t("wboard.loadBtn")}
+          />
+        ) : (
         <div className="table-scroll">
           <table className="board-table">
             <thead>
@@ -381,15 +393,13 @@ export function WallBoard() {
                   </tr>
                 );
               })}
-              {order.length === 0 && (
-                <tr><td colSpan={7} className="board-empty">{listLoadedOnce ? t("wboard.emptyList") : t("wboard.notLoaded")}</td></tr>
-              )}
-              {order.length > 0 && visibleOrder.length === 0 && (
+              {visibleOrder.length === 0 && (
                 <tr><td colSpan={7} className="board-empty">{t("board.filterEmpty")}</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* --- detail drawer --- */}

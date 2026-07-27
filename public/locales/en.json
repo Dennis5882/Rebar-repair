@@ -126,7 +126,9 @@
   "board.colCover": "Cover",
   "board.colVerdict": "Verdict (M / V)",
   "board.emptyList": "No beam rebar data in this model yet.",
-  "board.notLoaded": "Press “Load beam sections” to begin.",
+  "board.notLoaded": "No beam sections loaded yet",
+  "board.emptySub": "Press the button below to pull the rebar from the Gen NX model you have open.",
+  "board.emptyNeedConn": "Connect to Gen NX first — paste your MAPI Key under API settings, top right.",
   "board.appliesTo": "Members: {keys}",
   "board.judgeTitle": "Live check",
   "board.flexLabel": "Flexure",
@@ -186,7 +188,7 @@
   "cboard.colCover": "Cover",
   "cboard.colHoopType": "Type",
   "cboard.emptyList": "This model has no column rebar data yet.",
-  "cboard.notLoaded": "Press ‘Load Column Sections’ to start.",
+  "cboard.notLoaded": "No column sections loaded yet",
 
   "bboard.loadBtn": "Load Brace Sections",
   "bboard.loadingBtn": "Loading…",
@@ -199,7 +201,7 @@
   "bboard.colCover": "Cover",
   "bboard.colHoopType": "Type",
   "bboard.emptyList": "This model has no brace rebar data yet.",
-  "bboard.notLoaded": "Press ‘Load Brace Sections’ to start.",
+  "bboard.notLoaded": "No brace sections loaded yet",
 
   "wboard.loadBtn": "Load Walls",
   "wboard.loadingBtn": "Loading…",
@@ -215,7 +217,7 @@
   "wboard.colCover": "Cover DW/DE",
   "wboard.segCount": "{count} seg",
   "wboard.emptyList": "This model has no wall rebar data yet.",
-  "wboard.notLoaded": "Press ‘Load Walls’ to start.",
+  "wboard.notLoaded": "No walls loaded yet",
 
   "column.useCorner": "Use Corner Bar",
   "column.cornerSpec": "Corner Bar Size",

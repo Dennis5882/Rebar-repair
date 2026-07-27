@@ -12,6 +12,10 @@ interface ConnContextValue {
   payload: ConnInfo;
   lengthUnit: string;
   setLengthUnit: (v: string) => void;
+  // Lets any component ask ConnDrawer to open (the empty boards link to it).
+  // A nonce, not a boolean, so the drawer keeps owning its own open/close.
+  openNonce: number;
+  requestOpenConn: () => void;
 }
 
 const ConnContext = createContext<ConnContextValue | null>(null);
@@ -44,6 +48,8 @@ export function ConnProvider({ children }: { children: ReactNode }) {
   // Not persisted to sessionStorage — cheap to refetch on connect, and
   // stale unit label after switching models would be worse than blank.
   const [lengthUnit, setLengthUnit] = useState("");
+  const [openNonce, setOpenNonce] = useState(0);
+  const requestOpenConn = useCallback(() => setOpenNonce((n) => n + 1), []);
 
   // Stable (empty-dep) callbacks + a memoized context value, so components
   // that only read `t`/other context and not ConnContext don't re-render on
@@ -87,8 +93,10 @@ export function ConnProvider({ children }: { children: ReactNode }) {
       payload: { apiKey: mapiKey, product, baseUrl },
       lengthUnit,
       setLengthUnit,
+      openNonce,
+      requestOpenConn,
     }),
-    [mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl, lengthUnit]
+    [mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl, lengthUnit, openNonce, requestOpenConn]
   );
 
   return <ConnContext.Provider value={value}>{children}</ConnContext.Provider>;

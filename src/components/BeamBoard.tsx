@@ -20,6 +20,7 @@ import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
+import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import { SECTORS, type SectorKey } from "../types/rebar";
 
 // The BEAM tab's primary interface: every beam section on one board (row =
@@ -576,7 +577,8 @@ export function BeamBoard() {
         )}
       </div>
 
-      {/* --- summary strip --- */}
+      {/* --- summary strip (dashed stand-ins until the board has data) --- */}
+      {order.length === 0 && <BoardSummaryPlaceholder totalLabel={t("board.summaryTotal")} />}
       {order.length > 0 && (
         <div className="board-summary">
           <div className="stat"><div className="k">{t("board.summaryTotal")}</div><div className="v">{summary.total}</div></div>
@@ -602,7 +604,7 @@ export function BeamBoard() {
               </span>
             )}
           </h2>
-          <span className="board-hint">{t("board.tableHint")}</span>
+          {order.length > 0 && <span className="board-hint">{t("board.tableHint")}</span>}
         </div>
         {order.length > 0 && (
           <div className="board-filter">
@@ -632,6 +634,16 @@ export function BeamBoard() {
             </label>
           </div>
         )}
+        {order.length === 0 ? (
+          <BoardEmptyState
+            kind="beam"
+            title={listLoadedOnce ? t("board.emptyList") : t("board.notLoaded")}
+            loadedOnce={listLoadedOnce}
+            onLoad={handleList}
+            loading={listLoading}
+            loadLabel={listLoading ? t("board.loadingBtn") : t("board.loadBtn")}
+          />
+        ) : (
         <div className="table-scroll">
           <table className="board-table">
             <thead>
@@ -679,12 +691,7 @@ export function BeamBoard() {
                   </tr>
                 );
               })}
-              {order.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="board-empty">{listLoadedOnce ? t("board.emptyList") : t("board.notLoaded")}</td>
-                </tr>
-              )}
-              {order.length > 0 && visibleOrder.length === 0 && (
+              {visibleOrder.length === 0 && (
                 <tr>
                   <td colSpan={8} className="board-empty">{t("board.filterEmpty")}</td>
                 </tr>
@@ -692,6 +699,7 @@ export function BeamBoard() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* --- detail drawer --- */}

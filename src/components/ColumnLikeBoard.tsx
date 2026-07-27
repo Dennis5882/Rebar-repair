@@ -12,6 +12,7 @@ import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
+import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import type { ColumnLikePayload, MemberType } from "../types/rebar";
 
 // Section-centric board shared by the COLUMN and BRACE tabs — every section on
@@ -335,7 +336,8 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
         )}
       </div>
 
-      {/* --- summary strip --- */}
+      {/* --- summary strip (dashed stand-ins until the board has data) --- */}
+      {order.length === 0 && <BoardSummaryPlaceholder totalLabel={t(k("summaryTotal"))} />}
       {order.length > 0 && (
         <div className="board-summary">
           <div className="stat"><div className="k">{t(k("summaryTotal"))}</div><div className="v">{summary.total}</div></div>
@@ -361,7 +363,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
               </span>
             )}
           </h2>
-          <span className="board-hint">{t(k("tableHint"))}</span>
+          {order.length > 0 && <span className="board-hint">{t(k("tableHint"))}</span>}
         </div>
         {order.length > 0 && (
           <div className="board-filter">
@@ -382,6 +384,16 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
             </label>
           </div>
         )}
+        {order.length === 0 ? (
+          <BoardEmptyState
+            kind={isColumn ? "column" : "brace"}
+            title={listLoadedOnce ? t(k("emptyList")) : t(k("notLoaded"))}
+            loadedOnce={listLoadedOnce}
+            onLoad={handleList}
+            loading={listLoading}
+            loadLabel={listLoading ? t(k("loadingBtn")) : t(k("loadBtn"))}
+          />
+        ) : (
         <div className="table-scroll">
           <table className="board-table">
             <thead>
@@ -419,12 +431,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                   </tr>
                 );
               })}
-              {order.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="board-empty">{listLoadedOnce ? t(k("emptyList")) : t(k("notLoaded"))}</td>
-                </tr>
-              )}
-              {order.length > 0 && visibleOrder.length === 0 && (
+              {visibleOrder.length === 0 && (
                 <tr>
                   <td colSpan={8} className="board-empty">{t("board.filterEmpty")}</td>
                 </tr>
@@ -432,6 +439,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* --- detail drawer --- */}

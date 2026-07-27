@@ -126,7 +126,9 @@
   "board.colCover": "피복",
   "board.colVerdict": "판정 (휨/전단)",
   "board.emptyList": "이 모델에 보 배근 데이터가 아직 없습니다.",
-  "board.notLoaded": "‘보 단면 불러오기’를 눌러 시작하세요.",
+  "board.notLoaded": "아직 불러온 보 단면이 없습니다",
+  "board.emptySub": "아래 버튼을 누르면 현재 열려 있는 Gen NX 모델의 배근을 불러옵니다.",
+  "board.emptyNeedConn": "먼저 Gen NX에 연결하세요 — 우측 상단 API 설정에서 MAPI Key를 입력합니다.",
   "board.appliesTo": "적용 부재: {keys}",
   "board.judgeTitle": "실시간 판정",
   "board.flexLabel": "휨",
@@ -186,7 +188,7 @@
   "cboard.colCover": "피복",
   "cboard.colHoopType": "형식",
   "cboard.emptyList": "이 모델에 기둥 배근 데이터가 아직 없습니다.",
-  "cboard.notLoaded": "‘기둥 단면 불러오기’를 눌러 시작하세요.",
+  "cboard.notLoaded": "아직 불러온 기둥 단면이 없습니다",
 
   "bboard.loadBtn": "가새 단면 불러오기",
   "bboard.loadingBtn": "불러오는 중…",
@@ -199,7 +201,7 @@
   "bboard.colCover": "피복",
   "bboard.colHoopType": "형식",
   "bboard.emptyList": "이 모델에 가새 배근 데이터가 아직 없습니다.",
-  "bboard.notLoaded": "‘가새 단면 불러오기’를 눌러 시작하세요.",
+  "bboard.notLoaded": "아직 불러온 가새 단면이 없습니다",
 
   "wboard.loadBtn": "벽체 불러오기",
   "wboard.loadingBtn": "불러오는 중…",
@@ -215,7 +217,7 @@
   "wboard.colCover": "피복 DW/DE",
   "wboard.segCount": "{count}구간",
   "wboard.emptyList": "이 모델에 벽체 배근 데이터가 아직 없습니다.",
-  "wboard.notLoaded": "‘벽체 불러오기’를 눌러 시작하세요.",
+  "wboard.notLoaded": "아직 불러온 벽체가 없습니다",
 
   "column.useCorner": "코너철근 사용",
   "column.cornerSpec": "코너철근 규격",

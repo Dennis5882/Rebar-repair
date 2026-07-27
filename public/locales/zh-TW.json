@@ -126,7 +126,9 @@
   "board.colCover": "保護層",
   "board.colVerdict": "判定 (M / V)",
   "board.emptyList": "此模型尚無梁配筋資料。",
-  "board.notLoaded": "點擊「載入梁斷面」開始。",
+  "board.notLoaded": "尚未載入梁斷面",
+  "board.emptySub": "點擊下方按鈕，即可從目前開啟的 Gen NX 模型載入配筋。",
+  "board.emptyNeedConn": "請先連線 Gen NX — 於右上角「API 設定」輸入 MAPI Key。",
   "board.appliesTo": "構件：{keys}",
   "board.judgeTitle": "即時判定",
   "board.flexLabel": "受彎",
@@ -186,7 +188,7 @@
   "cboard.colCover": "保護層",
   "cboard.colHoopType": "形式",
   "cboard.emptyList": "此模型尚無柱配筋資料。",
-  "cboard.notLoaded": "點擊「載入柱斷面」開始。",
+  "cboard.notLoaded": "尚未載入柱斷面",
 
   "bboard.loadBtn": "載入支撐斷面",
   "bboard.loadingBtn": "載入中…",
@@ -199,7 +201,7 @@
   "bboard.colCover": "保護層",
   "bboard.colHoopType": "形式",
   "bboard.emptyList": "此模型尚無支撐配筋資料。",
-  "bboard.notLoaded": "點擊「載入支撐斷面」開始。",
+  "bboard.notLoaded": "尚未載入支撐斷面",
 
   "wboard.loadBtn": "載入牆",
   "wboard.loadingBtn": "載入中…",
@@ -215,7 +217,7 @@
   "wboard.colCover": "保護層 DW/DE",
   "wboard.segCount": "{count}段",
   "wboard.emptyList": "此模型尚無牆配筋資料。",
-  "wboard.notLoaded": "點擊「載入牆」開始。",
+  "wboard.notLoaded": "尚未載入牆",
 
   "column.useCorner": "使用角筋",
   "column.cornerSpec": "角筋規格",
