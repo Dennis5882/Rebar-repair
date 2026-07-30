@@ -61,6 +61,57 @@ async function doList(res: VercelResponse, apiKey: string, base: string, endpoin
   }
 }
 
+// WALL-specific list: REBW only ever contains walls someone has already
+// assigned rebar to via Gen NX's own Wall Rebar dialog — on a model where
+// that dialog has never been opened, REBW comes back completely empty even
+// though the model has real walls, and the board is permanently stuck on
+// "no rows" (live-verified 2026-07-30 against a real apartment model: 9,668
+// WALL elements, REBW empty). Fixed the same way the COLUMN board already
+// handles bare sections: enumerate walls from /db/ELEM instead of trusting
+// REBW to list them.
+//
+// Each WALL-type element carries a `WALL` field — its Wall ID, the exact key
+// REBW's `Assign` map expects. Live-verified 2026-07-30: PUT-ing REBW with an
+// id taken from this field round-trips; an id outside the model's real range
+// is rejected with `{"error":{"message":"Wrong Key"}}` — so the server
+// itself validates against real walls, confirming `ELEM.WALL` IS the REBW
+// key space, not just a coincidentally-similar grouping number.
+async function doListWall(res: VercelResponse, apiKey: string, base: string) {
+  try {
+    const [elemRes, rebResult] = await Promise.all([
+      getJson(base, "/db/ELEM", apiKey),
+      fetchMidas(`${base}${ENDPOINTS.WALL}`, apiKey),
+    ]);
+    if (!rebResult.ok) return res.json({ ok: false, error: rebResult.error });
+    const rebData = rebResult.data;
+    const rebTop = rebData ? Object.keys(rebData)[0] : null;
+    const rebItems: Record<string, any> = rebTop && rebData[rebTop] && typeof rebData[rebTop] === "object" ? rebData[rebTop] : {};
+
+    const elems: Record<string, any> = elemRes.ELEM || {};
+    const widsFromElems = new Set<string>();
+    for (const el of Object.values(elems)) {
+      if ((el as any)?.TYPE !== "WALL") continue;
+      const wid = (el as any)?.WALL;
+      if (wid != null) widsFromElems.add(String(wid));
+    }
+    // /db/WMAK ("Modify Wall Mark") looked like a promising name source
+    // (MARKNAME per Wall ID) but its own WID_LIST turned out to be a
+    // different, unrelated ID space on the live model tested (e.g. 331/721/
+    // 2001, nowhere near the model's real WIDs of 1-15) — dropped rather
+    // than shipped on an unverified assumption. The board falls back to the
+    // bare WID as the row label, same as it always has.
+
+    const emptyPayload = { ITEMS: [{}] };
+    const wids = new Set([...widsFromElems, ...Object.keys(rebItems)]);
+    const data: Record<string, any> = {};
+    for (const wid of wids) data[wid] = rebItems[wid] || emptyPayload;
+
+    return res.json({ ok: true, data });
+  } catch (e: any) {
+    return res.json({ ok: false, error: e.message });
+  }
+}
+
 async function doUpdate(res: VercelResponse, apiKey: string, base: string, endpoint: string, key: any, payload: any) {
   const itemKey = String(key || "").trim();
   if (!itemKey) return res.status(400).json({ ok: false, code: "missing_key_id" });
@@ -104,7 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   switch (action) {
     case "list":
-      return doList(res, apiKey, base, endpoint);
+      return memberType === "WALL" ? doListWall(res, apiKey, base) : doList(res, apiKey, base, endpoint);
     case "update":
       return doUpdate(res, apiKey, base, endpoint, key, payload);
     default:
