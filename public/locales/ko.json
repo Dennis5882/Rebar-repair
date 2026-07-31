@@ -209,7 +209,6 @@
   "wboard.summaryTotal": "벽체",
   "wboard.tableHint": "행 클릭 → 아래에서 편집 · 구간별 편집, 벽체 단위로 저장",
   "wboard.searchPlaceholder": "벽체 검색",
-  "wboard.colWall": "벽체",
   "wboard.colSegments": "구간",
   "wboard.colVertical": "수직철근",
   "wboard.colHorizontal": "수평철근",
@@ -227,6 +226,7 @@
   "wboard.appliesToWalls": "적용 Wall ID: {count}개 ({keys})",
   "wboard.saveGroupBtn": "{count}개 Wall ID에 저장",
   "wboard.modelThicknessHint": "모델 실제 두께 {thickness}mm",
+  "wboard.unassignedGroup": "미지정",
 
   "column.useCorner": "코너철근 사용",
   "column.cornerSpec": "코너철근 규격",

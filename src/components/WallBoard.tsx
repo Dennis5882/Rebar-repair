@@ -195,15 +195,25 @@ export function WallBoard() {
           : groupMode === "mark"
             ? marks[wid]
               ? `mark:${marks[wid]}`
-              : `id:${wid}`
+              : `unassigned:${wid}`
             : thicknessMm[wid] != null
               ? `thk:${thicknessMm[wid]}`
-              : `id:${wid}`;
+              : `unassigned:${wid}`;
       (byKey[key] = byKey[key] || []).push(wid);
     }
     return Object.entries(byKey).map(([key, members]) => {
       const sorted = members.slice().sort((a, b) => Number(a) - Number(b));
-      const label = key.startsWith("mark:") ? key.slice(5) : key.startsWith("thk:") ? `${key.slice(4)} mm` : `${t("wboard.colWall")} ${sorted[0]}`;
+      const wallLabel = `${t("wboard.groupModeId")} ${sorted[0]}`;
+      // "unassigned:" ⇒ no Mark/Thickness data for this WID under the active
+      // grouping — say so explicitly (not the same as a real singleton group
+      // in "id" mode, which just IS one Wall ID, nothing missing about it).
+      const label = key.startsWith("mark:")
+        ? key.slice(5)
+        : key.startsWith("thk:")
+          ? `${key.slice(4)} mm`
+          : key.startsWith("unassigned:")
+            ? `${t("wboard.unassignedGroup")} (${wallLabel})`
+            : wallLabel;
       return { key, members: sorted, label };
     });
   }, [order, groupMode, marks, thicknessMm, t]);
@@ -388,6 +398,11 @@ export function WallBoard() {
   const beforePayload = useMemo(() => (beforeItem ? { ITEMS: [mapWallItemLen(beforeItem, (v) => numToMm(v, unit))] } : null), [beforeItem, unit]);
   const afterPayload = useMemo(() => ({ ITEMS: [buildWallItem(form)] }), [form]);
 
+  // The first column literally shows whichever grouping is active — Gen NX's
+  // own term ("Wall Mark"/"Wall ID"), not the generic "벽체", so a mark name
+  // like "W3" doesn't get misread as a made-up wall name.
+  const groupColLabel = groupMode === "mark" ? t("wboard.groupModeMark") : groupMode === "thickness" ? t("wboard.groupModeThickness") : t("wboard.groupModeId");
+
   return (
     <div className="beam-board">
       {/* --- toolbar --- */}
@@ -468,7 +483,7 @@ export function WallBoard() {
           <table className="board-table">
             <thead>
               <tr>
-                <th>{t("wboard.colWall")}</th>
+                <th>{groupColLabel}</th>
                 <th>{t("wboard.colWallIds")}</th>
                 <th>{t("wboard.colSegments")}</th>
                 <th>{t("wboard.colThickness")}</th>

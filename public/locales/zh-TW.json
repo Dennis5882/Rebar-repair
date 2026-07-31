@@ -209,7 +209,6 @@
   "wboard.summaryTotal": "牆",
   "wboard.tableHint": "點擊列 → 於下方編輯 · 逐段編輯，依牆儲存",
   "wboard.searchPlaceholder": "搜尋牆",
-  "wboard.colWall": "牆",
   "wboard.colSegments": "段",
   "wboard.colVertical": "垂直鋼筋",
   "wboard.colHorizontal": "水平鋼筋",
@@ -227,6 +226,7 @@
   "wboard.appliesToWalls": "適用 Wall ID：{count} 個（{keys}）",
   "wboard.saveGroupBtn": "儲存到 {count} 個 Wall ID",
   "wboard.modelThicknessHint": "模型實際厚度 {thickness}mm",
+  "wboard.unassignedGroup": "未指定",
 
   "column.useCorner": "使用角筋",
   "column.cornerSpec": "角筋規格",

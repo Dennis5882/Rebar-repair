@@ -209,7 +209,6 @@
   "wboard.summaryTotal": "Walls",
   "wboard.tableHint": "Click a row → edit below · one segment at a time, saved per wall",
   "wboard.searchPlaceholder": "Search walls",
-  "wboard.colWall": "Wall",
   "wboard.colSegments": "Segments",
   "wboard.colVertical": "Vertical",
   "wboard.colHorizontal": "Horizontal",
@@ -227,6 +226,7 @@
   "wboard.appliesToWalls": "Wall IDs: {count} ({keys})",
   "wboard.saveGroupBtn": "Save to {count} Wall IDs",
   "wboard.modelThicknessHint": "Model thickness {thickness} mm",
+  "wboard.unassignedGroup": "Unassigned",
 
   "column.useCorner": "Use Corner Bar",
   "column.cornerSpec": "Corner Bar Size",
