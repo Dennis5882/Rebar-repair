@@ -61,6 +61,8 @@ async function doList(res: VercelResponse, apiKey: string, base: string, endpoin
   }
 }
 
+const MM_PER_DIST: Record<string, number> = { MM: 1, CM: 10, M: 1000, IN: 25.4, FT: 304.8 };
+
 // WALL-specific list: REBW only ever contains walls someone has already
 // assigned rebar to via Gen NX's own Wall Rebar dialog — on a model where
 // that dialog has never been opened, REBW comes back completely empty even
@@ -76,10 +78,31 @@ async function doList(res: VercelResponse, apiKey: string, base: string, endpoin
 // is rejected with `{"error":{"message":"Wrong Key"}}` — so the server
 // itself validates against real walls, confirming `ELEM.WALL` IS the REBW
 // key space, not just a coincidentally-similar grouping number.
+//
+// Also resolves the practitioner-facing grouping the WALL board offers on top
+// of raw Wall ID (live-verified 2026-07-30 against Gen NX's own "Modify Wall
+// Rebar Data" dialog on a second, simpler model):
+// - **Wall Mark** (`/db/WMAK`) — a many-to-one design grouping ("여러 Wall ID가
+//   하나의 Mark를 공유해 한번에 배근"): its own `WID_LIST` field IS the same
+//   `ELEM.WALL` id space (confirmed: WID_LIST [1],[2],[3,5],[4] matched this
+//   model's real WIDs 1-6 exactly). The earlier apartment-model test that
+//   made WMAK look unusable (WID_LIST values 331/721/2001, nowhere near that
+//   model's real 1-15 range, one of them not even an existing element) was
+//   that specific model's OWN stale/orphaned WMAK data — the same "orphaned
+//   rebar-design records for deleted elements" pattern already seen on REBB,
+//   not a flaw in WMAK itself. A WID with no WMAK entry (not every wall is
+//   marked) falls back to being its own singleton group.
+// - **Thickness** — a WALL element's `SECT` field does NOT index `/db/SECT`
+//   (confirmed empty there); it indexes `/db/THIK` (`{NAME,TYPE,T_IN,...}`),
+//   the plate-thickness table shared with regular plates. `T_IN` is in the
+//   model's DIST unit like everything else.
 async function doListWall(res: VercelResponse, apiKey: string, base: string) {
   try {
-    const [elemRes, rebResult] = await Promise.all([
+    const [elemRes, wmakRes, thikRes, unitRes, rebResult] = await Promise.all([
       getJson(base, "/db/ELEM", apiKey),
+      getJson(base, "/db/WMAK", apiKey),
+      getJson(base, "/db/THIK", apiKey),
+      getJson(base, "/db/UNIT", apiKey),
       fetchMidas(`${base}${ENDPOINTS.WALL}`, apiKey),
     ]);
     if (!rebResult.ok) return res.json({ ok: false, error: rebResult.error });
@@ -87,26 +110,40 @@ async function doListWall(res: VercelResponse, apiKey: string, base: string) {
     const rebTop = rebData ? Object.keys(rebData)[0] : null;
     const rebItems: Record<string, any> = rebTop && rebData[rebTop] && typeof rebData[rebTop] === "object" ? rebData[rebTop] : {};
 
+    const unitObj = unitRes.UNIT ? Object.values(unitRes.UNIT)[0] : undefined;
+    const mmPer = MM_PER_DIST[((unitObj as any)?.DIST || "M").toUpperCase()] ?? 1000;
+    const thik: Record<string, any> = thikRes.THIK || {};
+
     const elems: Record<string, any> = elemRes.ELEM || {};
     const widsFromElems = new Set<string>();
+    const thicknessMm: Record<string, number> = {};
     for (const el of Object.values(elems)) {
       if ((el as any)?.TYPE !== "WALL") continue;
       const wid = (el as any)?.WALL;
-      if (wid != null) widsFromElems.add(String(wid));
+      if (wid == null) continue;
+      const widKey = String(wid);
+      widsFromElems.add(widKey);
+      if (thicknessMm[widKey] == null) {
+        const tIn = thik[String((el as any)?.SECT)]?.T_IN;
+        if (typeof tIn === "number") thicknessMm[widKey] = Math.round(tIn * mmPer);
+      }
     }
-    // /db/WMAK ("Modify Wall Mark") looked like a promising name source
-    // (MARKNAME per Wall ID) but its own WID_LIST turned out to be a
-    // different, unrelated ID space on the live model tested (e.g. 331/721/
-    // 2001, nowhere near the model's real WIDs of 1-15) — dropped rather
-    // than shipped on an unverified assumption. The board falls back to the
-    // bare WID as the row label, same as it always has.
+
+    const wmak: Record<string, any> = wmakRes.WMAK || {};
+    const marks: Record<string, string> = {};
+    for (const mark of Object.values(wmak)) {
+      const markName = (mark as any)?.MARKNAME;
+      const widList: number[] = (mark as any)?.WID_LIST || [];
+      if (!markName) continue;
+      for (const wid of widList) marks[String(wid)] = markName;
+    }
 
     const emptyPayload = { ITEMS: [{}] };
     const wids = new Set([...widsFromElems, ...Object.keys(rebItems)]);
     const data: Record<string, any> = {};
     for (const wid of wids) data[wid] = rebItems[wid] || emptyPayload;
 
-    return res.json({ ok: true, data });
+    return res.json({ ok: true, data, marks, thicknessMm });
   } catch (e: any) {
     return res.json({ ok: false, error: e.message });
   }

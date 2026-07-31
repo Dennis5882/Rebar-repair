@@ -54,6 +54,10 @@ export interface ListOk<T> {
   ok: true;
   data: Record<string, T>;
   names?: Record<string, string>;
+  // WALL only: Wall Mark name and thickness (mm) per Wall ID, for the board's
+  // Wall Mark / Thickness grouping modes — see [[genxn-api-schema-findings]].
+  marks?: Record<string, string>;
+  thicknessMm?: Record<string, number>;
 }
 export type ListResult<T> = ListOk<T> | ApiError;
 

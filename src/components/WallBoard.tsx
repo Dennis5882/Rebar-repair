@@ -4,8 +4,9 @@ import { useConn } from "../context/ConnContext";
 import { useLoadAll } from "../context/LoadAllContext";
 import { getModelUnit, listRebar, runAnalysis, runWallCheck, saveRebar, type MemberCheckRow } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
+import { compressKeyRanges } from "../lib/keyRange";
 import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, segmentLabel, type WallFormState } from "../lib/wallRebarForm";
-import { useMemberVerdict } from "../lib/useMemberVerdict";
+import { useMemberVerdict, type EffVerdict } from "../lib/useMemberVerdict";
 import { numToMm, numToModel } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
 import { BarSelect } from "./BarSelect";
@@ -16,17 +17,37 @@ import type { WallItem, WallPayload } from "../types/rebar";
 
 // The WALL tab's board. Walls don't fit the SECT-grouped section model the
 // column/brace boards use — a wall is keyed by Wall ID and carries MULTIPLE
-// segments (ITEMS: WallItem[], one per SUB_WALL_ID / story range). So this
-// board lists REBW records (walls that already have rebar) with row = wall,
-// and its detail editor edits one segment at a time, preserving the others on
-// save (the exact concern the old WallForm handled). Each wall carries a live
-// OK/NG verdict read from Gen NX's own wall check (WC-ANAL + WC-TABLE, keyed by
-// WID = the board's wall id) — the worst case across the wall's stories. KDS
-// models only; a non-KDS/empty result shows "판정 보류".
+// segments (ITEMS: WallItem[], one per SUB_WALL_ID / story range). Every real
+// Wall ID is listed (api/rebar.ts's doListWall enumerates them from /db/ELEM,
+// not just ones with existing REBW — see [[genxn-api-schema-findings]]), and
+// its detail editor edits one segment at a time, preserving the others on
+// save. Each wall carries a live OK/NG verdict read from Gen NX's own wall
+// check (WC-ANAL + WC-TABLE, keyed by WID) — the worst case across the wall's
+// stories. KDS models only; a non-KDS/empty result shows "판정 보류".
+//
+// **Grouping (live-verified 2026-07-30 against Gen NX's own "Modify Wall
+// Rebar Data" dialog):** Korean apartment practice reuses one rebar design
+// across many Wall IDs via a "Wall Mark" (`/db/WMAK`, many-to-one — e.g. Wall
+// ID 3 and 5 both marked "W3", get identical rebar). The board defaults to
+// grouping by Mark (a Wall ID with no mark falls back to its own singleton
+// group) but also offers raw Wall ID and wall Thickness (`/db/THIK`, the
+// element's `SECT` field on a WALL-type element indexes THIK, not SECT — the
+// regular frame-section table is empty for these ids). One row = one group;
+// editing/saving broadcasts the same rebar to every Wall ID in the group in
+// one batch (mirrors the column/beam boards' "one save → many elements", just
+// grouped by Mark or Thickness instead of a structural SECT id).
 
 interface WallRowState {
   items: WallItem[]; // working copy, in mm (edited); saved back in model unit
   dirty: boolean;
+}
+
+type WallGroupMode = "mark" | "id" | "thickness";
+
+interface WallGroup {
+  key: string;
+  label: string;
+  members: string[]; // Wall IDs, sorted numerically
 }
 
 
@@ -53,7 +74,9 @@ export function WallBoard() {
   const { nonce: loadAllNonce } = useLoadAll();
 
   const [orig, setOrig] = useState<Record<string, WallPayload>>({});
-  const [names, setNames] = useState<Record<string, string>>({});
+  const [marks, setMarks] = useState<Record<string, string>>({}); // Wall ID -> Wall Mark name (/db/WMAK)
+  const [thicknessMm, setThicknessMm] = useState<Record<string, number>>({}); // Wall ID -> model thickness, mm (/db/THIK)
+  const [groupMode, setGroupMode] = useState<WallGroupMode>("mark");
   const [boardUnit, setBoardUnit] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [listLoadedOnce, setListLoadedOnce] = useState(false);
@@ -91,7 +114,8 @@ export function WallBoard() {
         return;
       }
       setOrig(res.data);
-      setNames(res.names || {});
+      setMarks(res.marks || {});
+      setThicknessMm(res.thicknessMm || {});
       if (unitRes.ok) setBoardUnit(unitRes.unit || "");
       setListLoadedOnce(true);
       setStatus({ ok: true, kind: "sectionsLoaded", count: Object.keys(res.data).length });
@@ -154,48 +178,129 @@ export function WallBoard() {
     });
   }
 
-  // Gen NX verdict per wall + OK/NG summary (shared with the column board).
-  const { verdicts, summary } = useMemberVerdict(order, rows, check);
+  // Gen NX verdict per WALL ID (shared reducer with the column board) — kept
+  // at Wall ID granularity; grouped into per-group verdicts below.
+  const { verdicts } = useMemberVerdict(order, rows, check);
 
-  const visibleOrder = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = order.filter((id) => {
-      if (!q) return true;
-      return (names[id] || id).toLowerCase().includes(q);
+  // One row = one group under the active mode: "mark" (Wall Mark, many WIDs
+  // sharing one design — a WID with no mark is its own singleton group),
+  // "id" (every WID its own row, the pre-grouping behavior), or "thickness"
+  // (WIDs sharing the same model wall thickness). See the file-header note.
+  const groups = useMemo<WallGroup[]>(() => {
+    const byKey: Record<string, string[]> = {};
+    for (const wid of order) {
+      const key =
+        groupMode === "id"
+          ? `id:${wid}`
+          : groupMode === "mark"
+            ? marks[wid]
+              ? `mark:${marks[wid]}`
+              : `id:${wid}`
+            : thicknessMm[wid] != null
+              ? `thk:${thicknessMm[wid]}`
+              : `id:${wid}`;
+      (byKey[key] = byKey[key] || []).push(wid);
+    }
+    return Object.entries(byKey).map(([key, members]) => {
+      const sorted = members.slice().sort((a, b) => Number(a) - Number(b));
+      const label = key.startsWith("mark:") ? key.slice(5) : key.startsWith("thk:") ? `${key.slice(4)} mm` : `${t("wboard.colWall")} ${sorted[0]}`;
+      return { key, members: sorted, label };
     });
-    if (sortKey === "name") list = [...list].sort((a, b) => (names[a] || a).localeCompare(names[b] || b, undefined, { numeric: true }));
-    return list;
-  }, [order, query, sortKey, names]);
+  }, [order, groupMode, marks, thicknessMm, t]);
 
-  async function saveWall(id: string) {
-    const row = rows[id];
+  const selectedGroup = useMemo(() => groups.find((g) => selectedId != null && g.members.includes(selectedId)) || null, [groups, selectedId]);
+
+  // Worst-case verdict across a group's members (any NG ⇒ group NG).
+  const groupVerdicts = useMemo(() => {
+    const out: Record<string, EffVerdict> = {};
+    for (const g of groups) {
+      let picked: EffVerdict = { source: "none" };
+      for (const m of g.members) {
+        const v = verdicts[m];
+        if (!v || v.source === "none") continue;
+        if (picked.source === "none" || (v.ok === false && picked.ok !== false)) picked = v;
+      }
+      out[g.key] = picked;
+    }
+    return out;
+  }, [groups, verdicts]);
+
+  const summary = useMemo(() => {
+    let ok = 0;
+    let ng = 0;
+    let judged = 0;
+    let dirty = 0;
+    for (const g of groups) {
+      const v = groupVerdicts[g.key];
+      if (v.ok === true) ok++;
+      else if (v.ok === false) ng++;
+      if (v.ok != null) judged++;
+      if (g.members.some((m) => rows[m]?.dirty)) dirty++;
+    }
+    return { total: groups.length, ok, ng, judged, dirty };
+  }, [groups, groupVerdicts, rows]);
+
+  const visibleGroups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = groups.filter((g) => {
+      if (!q) return true;
+      if (g.label.toLowerCase().includes(q)) return true;
+      return g.members.some((m) => m.includes(q));
+    });
+    list = [...list].sort((a, b) =>
+      sortKey === "name" ? a.label.localeCompare(b.label, undefined, { numeric: true }) : Number(a.members[0]) - Number(b.members[0])
+    );
+    return list;
+  }, [groups, query, sortKey]);
+
+  // Saves the SELECTED (representative) Wall ID's current items to every Wall
+  // ID in its group, in parallel — a group of one (raw "id" mode, or a Mark/
+  // Thickness bucket nobody else shares) behaves exactly like the old
+  // per-wall save. Every member ends up with byte-identical rebar, matching
+  // Gen NX's own Wall Mark semantics (see the file-header note).
+  async function saveGroup(group: WallGroup) {
+    const repId = group.members[0];
+    const row = rows[repId];
     if (!row) return;
     // Working items are mm; REBW expects the model's length unit — convert
     // every segment's lengths back on the way out.
     const payload: WallPayload = { ITEMS: row.items.map((it) => mapWallItemLen(it, (v) => numToModel(v, unit))) };
-    setSavingId(id);
+    setSavingId(repId);
     setActionMsg({ ok: true, kind: "saving" });
     try {
-      const res = await saveRebar("WALL", id, payload, conn);
-      if (!res.ok) {
-        setActionMsg({ ok: false, kind: "saveFail", res });
+      const results = await Promise.all(group.members.map((id) => saveRebar("WALL", id, payload, conn)));
+      const failed = results.find((r) => !r.ok);
+      if (failed) {
+        setActionMsg({ ok: false, kind: "saveFail", res: failed });
         return;
       }
       setActionMsg({ ok: true, kind: "saveDone" });
-      // Only clear THIS row's dirty flag. Deliberately do NOT touch `orig`:
-      // writing to it retriggers the [orig] effect, which rebuilds every row
-      // (discarding unsaved edits on other walls) and resets the selection to
-      // the first wall. The "before" preview keeps showing the as-loaded
-      // segment, same as the column board (before = the originally-loaded
-      // payload), which is the intended diff baseline.
-      setRows((prev) => ({ ...prev, [id]: { ...prev[id], dirty: false } }));
-      // The saved rebar no longer matches the last Gen NX verdict — drop it so
-      // the wall shows "판정 보류" (not a stale OK/NG) until re-checked.
-      setCheck((prev) => {
-        if (!prev[id]) return prev;
+      // Only clear THIS group's rows/dirty flags. Deliberately do NOT touch
+      // `orig`: writing to it retriggers the [orig] effect, which rebuilds
+      // every row (discarding unsaved edits on other walls) and resets the
+      // selection to the first wall. The "before" preview keeps showing the
+      // as-loaded segment, same as the column board (before = the
+      // originally-loaded payload), which is the intended diff baseline.
+      // Every member now shares the representative's items — that's the
+      // point of a group save.
+      setRows((prev) => {
         const next = { ...prev };
-        delete next[id];
+        for (const id of group.members) next[id] = { items: row.items, dirty: false };
         return next;
+      });
+      // The saved rebar no longer matches the last Gen NX verdict for any
+      // member — drop it so the group shows "판정 보류" (not a stale OK/NG)
+      // until re-checked.
+      setCheck((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const id of group.members) {
+          if (next[id]) {
+            delete next[id];
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
       });
     } catch (e) {
       setActionMsg({ ok: false, kind: "saveError", error: String(e) });
@@ -232,9 +337,9 @@ export function WallBoard() {
   }
 
   // "이 벽 검토 실행": WC-ANAL "ALL" (walls have no section scope; it's cheap),
-  // then read back just this wall's verdict.
-  async function handleWallRecheck(id: string) {
-    setCheckingId(id);
+  // then read back every member of the selected group's verdict.
+  async function handleGroupRecheck(group: WallGroup) {
+    setCheckingId(group.members[0]);
     setActionMsg({ ok: true, kind: "sectionChecking" });
     try {
       const res = await runWallCheck(conn, { recheck: true });
@@ -242,15 +347,13 @@ export function WallBoard() {
         setActionMsg({ ok: false, kind: "recheckFail", res });
         return;
       }
-      const rowsForId = res.byKey[id];
-      setCheck((prev) => ({ ...prev, [id]: rowsForId || [] }));
-      setActionMsg(
-        rowsForId && rowsForId.some((r) => r.chk != null)
-          ? { ok: true, kind: "sectionChecked" }
-          : res.needAnalysis
-            ? { ok: false, kind: "needAnalysis" }
-            : { ok: false, kind: "recheckEmptyMember" }
-      );
+      setCheck((prev) => {
+        const next = { ...prev };
+        for (const id of group.members) next[id] = res.byKey[id] || [];
+        return next;
+      });
+      const anyJudged = group.members.some((id) => (res.byKey[id] || []).some((r) => r.chk != null));
+      setActionMsg(anyJudged ? { ok: true, kind: "sectionChecked" } : res.needAnalysis ? { ok: false, kind: "needAnalysis" } : { ok: false, kind: "recheckEmptyMember" });
     } catch (e) {
       setActionMsg({ ok: false, kind: "recheckFail", res: { ok: false, error: String(e) } });
     } finally {
@@ -277,7 +380,7 @@ export function WallBoard() {
   }
 
   const selectedRow = selectedId ? rows[selectedId] : null;
-  const selectedVerdict = selectedId ? verdicts[selectedId] : null;
+  const selectedVerdict = selectedGroup ? groupVerdicts[selectedGroup.key] : null;
   const segCount = selectedRow?.items.length || 0;
   const beforeItem = selectedId ? orig[selectedId]?.ITEMS?.[segIndex] : undefined;
   // `before` is the loaded (model-unit) segment converted to mm; `after` comes
@@ -297,6 +400,16 @@ export function WallBoard() {
             <button className="btn primary board-recheck" type="button" onClick={handleRecheck} disabled={rechecking} title={t("board.recheckHint")}>
               {rechecking ? t("board.rechecking") : t("board.recheckBtn")}
             </button>
+          )}
+          {order.length > 0 && (
+            <label className="board-sort">
+              <span>{t("wboard.groupModeLabel")}</span>
+              <select value={groupMode} onChange={(e) => setGroupMode(e.target.value as WallGroupMode)}>
+                <option value="mark">{t("wboard.groupModeMark")}</option>
+                <option value="id">{t("wboard.groupModeId")}</option>
+                <option value="thickness">{t("wboard.groupModeThickness")}</option>
+              </select>
+            </label>
           )}
         </div>
         {status && <div className={"status show " + statusClass(status)} style={{ marginTop: 8 }}>{statusText(t, status)}</div>}
@@ -323,7 +436,7 @@ export function WallBoard() {
             {t("wboard.title")}{" "}
             {order.length > 0 && (
               <span className="board-count">
-                {visibleOrder.length === order.length ? `(${order.length})` : `(${t("board.countFiltered", { shown: visibleOrder.length, total: order.length })})`}
+                {visibleGroups.length === groups.length ? `(${groups.length})` : `(${t("board.countFiltered", { shown: visibleGroups.length, total: groups.length })})`}
               </span>
             )}
           </h2>
@@ -356,7 +469,9 @@ export function WallBoard() {
             <thead>
               <tr>
                 <th>{t("wboard.colWall")}</th>
+                <th>{t("wboard.colWallIds")}</th>
                 <th>{t("wboard.colSegments")}</th>
+                <th>{t("wboard.colThickness")}</th>
                 <th>{t("wboard.colVertical")}</th>
                 <th>{t("wboard.colHorizontal")}</th>
                 <th>{t("wboard.colEnd")}</th>
@@ -365,36 +480,41 @@ export function WallBoard() {
               </tr>
             </thead>
             <tbody>
-              {visibleOrder.map((id) => {
-                const row = rows[id];
+              {visibleGroups.map((g) => {
+                const repId = g.members[0];
+                const row = rows[repId];
                 if (!row) return null;
-                // Summarize the segment currently being edited for the selected
-                // row, else segment 0 as the representative — so an edit to a
-                // non-first segment is visible in its row, not hidden behind
-                // segment 0's (unchanged) values.
-                const it0 = row.items[id === selectedId ? segIndex : 0] || {};
+                const isSel = selectedGroup?.key === g.key;
+                // Summarize the segment currently being edited when this is the
+                // selected group, else segment 0 as the representative — so an
+                // edit to a non-first segment is visible in its row, not hidden
+                // behind segment 0's (unchanged) values.
+                const it0 = row.items[isSel ? segIndex : 0] || {};
                 const v = it0.VERTICAL_REBAR || {};
                 const h = it0.HORIZONTAL_REBAR || {};
                 const er = it0.END_REBAR || {};
                 const cc = it0.CONCRETE_FACE_TO_CENTER_OF_REBAR || {};
-                const vd = verdicts[id];
+                const thk = thicknessMm[repId];
+                const dirty = g.members.some((m) => rows[m]?.dirty);
                 return (
-                  <tr key={id} className={id === selectedId ? "sel" : ""} onClick={() => setSelectedId(id)}>
+                  <tr key={g.key} className={isSel ? "sel" : ""} onClick={() => setSelectedId(repId)}>
                     <td className="cell-section">
-                      <span className="dirty-dot" style={{ visibility: row.dirty ? "visible" : "hidden" }} />
-                      <span className="sect-nm">{names[id] ? `${id}: ${names[id]}` : id}</span>
+                      <span className="dirty-dot" style={{ visibility: dirty ? "visible" : "hidden" }} />
+                      <span className="sect-nm">{g.label}</span>
                     </td>
+                    <td><span className="elem-badge" title={compressKeyRanges(g.members)}>{t("board.memberCount", { count: g.members.length })}</span></td>
                     <td><span className="elem-badge">{t("wboard.segCount", { count: row.items.length })}</span></td>
+                    <td className="mono">{thk != null ? `${thk} mm` : "—"}</td>
                     <td className="mono">{v.NAME ? <><span className="bar-main">{v.NAME}</span>@{v.DIST ?? "?"}</> : "—"}</td>
                     <td className="mono">{h.NAME ? <><span className="bar-stir">{h.NAME}</span>@{h.DIST ?? "?"}</> : "—"}</td>
                     <td className="mono">{it0.USE_END_REBAR && er.NAME ? <><b>{er.NUM ?? "?"}</b>×{er.NAME}</> : "—"}</td>
                     <td className="mono">{cc.DW ?? "?"}/{cc.DE ?? "?"}</td>
-                    <MemberVerdictCell v={vd} genNxLabel={t("board.verdictGenNx")} />
+                    <MemberVerdictCell v={groupVerdicts[g.key]} genNxLabel={t("board.verdictGenNx")} />
                   </tr>
                 );
               })}
-              {visibleOrder.length === 0 && (
-                <tr><td colSpan={7} className="board-empty">{t("board.filterEmpty")}</td></tr>
+              {visibleGroups.length === 0 && (
+                <tr><td colSpan={9} className="board-empty">{t("board.filterEmpty")}</td></tr>
               )}
             </tbody>
           </table>
@@ -403,13 +523,17 @@ export function WallBoard() {
       </div>
 
       {/* --- detail drawer --- */}
-      {selectedRow && selectedId && (
+      {selectedRow && selectedId && selectedGroup && (
         <div className="board-detail">
           <div className="panel board-preview-card">
             <div className="board-detail-head">
               <div>
-                <div className="detail-nm">{names[selectedId] ? `${selectedId}: ${names[selectedId]}` : `Wall ${selectedId}`}</div>
-                <div className="detail-el">{t("wboard.segCount", { count: segCount })}</div>
+                <div className="detail-nm">{selectedGroup.label}</div>
+                <div className="detail-el">
+                  {selectedGroup.members.length > 1
+                    ? t("wboard.appliesToWalls", { count: selectedGroup.members.length, keys: compressKeyRanges(selectedGroup.members) })
+                    : t("wboard.segCount", { count: segCount })}
+                </div>
               </div>
             </div>
             <SectionPreview
@@ -492,6 +616,9 @@ export function WallBoard() {
             <div className="checkline">
               <input id="wb-useModelThk" type="checkbox" checked={form.useModelThk} onChange={(e) => setField("useModelThk", e.target.checked)} />
               <label htmlFor="wb-useModelThk" style={{ margin: 0 }}>{t("wall.useModelThk")}</label>
+              {thicknessMm[selectedId] != null && (
+                <span className="hint" style={{ marginLeft: 8, marginBottom: 0 }}>{t("wboard.modelThicknessHint", { thickness: thicknessMm[selectedId] })}</span>
+              )}
             </div>
             {!form.useModelThk && (
               <div className="field"><label>{t("wall.thickness")} (mm)</label><input type="number" step="any" value={form.thickness} onChange={(e) => setField("thickness", e.target.value)} /></div>
@@ -507,16 +634,16 @@ export function WallBoard() {
                    A rebar save invalidates Gen NX's solve, so 해석 실행 (once)
                    must run before 이 벽 검토 실행. --- */}
             <div className="board-actions">
-              <button className="btn primary" type="button" onClick={() => saveWall(selectedId)} disabled={savingId === selectedId}>
-                {t("common.saveBtn")}
+              <button className="btn primary" type="button" onClick={() => saveGroup(selectedGroup)} disabled={savingId === selectedId}>
+                {selectedGroup.members.length > 1 ? t("wboard.saveGroupBtn", { count: selectedGroup.members.length }) : t("common.saveBtn")}
               </button>
               <button className="btn" type="button" onClick={runModelAnalysis} disabled={analyzing}>
                 {analyzing ? t("board.analyzing") : t("board.runAnalysisBtn")}
               </button>
-              <button className="btn" type="button" onClick={() => handleWallRecheck(selectedId)} disabled={checkingId === selectedId}>
+              <button className="btn" type="button" onClick={() => handleGroupRecheck(selectedGroup)} disabled={checkingId === selectedId}>
                 {checkingId === selectedId ? t("board.checkingWall") : t("board.checkWallBtn")}
               </button>
-              <span className="hint save-note">{selectedRow.dirty ? t("board.unsavedNote") : t("board.savedNote")}</span>
+              <span className="hint save-note">{selectedGroup.members.some((m) => rows[m]?.dirty) ? t("board.unsavedNote") : t("board.savedNote")}</span>
             </div>
             <div className="hint board-actions-hint">{t("board.checkWallHint")}</div>
             {actionMsg && <div className={"status show " + statusClass(actionMsg)}>{statusText(t, actionMsg)}</div>}
