@@ -303,6 +303,21 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .dirty-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--hoop); margin-right: 8px; vertical-align: middle; }
 .sect-nm { font-family: var(--sans); font-weight: 650; font-size: 13px; white-space: nowrap; }
 .elem-badge { font-family: var(--mono); font-size: 11px; color: var(--ink-2); background: var(--surface-2); border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
+.wall-seg-list { display: flex; flex-direction: column; gap: 5px; }
+.wall-seg-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  cursor: pointer; font-size: 12.5px;
+}
+.wall-seg-item:hover { border-color: var(--line-strong); }
+.wall-seg-item.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.wall-seg-item.sub { border-left: 3px solid var(--hoop); }
+.wall-seg-item .seg-label { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.wall-seg-item .seg-tag {
+  font-size: 10px; font-weight: 700; color: var(--hoop); border: 1px solid var(--hoop); border-radius: 4px;
+  padding: 1px 5px; margin-right: 6px; vertical-align: middle;
+}
+.wall-seg-item .seg-summary { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mode-chip { font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); border: 1px solid var(--line-strong); border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
 .verdict { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
 .verdict .rr { font-weight: 500; opacity: .75; font-variant-numeric: tabular-nums; }

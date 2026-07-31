@@ -263,6 +263,7 @@
   "wall.legendBE": "邊界構件 (BE)",
   "wall.segmentLabel": "選擇區段 (Sub Wall ID / 樓層範圍)",
   "wall.segmentHint": "此牆共有 {count} 個區段。僅編輯所選區段，儲存時其餘區段將保持不變。",
+  "wall.segmentSubTag": "Sub",
 
   "js.checking": "確認中...",
   "js.connOk": "連線成功 ({program})",

@@ -573,11 +573,30 @@ export function WallBoard() {
             {segCount > 1 && (
               <div className="field">
                 <label>{t("wall.segmentLabel")}</label>
-                <select value={segIndex} onChange={(e) => selectSegment(Number(e.target.value))}>
-                  {selectedRow.items.map((it, idx) => (
-                    <option key={idx} value={idx}>{segmentLabel(it, idx)}</option>
-                  ))}
-                </select>
+                <div className="wall-seg-list">
+                  {selectedRow.items.map((it, idx) => {
+                    const vr = it.VERTICAL_REBAR;
+                    const hr = it.HORIZONTAL_REBAR;
+                    const summary =
+                      vr?.NAME || hr?.NAME
+                        ? `${vr?.NAME ? `V ${vr.NAME}@${vr.DIST ?? "?"}` : "V —"} · ${hr?.NAME ? `H ${hr.NAME}@${hr.DIST ?? "?"}` : "H —"}`
+                        : "—";
+                    const isSub = it.CREATE_SUB_WALL_ID === true;
+                    return (
+                      <div
+                        key={idx}
+                        className={"wall-seg-item" + (idx === segIndex ? " sel" : "") + (isSub ? " sub" : "")}
+                        onClick={() => selectSegment(idx)}
+                      >
+                        <span className="seg-label">
+                          {isSub && <span className="seg-tag">{t("wall.segmentSubTag")}</span>}
+                          {segmentLabel(it, idx)}
+                        </span>
+                        <span className="seg-summary mono">{summary}</span>
+                      </div>
+                    );
+                  })}
+                </div>
                 <div className="hint" style={{ marginTop: 4, marginBottom: 0 }}>{t("wall.segmentHint", { count: segCount })}</div>
               </div>
             )}
