@@ -408,6 +408,10 @@
   "guide.codeBarsHeaderXref": "对应规格（美国）",
   "guide.codeConfirmWarning": "该设计规范的材料规格对应关系可能存在地区差异 — 建议在实际项目中再次确认。",
 
+  "guide.release.d260731.item1": "墙看板现在会列出模型中所有真实的墙，而不仅是已有 REBW 记录的墙——修复了从未指定墙配筋的模型中列表始终为空的问题",
+  "guide.release.d260731.item2": "墙看板新增 Wall Mark / Wall ID / 厚度分组方式——保存一行即可同时套用到共享同一 Wall Mark 的所有 Wall ID（贴合韩国公寓实务做法）",
+  "guide.release.d260731.item3": "区段（Sub Wall ID）列表改为一目了然的清单而非下拉选单，楼层范围栏位改为模型真实楼层名称的下拉选单，修复了 \"Wrong Field\" 保存失败问题",
+  "guide.release.d260731.item4": "项目总览新增\"厚度（Thickness）\"栏目，显示墙/板单元的实际厚度数据",
   "guide.release.d260727.item1": "改进所有构件标签页的空白看板——显示截面示意图与缺少的内容，并可直接在该处载入或打开 API 设置",
   "guide.release.d260727.item2": "使用说明与 API 设置抽屉改为从屏幕边缘平滑滑出",
   "guide.release.d260727.item3": "项目概览的「载入 3D 形状」改为与「读取模型信息」相同的卡片与主按钮样式",

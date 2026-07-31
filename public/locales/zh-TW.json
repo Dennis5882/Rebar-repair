@@ -408,6 +408,10 @@
   "guide.codeBarsHeaderXref": "對應規格（美國）",
   "guide.codeConfirmWarning": "此設計規範的材料規格對應可能存在地區差異 — 建議於實際專案中再次確認。",
 
+  "guide.release.d260731.item1": "牆看板現在會列出模型中所有真實的牆，而不僅是已有 REBW 紀錄的牆——修正了從未指定牆配筋的模型中列表始終為空的問題",
+  "guide.release.d260731.item2": "牆看板新增 Wall Mark / Wall ID / 厚度分組方式——儲存一列即可同時套用到共享同一 Wall Mark 的所有 Wall ID（貼合韓國公寓實務做法）",
+  "guide.release.d260731.item3": "區段（Sub Wall ID）列表改為一目了然的清單而非下拉選單，樓層範圍欄位改為模型真實樓層名稱的下拉選單，修正了 \"Wrong Field\" 儲存失敗問題",
+  "guide.release.d260731.item4": "專案總覽新增「厚度（Thickness）」欄目，顯示牆/板元件的實際厚度資料",
   "guide.release.d260727.item1": "改善所有構件分頁的空白看板——顯示斷面示意圖與缺少的內容，並可直接於該處載入或開啟 API 設定",
   "guide.release.d260727.item2": "使用說明與 API 設定抽屜改為從畫面邊緣平滑滑出",
   "guide.release.d260727.item3": "專案概覽的「載入 3D 形狀」改為與「讀取模型資訊」相同的卡片與主要按鈕樣式",

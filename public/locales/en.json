@@ -408,6 +408,10 @@
   "guide.codeBarsHeaderXref": "US Cross-ref",
   "guide.codeConfirmWarning": "This design code's material mapping has regional variation — please double-check for your actual project.",
 
+  "guide.release.d260731.item1": "Wall board now lists every real wall in the model, not just ones with an existing REBW record — fixes the board always coming up empty on a model where wall rebar was never assigned",
+  "guide.release.d260731.item2": "Wall board gained a Wall Mark / Wall ID / Thickness grouping toggle — saving one row applies to every Wall ID sharing a Wall Mark at once (matches Korean apartment practice)",
+  "guide.release.d260731.item3": "Segment (Sub Wall ID) list replaces the dropdown with a scannable list, and the story-range fields are now a dropdown of the model's real story names, fixing a \"Wrong Field\" save failure",
+  "guide.release.d260731.item4": "Project Review gained a \"Thickness\" section, showing the real thickness of wall/plate elements",
   "guide.release.d260727.item1": "Every member tab's empty board now shows a section sketch with what is missing, and loads — or opens API settings — right from there",
   "guide.release.d260727.item2": "The guide and API settings drawers slide in from the screen edge instead of appearing instantly",
   "guide.release.d260727.item3": "Project Review's “Load 3D shape” now uses the same card and primary button as “Read model info”",

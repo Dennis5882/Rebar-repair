@@ -408,6 +408,10 @@
   "guide.codeBarsHeaderXref": "대응 규격 (미국)",
   "guide.codeConfirmWarning": "이 설계기준의 재료규격 매핑은 지역 편차가 있을 수 있습니다 — 실제 프로젝트에서는 재확인을 권장합니다.",
 
+  "guide.release.d260731.item1": "벽체 보드가 이제 REBW 기록이 있는 벽만이 아니라 모델의 실제 벽 전부를 불러옴 — 철근을 한 번도 넣지 않은 모델에서 목록이 항상 비었던 문제 수정",
+  "guide.release.d260731.item2": "벽체 보드에 Wall Mark / Wall ID / Thickness 표시 기준 추가 — 한 Wall Mark로 묶인 여러 Wall ID를 한 번에 저장 (한국 아파트 실무 관행 반영)",
+  "guide.release.d260731.item3": "구간(Sub Wall ID) 목록을 드롭다운 대신 한눈에 훑어보는 목록으로 변경, 층 범위 입력을 모델의 실제 층 이름 드롭다운으로 바꿔 \"Wrong Field\" 저장 실패 수정",
+  "guide.release.d260731.item4": "프로젝트 리뷰에 \"두께(Thickness)\" 항목 추가 — 벽/판 요소의 실제 두께 데이터를 확인 가능",
   "guide.release.d260727.item1": "모든 부재 탭의 빈 화면 개선 — 단면 스케치와 함께 무엇이 없는지 안내하고, 그 자리에서 바로 불러오기 또는 API 설정으로 이동",
   "guide.release.d260727.item2": "사용 설명서·API 설정 드로어가 화면 가장자리에서 부드럽게 밀려 나오도록 변경",
   "guide.release.d260727.item3": "프로젝트 리뷰의 \"3D 형상 불러오기\"를 \"모델 정보 읽기\"와 같은 카드·버튼 형태로 통일",

@@ -60,6 +60,15 @@ export function GuideDrawer() {
           ) : (
             <div className="release-notes">
               <div className="release-entry">
+                <div className="release-date">2026-07-31</div>
+                <ul>
+                  <li>{t("guide.release.d260731.item1")}</li>
+                  <li>{t("guide.release.d260731.item2")}</li>
+                  <li>{t("guide.release.d260731.item3")}</li>
+                  <li>{t("guide.release.d260731.item4")}</li>
+                </ul>
+              </div>
+              <div className="release-entry">
                 <div className="release-date">2026-07-27</div>
                 <ul>
                   <li>{t("guide.release.d260727.item1")}</li>
