@@ -69,6 +69,7 @@ export function ProjectReview() {
             <SummaryStat label={t("project.sumMaterials")} value={summary.materials.total} />
             <SummaryStat label={t("project.sumLoads")} value={summary.loadCombinations.total} />
             <SummaryStat label={t("project.sumConstraints")} value={summary.constraints.total} />
+            <SummaryStat label={t("project.sumThicknesses")} value={summary.thicknesses.total} />
           </div>
 
           <ElementsSection summary={summary} t={t} />
@@ -117,6 +118,18 @@ export function ProjectReview() {
               { header: t("project.colNodeId"), cell: (it) => it.nodeId },
               { header: t("project.colGroup"), cell: (it) => it.groupName },
               { header: t("project.colConstraint"), cell: (it) => it.constraint },
+            ]}
+            t={t}
+          />
+          <SummaryTable
+            titleKey="project.thicknessesTitle"
+            total={summary.thicknesses.total}
+            items={summary.thicknesses.items}
+            rowKey={(it) => it.id}
+            columns={[
+              { header: t("project.colId"), cell: (it) => it.id },
+              { header: t("project.colName"), cell: (it) => it.name },
+              { header: t("project.colThickness"), cell: (it) => (it.thicknessMm != null ? `${it.thicknessMm} mm` : "—"), numeric: true },
             ]}
             t={t}
           />

@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getJson, resolveBase, setCorsPost } from "./lib/midas.js";
 
+const MM_PER_DIST: Record<string, number> = { MM: 1, CM: 10, M: 1000, IN: 25.4, FT: 304.8 };
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -12,12 +14,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
 
   try {
-    const [elemRes, sectRes, matlRes, lcomRes, consRes] = await Promise.all([
+    const [elemRes, sectRes, matlRes, lcomRes, consRes, thikRes, unitRes] = await Promise.all([
       getJson(base, "/db/ELEM", apiKey),
       getJson(base, "/db/SECT", apiKey),
       getJson(base, "/db/MATL", apiKey),
       getJson(base, "/db/LCOM-GEN", apiKey),
       getJson(base, "/db/CONS", apiKey),
+      // /db/THIK — plate/wall thickness catalogue. A WALL- or PLATE-type
+      // element's `SECT` field indexes THIS table, NOT /db/SECT (live-verified
+      // 2026-07-30 — see genxn-api-schema-findings), so a wall-heavy model
+      // (e.g. a Korean apartment) needs its own summary section here or its
+      // thickness data is invisible from this tab entirely.
+      getJson(base, "/db/THIK", apiKey),
+      getJson(base, "/db/UNIT", apiKey),
     ]);
 
     const elemItems: Record<string, any> = elemRes.ELEM || {};
@@ -31,6 +40,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const matlItems: Record<string, any> = matlRes.MATL || {};
     const lcomItems: Record<string, any> = lcomRes["LCOM-GEN"] || {};
     const consItems: Record<string, any> = consRes.CONS || {};
+    const thikItems: Record<string, any> = thikRes.THIK || {};
+    const unitObj = unitRes.UNIT ? Object.values(unitRes.UNIT)[0] : undefined;
+    const mmPer = MM_PER_DIST[((unitObj as any)?.DIST || "M").toUpperCase()] ?? 1000;
 
     return res.json({
       ok: true,
@@ -70,6 +82,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               constraint: item.CONSTRAINT || "",
             };
           }),
+        },
+        thicknesses: {
+          total: Object.keys(thikItems).length,
+          items: Object.entries(thikItems).map(([id, v]: [string, any]) => ({
+            id,
+            name: v?.NAME || id,
+            thicknessMm: typeof v?.T_IN === "number" ? Math.round(v.T_IN * mmPer) : undefined,
+          })),
         },
       },
     });

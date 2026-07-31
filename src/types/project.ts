@@ -47,10 +47,25 @@ export interface ConstraintSummary {
   items: ConstraintItem[];
 }
 
+// /db/THIK (plate/wall thickness catalogue) — a WALL- or PLATE-type element's
+// `SECT` field indexes this table, NOT /db/SECT (live-verified 2026-07-30,
+// see genxn-api-schema-findings), so it needs its own summary section.
+export interface ThicknessItem {
+  id: string;
+  name: string;
+  thicknessMm?: number;
+}
+
+export interface ThicknessSummary {
+  total: number;
+  items: ThicknessItem[];
+}
+
 export interface ProjectSummary {
   elements: ElementSummary;
   sections: ListSummary;
   materials: ListSummary;
   loadCombinations: LoadCombinationSummary;
   constraints: ConstraintSummary;
+  thicknesses: ThicknessSummary;
 }
