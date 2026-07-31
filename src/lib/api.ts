@@ -58,6 +58,9 @@ export interface ListOk<T> {
   // Wall Mark / Thickness grouping modes — see [[genxn-api-schema-findings]].
   marks?: Record<string, string>;
   thicknessMm?: Record<string, number>;
+  // WALL only: the model's real story names, bottom-to-top, for the Sub Wall
+  // ID story-range dropdowns (STORY.FROM/TO must be an exact story name).
+  stories?: string[];
 }
 export type ListResult<T> = ListOk<T> | ApiError;
 

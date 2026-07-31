@@ -96,13 +96,21 @@ const MM_PER_DIST: Record<string, number> = { MM: 1, CM: 10, M: 1000, IN: 25.4, 
 //   (confirmed empty there); it indexes `/db/THIK` (`{NAME,TYPE,T_IN,...}`),
 //   the plate-thickness table shared with regular plates. `T_IN` is in the
 //   model's DIST unit like everything else.
+// - **Story names for a Sub Wall ID's STORY.FROM/TO** — live-verified
+//   2026-07-30: a user typing a plain number ("1"/"3") into those fields gets
+//   `{"error":{"message":"Wrong Field"}}` on save, because REBW expects the
+//   model's own story NAME strings (`/db/STOR`'s `STORY_NAME`, e.g. "1F",
+//   "Roof"), not an index. `stories` below is that list, ordered bottom-to-top
+//   by `STORY_LEVEL` (matches Gen NX's own story-dropdown order), so the board
+//   can offer a dropdown instead of a free-text field a user can't get right.
 async function doListWall(res: VercelResponse, apiKey: string, base: string) {
   try {
-    const [elemRes, wmakRes, thikRes, unitRes, rebResult] = await Promise.all([
+    const [elemRes, wmakRes, thikRes, unitRes, storRes, rebResult] = await Promise.all([
       getJson(base, "/db/ELEM", apiKey),
       getJson(base, "/db/WMAK", apiKey),
       getJson(base, "/db/THIK", apiKey),
       getJson(base, "/db/UNIT", apiKey),
+      getJson(base, "/db/STOR", apiKey),
       fetchMidas(`${base}${ENDPOINTS.WALL}`, apiKey),
     ]);
     if (!rebResult.ok) return res.json({ ok: false, error: rebResult.error });
@@ -143,7 +151,13 @@ async function doListWall(res: VercelResponse, apiKey: string, base: string) {
     const data: Record<string, any> = {};
     for (const wid of wids) data[wid] = rebItems[wid] || emptyPayload;
 
-    return res.json({ ok: true, data, marks, thicknessMm });
+    const stor: Record<string, any> = storRes.STOR || {};
+    const stories = Object.values(stor)
+      .filter((s: any) => s?.STORY_NAME)
+      .sort((a: any, b: any) => (a.STORY_LEVEL ?? 0) - (b.STORY_LEVEL ?? 0))
+      .map((s: any) => String(s.STORY_NAME));
+
+    return res.json({ ok: true, data, marks, thicknessMm, stories });
   } catch (e: any) {
     return res.json({ ok: false, error: e.message });
   }

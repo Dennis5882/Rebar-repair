@@ -76,6 +76,7 @@ export function WallBoard() {
   const [orig, setOrig] = useState<Record<string, WallPayload>>({});
   const [marks, setMarks] = useState<Record<string, string>>({}); // Wall ID -> Wall Mark name (/db/WMAK)
   const [thicknessMm, setThicknessMm] = useState<Record<string, number>>({}); // Wall ID -> model thickness, mm (/db/THIK)
+  const [stories, setStories] = useState<string[]>([]); // model's real story names, bottom-to-top (/db/STOR) — STORY.FROM/TO must match one exactly
   const [groupMode, setGroupMode] = useState<WallGroupMode>("mark");
   const [boardUnit, setBoardUnit] = useState("");
   const [listLoading, setListLoading] = useState(false);
@@ -116,6 +117,7 @@ export function WallBoard() {
       setOrig(res.data);
       setMarks(res.marks || {});
       setThicknessMm(res.thicknessMm || {});
+      setStories(res.stories || []);
       if (unitRes.ok) setBoardUnit(unitRes.unit || "");
       setListLoadedOnce(true);
       setStatus({ ok: true, kind: "sectionsLoaded", count: Object.keys(res.data).length });
@@ -608,8 +610,28 @@ export function WallBoard() {
             {form.createSub && (
               <div className="row3">
                 <div className="field"><label>{t("wall.subId")}</label><input type="number" value={form.subId} onChange={(e) => setField("subId", e.target.value)} /></div>
-                <div className="field"><label>{t("wall.storyFrom")}</label><input value={form.storyFrom} onChange={(e) => setField("storyFrom", e.target.value)} /></div>
-                <div className="field"><label>{t("wall.storyTo")}</label><input value={form.storyTo} onChange={(e) => setField("storyTo", e.target.value)} /></div>
+                <div className="field">
+                  <label>{t("wall.storyFrom")}</label>
+                  {stories.length > 0 ? (
+                    <select value={form.storyFrom} onChange={(e) => setField("storyFrom", e.target.value)}>
+                      <option value="">—</option>
+                      {stories.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <input value={form.storyFrom} onChange={(e) => setField("storyFrom", e.target.value)} />
+                  )}
+                </div>
+                <div className="field">
+                  <label>{t("wall.storyTo")}</label>
+                  {stories.length > 0 ? (
+                    <select value={form.storyTo} onChange={(e) => setField("storyTo", e.target.value)}>
+                      <option value="">—</option>
+                      {stories.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <input value={form.storyTo} onChange={(e) => setField("storyTo", e.target.value)} />
+                  )}
+                </div>
               </div>
             )}
 
