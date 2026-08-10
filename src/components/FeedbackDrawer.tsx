@@ -46,7 +46,7 @@ export function FeedbackDrawer() {
 
   return (
     <>
-      <button type="button" className="conn-pill" onClick={() => setOpen(true)} aria-label={t("feedback.openBtn")}>
+      <button type="button" className="feedback-tab" onClick={() => setOpen(true)} aria-label={t("feedback.openBtn")}>
         {t("feedback.pillLabel")}
       </button>
       <div className={"guide-backdrop" + (open ? " open" : "")} onClick={() => setOpen(false)} />

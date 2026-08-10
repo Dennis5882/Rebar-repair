@@ -29,8 +29,8 @@ function AppShell() {
   return (
     <div className="wrap">
       <GuideDrawer />
+      <FeedbackDrawer />
       <div className="topbar">
-        <FeedbackDrawer />
         <ConnDrawer />
         <LanguageSwitcher />
       </div>

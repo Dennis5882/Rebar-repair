@@ -186,6 +186,14 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   padding: 14px 8px; font-size: 12px; letter-spacing: .04em; cursor: pointer; z-index: 40;
 }
 .guide-tab:hover { filter: brightness(1.08); }
+/* Mirror of .guide-tab, pinned to the right edge instead of the left. */
+.feedback-tab {
+  position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+  writing-mode: vertical-rl; text-orientation: mixed;
+  background: var(--accent); color: #fff; border: none; border-radius: 8px 0 0 8px;
+  padding: 14px 8px; font-size: 12px; letter-spacing: .04em; cursor: pointer; z-index: 40;
+}
+.feedback-tab:hover { filter: brightness(1.08); }
 /* Both drawers stay mounted and slide in on .open — mounting them only while
    open left nothing for a transition to animate. Closed they are visibility:
    hidden, so they stay out of the tab order and the a11y tree. */
