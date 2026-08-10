@@ -10,6 +10,7 @@ import { DesignCodeProvider } from "./context/DesignCodeContext";
 import { LoadAllProvider, useLoadAll } from "./context/LoadAllContext";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ConnDrawer } from "./components/ConnDrawer";
+import { FeedbackDrawer } from "./components/FeedbackDrawer";
 import { DesignCodeSelector } from "./components/DesignCodeSelector";
 import { Tabs, type TabKey } from "./components/Tabs";
 import { BeamBoard } from "./components/BeamBoard";
@@ -29,6 +30,7 @@ function AppShell() {
     <div className="wrap">
       <GuideDrawer />
       <div className="topbar">
+        <FeedbackDrawer />
         <ConnDrawer />
         <LanguageSwitcher />
       </div>
