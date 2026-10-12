@@ -4,6 +4,10 @@ import type { VercelResponse } from "@vercel/node";
 // Lives OUTSIDE api/ on purpose: every non-underscore file under api/
 // compiles into its own Serverless Function (Hobby caps a deploy at 12),
 // whereas a module outside api/ is just traced into each importer's .func.
+// That's Vercel's tracing behaviour, not a promise — `npm run check:funcs`
+// verifies the real build output, src/lib/__tests__/apiLayout.test.ts guards
+// the api/ layout. Every route imports this file, so keep its imports lean
+// (anything value-imported here is traced into ALL function bundles).
 //
 // Two deployment gotchas hit live 2026-07-22 (both caused every handler to
 // fail with ERR_MODULE_NOT_FOUND in production, invisible locally since

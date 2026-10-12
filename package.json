@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc -p tsconfig.server.json && vite build",
+    "check:funcs": "npx vercel build && node scripts/check-funcs.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"

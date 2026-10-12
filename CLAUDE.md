@@ -36,26 +36,31 @@ their own MAPI key and edits their own running Gen NX model. Deployed at
 
 ```bash
 npm run dev            # vite dev server
-npm run build          # tsc --noEmit && vite build  (frontend only)
+npm run build          # tsc (frontend) + tsc -p tsconfig.server.json (api/ + server/) + vite build
 npm test               # vitest run — pure-logic unit tests in src/lib/__tests__/
-npx vercel build       # REQUIRED for any api/ change — see below
+npm run check:funcs    # vercel build + count .func (fails > 11) — REQUIRED for any api/ or server/ change
 ```
 
 Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
 `beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`, `beamBoard`
 (`genVerdictFromDemand`), `memberCheck` (`memberVerdictFromRows` + the CC/WC/BRC
-table parsers). Add a test alongside when you touch one of these.
+table parsers). Add a test alongside when you touch one of these. `apiLayout`
+guards the function budget structurally (no subdirs / no helper files / ≤11
+route files under `api/`).
 
 ## ⚠️ Deploy / api rules — read before touching `api/` or deploying
 
 1. **Hobby plan caps a deployment at 12 Serverless Functions, and every
    non-underscore file under `api/` (subdirs included) compiles into its own
    `.func`.** So shared helpers live **outside** `api/` (`server/midas.ts`, moved
-   there 2026-10-12 to free a slot) and the ceiling is **12 route functions**.
-   Never put a non-route helper back under `api/`. Exceeding 12 makes the deploy fail *silently* at
-   "Deploying outputs" (after a green build) and prod freezes at the last good
-   deploy. Need a new endpoint? Consolidate an existing one. Verify:
-   `npx vercel build && find .vercel/output/functions -name "*.func" | wc -l`.
+   there 2026-10-12 to free a slot). Never put a non-route helper back under
+   `api/`. Practical ceiling is **≤11 route functions** — keep 1 slot of
+   headroom, because "outside `api/` costs nothing" relies on Vercel's tracing
+   behaviour, not a documented guarantee. Exceeding 12 makes the deploy fail
+   *silently* at "Deploying outputs" (after a green build) and prod freezes at
+   the last good deploy. Need a new endpoint? Consolidate an existing one.
+   Verify with `npm run check:funcs` after **any** `api/` or `server/` change
+   (re-confirms nothing outside `api/` got emitted as its own `.func`).
    Currently **8 functions** (all routes): `beam-design-result`, `beam-sections`,
    `geo-lang`, `member-sections`, `model`, `project-geometry`, `project-summary`,
    `rebar`. Several routes are **multiplexed on an `action`/type
@@ -68,13 +73,16 @@ table parsers). Add a test alongside when you touch one of these.
    under native ESM with no bundling. Relative imports **must** use an explicit
    `.js` extension (`../server/midas.js`, even from a `.ts` source). Do **not**
    use an underscore-prefixed dir under `api/` for shared code (`api/_lib` is
-   excluded from output → imports crash at runtime). `tsc`/`vite` do NOT catch either — only `vercel build`
-   + inspecting `.vercel/output/functions/api/<name>.func/` does. **An `api/*.ts`
-   may import a PURE module from `src/lib/` (e.g. `../src/lib/memberCheck.js`,
-   note the `.js`) — verified it rides along inside the importer's `.func` and
-   does NOT add a function; the shared module must be dependency-free (only
-   `import type` from elsewhere, which erases) or its transitive value imports
-   get traced in too. Re-inspect the `.func` after adding such an import.**
+   excluded from output → imports crash at runtime). `tsc`/`vite` do NOT catch
+   either — only `vercel build` + inspecting `.vercel/output/functions/api/<name>.func/`
+   does. **Modules outside `api/` — `server/*.ts` and PURE `src/lib/*.ts`
+   (e.g. `../src/lib/memberCheck.js`, note the `.js`) — ride along inside each
+   importer's `.func` and do NOT add a function (verified for both). Keep them
+   lean: only Node built-ins / `import type` (erased) / other such lean
+   modules. `server/midas.ts` is imported by EVERY route, so a runtime value
+   import added there (e.g. a `src/` module that pulls in React or three) gets
+   traced into all 8 bundles. Re-inspect the `.func` contents after changing
+   imports in `server/` or adding a `src/lib` import to a route.**
 3. **A 200 from the MIDAS API does not mean success.** Several endpoints return
    HTTP 200 with an `{error:{message}}` body. Check for it explicitly.
 4. **Deploy**: plain `git push` auto-deploys via the GitHub↔Vercel integration —

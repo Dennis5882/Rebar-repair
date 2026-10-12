@@ -1,0 +1,21 @@
+{
+  // Type-checks the Vercel serverless side (api/ routes + server/ helpers),
+  // which the frontend tsconfig.json doesn't include. Check-only: Vercel
+  // compiles these itself at deploy time.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["api", "server"]
+}
