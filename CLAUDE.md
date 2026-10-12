@@ -44,7 +44,7 @@ npm run check:funcs    # vercel build + count .func (fails > 11) — REQUIRED fo
 Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
 `beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`, `beamBoard`
 (`genVerdictFromDemand`), `memberCheck` (`memberVerdictFromRows` + the CC/WC/BRC
-table parsers), `rcCodePresets` (live-verified GB bar labels). Add a test
+table parsers), `rcCodePresets` (live-verified GB bar labels), `kdsDetailing` (KDS stirrup spacing / Av,min / 1.2Mcr). Add a test
 alongside when you touch one of these. `apiLayout`
 guards the function budget structurally (no subdirs / no helper files / ≤11
 route files under `api/`).
@@ -182,7 +182,7 @@ route files under `api/`).
   (C30/HRB400 Vc matched Gen NX's GB check exactly: 160.66 kN).
   It is shown when there's no Gen NX verdict
   (non-KDS, or before a recheck) and forced on a dirty (unsaved) row; the board
-  badges each verdict "Gen NX" vs "예상". Column/wall/brace have **no** in-browser
+  badges each verdict "Gen NX" vs "예상". KDS models also get advisory **detailing warnings** (`src/lib/kdsDetailing.ts`: stirrup spacing d/2·600 halved at high Vs, Av,min, φMn ≥ 1.2Mcr, clauses from the KCSC text) — a ⚠ count on the row + a list in the drawer, never folded into OK/NG. Column/wall/brace have **no** in-browser
   formula — Gen NX-only. On save, a section's stale Gen NX verdict is cleared
   (member boards) / stripped keeping Mu/Vu (beam) so it can't show as authoritative
   until re-checked.

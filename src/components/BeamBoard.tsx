@@ -15,6 +15,7 @@ import {
   type SectorFormValues,
 } from "../lib/beamRebarForm";
 import { genVerdictFromDemand, judgeSection, type DemandBySector, type GenVerdict, type MatProps } from "../lib/beamBoard";
+import { kdsBeamDetailing, type DetailIssue } from "../lib/kdsDetailing";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
@@ -215,6 +216,19 @@ export function BeamBoard() {
         r.sectors,
         demand[sid] || {}
       );
+    }
+    return out;
+  }, [family, order, rows, mat, materialDB, demand]);
+
+  // KDS rebar-detailing warnings (stirrup spacing, Av,min, 1.2Mcr) — advisory,
+  // never folded into the OK/NG verdict. KDS models only.
+  const detailing = useMemo(() => {
+    const out: Record<string, DetailIssue[]> = {};
+    if (family !== "KDS") return out;
+    for (const sid of order) {
+      const r = rows[sid];
+      if (!r) continue;
+      out[sid] = kdsBeamDetailing(mat, materialDB, n(r.b), n(r.h), n(r.dt), n(r.db), r.sectors, demand[sid] || {});
     }
     return out;
   }, [family, order, rows, mat, materialDB, demand]);
@@ -712,7 +726,14 @@ export function BeamBoard() {
                     <td className="mono">{rep.botNum && rep.botName ? <><b>{rep.botNum}</b>×<span className="bar-main">{rep.botName}</span></> : "—"}</td>
                     <td className="mono">{rep.shearName ? <><span className="bar-stir">{rep.shearName}</span>@{rep.shearDist || "?"}</> : "—"}</td>
                     <td className="mono">{r.dt || "?"}/{r.db || "?"}</td>
-                    <td>{verdict}</td>
+                    <td>
+                      {verdict}
+                      {(detailing[sid]?.length ?? 0) > 0 && (
+                        <span className="detail-warn" title={t("board.detailWarn", { count: detailing[sid].length })}>
+                          ⚠ {detailing[sid].length}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -856,6 +877,27 @@ export function BeamBoard() {
                     <JudgeBar label={t("board.shearLabel")} sym="φVn" ratio={selectedJudge?.ratioShear} cap={selectedJudge?.phiVn ?? null} unit="kN" t={t} />
                   </>
                 )}
+              </div>
+            )}
+
+            {/* --- KDS detailing rules (advisory, KDS models only) --- */}
+            {family === "KDS" && selectedSid && detailing[selectedSid] && (
+              <div className="judge-block detail-block">
+                <div className="judge-title">{t("board.detailTitle")}</div>
+                {detailing[selectedSid].length === 0 ? (
+                  <div className="detail-ok">{t("board.detailOk")}</div>
+                ) : (
+                  <ul className="detail-list">
+                    {detailing[selectedSid].map((d, i) => (
+                      <li key={i}>
+                        <span className="detail-st">{d.sectors.join("·")}</span>
+                        {t(d.kind === "sMax" && d.halved ? "board.detail.sMaxHalved" : `board.detail.${d.kind}`, { actual: d.actual, limit: d.limit })}
+                        {!d.demandKnown && <span className="detail-nd">{t("board.detail.noDemand")}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="hint detail-note">{t("board.detailNote")}</div>
               </div>
             )}
           </div>
