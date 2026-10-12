@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && tsc -p tsconfig.server.json && vite build",
+    "build": "node scripts/i18n-check.mjs && tsc --noEmit && tsc -p tsconfig.server.json && vite build",
     "check:funcs": "npx vercel build && node scripts/check-funcs.mjs",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",

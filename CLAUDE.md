@@ -36,7 +36,7 @@ their own MAPI key and edits their own running Gen NX model. Deployed at
 
 ```bash
 npm run dev            # vite dev server
-npm run build          # tsc (frontend) + tsc -p tsconfig.server.json (api/ + server/) + vite build
+npm run build          # i18n:check + tsc (frontend) + tsc -p tsconfig.server.json (api/ + server/) + vite build
 npm test               # vitest run — pure-logic unit tests in src/lib/__tests__/
 npm run check:funcs    # vercel build + count .func (fails > 11) — REQUIRED for any api/ or server/ change
 ```
@@ -176,7 +176,14 @@ route files under `api/`).
 ## i18n rules
 
 - **Keep all 4 locales at key parity.** Adding/removing a key touches every file.
-  Check: `node -e '…'` diff of `Object.keys` across the four JSONs.
+  **`npm run i18n:check`** (runs first in `npm run build`, so a bad locale fails
+  the build and the Vercel deploy) enforces it — modelled on the sibling `story`
+  project. Errors: key parity, empty values, `{placeholder}` mismatch vs en, a
+  static `t("key")` in `src/` missing from en.json, Hangul in en/zh values,
+  zh-CN using a Taiwan-only term, zh-TW using a mainland term (the 34 pairs in
+  `../MIDAS-GEN-NX-UI-Local/glossary/glossary.json` — skipped with a warning when
+  that sibling dir is absent, e.g. on Vercel). Edit locale files line-by-line
+  (they use blank-line group separators; a JSON re-serialize strips them).
 - **Resolve translations at render time**, not at event time: store intent
   (`{kind, …data}`) in state and resolve via `t()` in render (see
   `src/lib/statusMsg.ts`), so a language switch re-translates existing messages.

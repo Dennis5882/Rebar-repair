@@ -201,7 +201,7 @@
   "cboard.colEndHoop": "端部箍筋",
   "cboard.colCenHoop": "中部箍筋",
   "cboard.colCover": "保护层",
-  "cboard.colHoopType": "形式",
+  "cboard.colHoopType": "类型",
   "cboard.emptyList": "此模型尚无柱配筋数据。",
   "cboard.notLoaded": "尚未载入柱截面",
 
@@ -214,7 +214,7 @@
   "bboard.colEndHoop": "端部箍筋",
   "bboard.colCenHoop": "中部箍筋",
   "bboard.colCover": "保护层",
-  "bboard.colHoopType": "形式",
+  "bboard.colHoopType": "类型",
   "bboard.emptyList": "此模型尚无支撑配筋数据。",
   "bboard.notLoaded": "尚未载入支撑截面",
 
