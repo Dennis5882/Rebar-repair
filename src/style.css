@@ -179,11 +179,20 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .geo3d-solid { margin-left: 6px; }
 .geo3d-solid.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
+/* Drawer motion. Open and close are deliberately asymmetric: opening
+   decelerates into place (a long ease-out), closing is quicker and
+   accelerates away — the same feel as native sheets. The body content trails
+   the panel slightly so it reads as "the panel arrives, then fills". */
+:root {
+  --drawer-in: .42s cubic-bezier(.32,.72,0,1);
+  --drawer-out: .26s cubic-bezier(.4,0,.8,.4);
+}
 .guide-tab {
   position: fixed; left: 0; top: 50%; transform: translateY(-50%);
   writing-mode: vertical-rl; text-orientation: mixed;
   background: var(--accent); color: #fff; border: none; border-radius: 0 8px 8px 0;
   padding: 14px 8px; font-size: 12px; letter-spacing: .04em; cursor: pointer; z-index: 40;
+  transition: transform var(--drawer-in), filter .15s ease;
 }
 .guide-tab:hover { filter: brightness(1.08); }
 /* Mirror of .guide-tab, pinned to the right edge instead of the left. */
@@ -192,25 +201,36 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   writing-mode: vertical-rl; text-orientation: mixed;
   background: var(--accent); color: #fff; border: none; border-radius: 8px 0 0 8px;
   padding: 14px 8px; font-size: 12px; letter-spacing: .04em; cursor: pointer; z-index: 40;
+  transition: transform var(--drawer-in), filter .15s ease;
 }
 .feedback-tab:hover { filter: brightness(1.08); }
+/* While its drawer is open the edge tab tucks out of view (it would otherwise
+   sit dimmed under the backdrop), and slides back once the drawer closes. */
+.guide-tab.tucked { transform: translate(-110%, -50%); transition: transform var(--drawer-out); }
+.feedback-tab.tucked { transform: translate(110%, -50%); transition: transform var(--drawer-out); }
 /* Both drawers stay mounted and slide in on .open — mounting them only while
    open left nothing for a transition to animate. Closed they are visibility:
-   hidden, so they stay out of the tab order and the a11y tree. */
-.guide-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 45;
-  opacity: 0; pointer-events: none; transition: opacity .24s ease; }
-.guide-backdrop.open { opacity: 1; pointer-events: auto; }
+   hidden (applied only after the slide-out finishes), so they stay out of the
+   tab order and the a11y tree. */
+.guide-backdrop { position: fixed; inset: 0; background: rgba(15,18,24,0.32); z-index: 45;
+  opacity: 0; pointer-events: none; transition: opacity var(--drawer-out); }
+.guide-backdrop.open { opacity: 1; pointer-events: auto; transition: opacity var(--drawer-in); }
 .guide-drawer {
   position: fixed; left: 0; top: 0; bottom: 0; width: min(360px, 90vw);
   background: var(--page); border-right: 1px solid var(--border);
-  box-shadow: 4px 0 24px rgba(0,0,0,0.25); z-index: 46;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.18); z-index: 46;
   display: flex; flex-direction: column; overflow-y: auto;
-  transform: translateX(-100%); visibility: hidden;
-  transition: transform .28s cubic-bezier(.22,.61,.36,1), visibility .28s;
+  transform: translate3d(-100%, 0, 0); visibility: hidden; will-change: transform;
+  transition: transform var(--drawer-out), visibility 0s linear .26s;
 }
-.guide-drawer.open { transform: translateX(0); visibility: visible; }
+.guide-drawer.open { transform: none; visibility: visible; transition: transform var(--drawer-in), visibility 0s; }
+.guide-drawer-body { opacity: 0; transform: translate3d(-10px, 0, 0); transition: opacity .12s ease, transform .12s ease; }
+.guide-drawer.open .guide-drawer-body { opacity: 1; transform: none;
+  transition: opacity .3s ease .1s, transform .4s cubic-bezier(.32,.72,0,1) .1s; }
 @media (prefers-reduced-motion: reduce) {
-  .guide-backdrop, .guide-drawer { transition: none; }
+  .guide-backdrop, .guide-backdrop.open, .guide-drawer, .guide-drawer.open, .guide-drawer-body,
+  .guide-drawer.open .guide-drawer-body, .guide-tab, .feedback-tab { transition: none; }
+  .guide-drawer-body { transform: none; }
 }
 .guide-drawer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--grid); background: var(--page); position: sticky; top: 0; }
 .guide-drawer-tabs { display: flex; gap: 6px; }
@@ -220,7 +240,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 
 /* Mirrored to the right edge — including which way it slides out from. */
 .conn-drawer { left: auto; right: 0; border-right: none; border-left: 1px solid var(--border);
-  box-shadow: -4px 0 24px rgba(0,0,0,0.25); transform: translateX(100%); }
+  box-shadow: -4px 0 24px rgba(0,0,0,0.18); transform: translate3d(100%, 0, 0); }
+.conn-drawer .guide-drawer-body { transform: translate3d(10px, 0, 0); }
 
 .conn-pill {
   display: inline-flex; align-items: center; gap: 6px;

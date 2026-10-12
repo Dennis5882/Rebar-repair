@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
+import { useEscapeClose } from "../lib/useEscapeClose";
 
 // Formspree form ID — free plan, no backend needed (stays inside the
 // Hobby-plan 12-function ceiling, see CLAUDE.md). Formspree emails this
@@ -12,6 +13,8 @@ type SendState = "idle" | "sending" | "sent" | "error";
 export function FeedbackDrawer() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  useEscapeClose(open, close);
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [state, setState] = useState<SendState>("idle");
@@ -46,7 +49,7 @@ export function FeedbackDrawer() {
 
   return (
     <>
-      <button type="button" className="feedback-tab" onClick={() => setOpen(true)} aria-label={t("feedback.openBtn")}>
+      <button type="button" className={"feedback-tab" + (open ? " tucked" : "")} onClick={() => setOpen(true)} aria-label={t("feedback.openBtn")}>
         {t("feedback.pillLabel")}
       </button>
       <div className={"guide-backdrop" + (open ? " open" : "")} onClick={() => setOpen(false)} />

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
+import { useEscapeClose } from "../lib/useEscapeClose";
 import { useConn } from "../context/ConnContext";
 import { getModelUnit, verifyConnection } from "../lib/api";
 import { connStatusClass, connStatusText, type ConnStatus } from "../lib/statusMsg";
@@ -14,6 +15,8 @@ const PRODUCT_LABEL: Record<string, string> = { gen: "MIDAS GEN NX", civil: "MID
 export function ConnDrawer() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  useEscapeClose(open, close);
   const { mapiKey, product, baseUrl, setMapiKey, setProduct, setBaseUrl, payload, setLengthUnit, openNonce } = useConn();
   const [connStatus, setConnStatus] = useState<ConnStatus | null>(null);
   const [connected, setConnected] = useState(false);

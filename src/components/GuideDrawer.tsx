@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
+import { useEscapeClose } from "../lib/useEscapeClose";
 import { CodeReferenceSection } from "./CodeReferenceSection";
 
 export function GuideDrawer() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<"guide" | "release">("guide");
+  const close = useCallback(() => setOpen(false), []);
+  useEscapeClose(open, close);
 
   return (
     <>
-      <button type="button" className="guide-tab" onClick={() => setOpen(true)} aria-label={t("guide.openBtn")}>
+      <button type="button" className={"guide-tab" + (open ? " tucked" : "")} onClick={() => setOpen(true)} aria-label={t("guide.openBtn")}>
         {t("guide.title")}
       </button>
       {/* Kept mounted so opening/closing can animate (see .guide-drawer). */}
