@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { fetchMidas, resolveBase, setCorsPost } from "./lib/midas.js";
+import { fetchMidas, resolveBase, setCorsPost } from "../server/midas.js";
 // Pure CC/WC-TABLE parsers live in src/lib so they're unit-tested; imported here
-// with the mandatory explicit .js extension (see the ESM notes in lib/midas.ts).
+// with the mandatory explicit .js extension (see the ESM notes in server/midas.ts).
 import { parseColumnRows, parseWallRows, parseBraceRows } from "../src/lib/memberCheck.js";
 
 // Reads already-computed Mu/Vu demand from Gen NX's BC-TABLE (manual §55,

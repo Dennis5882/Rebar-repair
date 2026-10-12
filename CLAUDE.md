@@ -9,7 +9,8 @@ their own MAPI key and edits their own running Gen NX model. Deployed at
 - **Frontend**: TypeScript + Vite + React 18 in `src/` (`index.html` is the Vite
   entry). 3D view via React Three Fiber. No CSS framework — one `src/style.css`.
 - **Backend**: Vercel Node serverless functions in `api/*.ts` (`@vercel/node`).
-  Shared helpers in `api/lib/*.ts`. Each function proxies the MIDAS Open API
+  Shared server helper in `server/midas.ts` (outside `api/` so it costs no
+  function slot). Each function proxies the MIDAS Open API
   (`https://moa-engineers.midasit.com:443/gen`, `MAPI-Key` header).
 - **i18n**: `public/locales/{en,ko,zh-CN,zh-TW}.json`, flat key→string. Loaded
   lazily at runtime by `src/i18n/`.
@@ -48,15 +49,16 @@ table parsers). Add a test alongside when you touch one of these.
 ## ⚠️ Deploy / api rules — read before touching `api/` or deploying
 
 1. **Hobby plan caps a deployment at 12 Serverless Functions, and every
-   non-underscore file under `api/` (including `api/lib/*.ts`) compiles into its
-   own `.func`.** `api/lib/midas.ts` already costs 1, so the practical ceiling is
-   **≤11 route functions**. Exceeding 12 makes the deploy fail *silently* at
+   non-underscore file under `api/` (subdirs included) compiles into its own
+   `.func`.** So shared helpers live **outside** `api/` (`server/midas.ts`, moved
+   there 2026-10-12 to free a slot) and the ceiling is **12 route functions**.
+   Never put a non-route helper back under `api/`. Exceeding 12 makes the deploy fail *silently* at
    "Deploying outputs" (after a green build) and prod freezes at the last good
    deploy. Need a new endpoint? Consolidate an existing one. Verify:
    `npx vercel build && find .vercel/output/functions -name "*.func" | wc -l`.
-   Currently **9 functions**: routes `beam-design-result`, `beam-sections`,
+   Currently **8 functions** (all routes): `beam-design-result`, `beam-sections`,
    `geo-lang`, `member-sections`, `model`, `project-geometry`, `project-summary`,
-   `rebar` + `lib/midas`. Several routes are **multiplexed on an `action`/type
+   `rebar`. Several routes are **multiplexed on an `action`/type
    field** to save slots — `model` = verify | unit | analyze; `rebar` =
    list | update; `member-sections` = COLUMN | BRACE; **`beam-design-result` =
    beam (`elemKey`/`elemKeys[]`) | member check (`member` = COLUMN | WALL |
@@ -64,9 +66,9 @@ table parsers). Add a test alongside when you touch one of these.
    `*-TABLE`). Extend the switch inside one of these before adding a new file.
 2. **ESM**: `package.json` is `"type": "module"` and Vercel runs each `api/*.ts`
    under native ESM with no bundling. Relative imports **must** use an explicit
-   `.js` extension (`./lib/midas.js`, even from a `.ts` source). Do **not**
-   underscore-prefix the lib dir (`api/_lib` is excluded from output → imports
-   crash at runtime). `tsc`/`vite` do NOT catch either — only `vercel build`
+   `.js` extension (`../server/midas.js`, even from a `.ts` source). Do **not**
+   use an underscore-prefixed dir under `api/` for shared code (`api/_lib` is
+   excluded from output → imports crash at runtime). `tsc`/`vite` do NOT catch either — only `vercel build`
    + inspecting `.vercel/output/functions/api/<name>.func/` does. **An `api/*.ts`
    may import a PURE module from `src/lib/` (e.g. `../src/lib/memberCheck.js`,
    note the `.js`) — verified it rides along inside the importer's `.func` and

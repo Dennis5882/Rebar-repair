@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getJson, resolveBase, setCorsPost } from "./lib/midas.js";
+import { getJson, resolveBase, setCorsPost } from "../server/midas.js";
 
 const MM_PER_DIST: Record<string, number> = { MM: 1, CM: 10, M: 1000, IN: 25.4, FT: 304.8 };
 

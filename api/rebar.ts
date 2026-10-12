@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ENDPOINTS, fetchMidas, getJson, resolveBase, setCorsPost } from "./lib/midas.js";
+import { ENDPOINTS, fetchMidas, getJson, resolveBase, setCorsPost } from "../server/midas.js";
 
 // The two rebar operations — "list" (read a member type's REBB/REBC/REBW/REBR
 // collection) and "update" (PUT one section's rebar) — merged into ONE

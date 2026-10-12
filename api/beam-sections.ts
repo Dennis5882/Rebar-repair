@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getJson, resolveBase, setCorsPost } from "./lib/midas.js";
+import { getJson, resolveBase, setCorsPost } from "../server/midas.js";
 
 // Lists EVERY beam section in the model — not just those that already carry
 // a REBB rebar record (the old api/rebar-list.ts limitation, and the root of

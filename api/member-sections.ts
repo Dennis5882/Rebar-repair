@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ENDPOINTS, getJson, resolveBase, setCorsPost } from "./lib/midas.js";
+import { ENDPOINTS, getJson, resolveBase, setCorsPost } from "../server/midas.js";
 
 // Lists EVERY section of a given member type in the model — not just those
 // that already carry a rebar record — grouped by section, mirroring what

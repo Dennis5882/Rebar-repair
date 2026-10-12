@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { fetchMidas, resolveBase, setCorsPost } from "./lib/midas.js";
+import { fetchMidas, resolveBase, setCorsPost } from "../server/midas.js";
 
 // Three model-level operations that each hit a single MIDAS endpoint, merged
 // into ONE serverless function and dispatched on `action` in the POST body:
