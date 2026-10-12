@@ -20,6 +20,13 @@ export function errText(t: TFn, res: ApiError): string | undefined {
       return t("js.parseError");
     case "timeout":
       return t("js.err.timeout");
+    case "report_bad_path":
+      return t("report.err.badPath");
+    case "report_no_targets":
+      return t("report.err.noTargets");
+    case "report_bad_member":
+    case "report_bad_mode":
+      return t("report.err.badMode");
     default:
       return res.error;
   }

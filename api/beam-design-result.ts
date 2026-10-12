@@ -3,6 +3,7 @@ import { fetchMidas, resolveBase, setCorsPost } from "../server/midas.js";
 // Pure CC/WC-TABLE parsers live in src/lib so they're unit-tested; imported here
 // with the mandatory explicit .js extension (see the ESM notes in server/midas.ts).
 import { parseColumnRows, parseWallRows, parseBraceRows } from "../src/lib/memberCheck.js";
+import { buildReportArgument, type ReportRequest } from "../src/lib/reportArgs.js";
 
 // Reads already-computed Mu/Vu demand from Gen NX's BC-TABLE (manual §55,
 // DESIGN/RC/KDS-41-20-2022/BC-TABLE) — a read of results the user already
@@ -329,15 +330,42 @@ async function handleMemberCheck(
   return res.json({ ok: true, byKey: cfg.parse(head, rows) });
 }
 
+// Writes the report file(s) on the PC running Gen NX and returns where. A
+// many-element Graphic export renders one page per member, so allow most of
+// the function's budget. 200 {"error":…} / SUCCESS:false are failures too.
+async function handleReport(base: string, apiKey: string, reqBody: ReportRequest, res: VercelResponse) {
+  const built = buildReportArgument(reqBody);
+  if (!built.ok) return res.status(400).json({ ok: false, code: `report_${built.code}` });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 50000);
+  try {
+    const r = await fetchMidas(`${base}${built.path}`, apiKey, { method: "POST", signal: controller.signal, body: { Argument: built.argument } });
+    if (!r.ok) return res.json({ ok: false, error: r.error });
+    const data = r.data || {};
+    if (data.error) return res.json({ ok: false, error: data.error.message || "Unknown Error" });
+    if (data.SUCCESS !== true) return res.json({ ok: false, error: data.MESSAGE || "Report export failed" });
+    return res.json({ ok: true, filePath: String(data.FILE_PATH || ""), exportPath: built.argument.EXPORT_PATH });
+  } catch (e: any) {
+    if (e?.name === "AbortError") return res.json({ ok: false, code: "timeout" });
+    return res.json({ ok: false, error: e.message });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { product, apiKey, baseUrl, elemKey, elemKeys, recheck, sectionId, member } = req.body || {};
+  const { product, apiKey, baseUrl, elemKey, elemKeys, recheck, sectionId, member, report } = req.body || {};
   const base = resolveBase(product, baseUrl);
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
+
+  // --- design-check report export (*-REPORT) — multiplexed here instead of a
+  // new route to stay inside the Hobby function budget.
+  if (report && typeof report === "object") return handleReport(base, apiKey, report as ReportRequest, res);
 
   // --- COLUMN / WALL / BRACE member check (single read, grouped by SECT / WID)
   if (member === "COLUMN" || member === "WALL" || member === "BRACE") {

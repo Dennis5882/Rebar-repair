@@ -1,4 +1,5 @@
 import type { BeamPayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
+import type { ReportRequest } from "./reportArgs";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
 import type { TFn } from "../i18n/types";
@@ -22,7 +23,12 @@ export type ErrorCode =
   | "timeout"
   // BC-ANAL precondition: a rebar/member edit invalidated the solve, so the
   // model needs "해석 실행" (/doc/ANAL) run before the design check can succeed.
-  | "need_analysis";
+  | "need_analysis"
+  // Report export (*-REPORT) request validation — see src/lib/reportArgs.ts.
+  | "report_bad_member"
+  | "report_bad_mode"
+  | "report_no_targets"
+  | "report_bad_path";
 
 export interface ApiError {
   ok: false;
@@ -299,4 +305,17 @@ export function runAnalysis(conn: ConnInfo): Promise<RunAnalysisResult> {
 // already does.)
 export function saveRebar(memberType: MemberType, key: string, payload: MemberPayload, conn: ConnInfo): Promise<SaveResult> {
   return post<SaveResult>("/api/rebar", { action: "update", memberType, key, payload, ...conn });
+}
+
+// Export Gen NX's own design-check report (Graphic/Detail/Summary/PMCurve) for
+// the given targets. The file is written on the PC running Gen NX; the result
+// only says where (see src/lib/reportArgs.ts for the live-verified quirks).
+export interface ReportOk {
+  ok: true;
+  filePath: string;
+  exportPath: string;
+}
+export type ReportResult = ReportOk | ApiError;
+export function exportReport(report: ReportRequest, conn: ConnInfo): Promise<ReportResult> {
+  return post<ReportResult>("/api/beam-design-result", { report, ...conn });
 }

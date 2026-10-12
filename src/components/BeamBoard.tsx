@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
@@ -18,6 +18,7 @@ import { genVerdictFromDemand, judgeSection, type DemandBySector, type GenVerdic
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
+import { ReportDrawer, type ReportTargets } from "./ReportDrawer";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
@@ -516,6 +517,19 @@ export function BeamBoard() {
   }
 
   const selected = selectedSid ? rows[selectedSid] : null;
+  const [reportOpen, setReportOpen] = useState(false);
+  const closeReport = useCallback(() => setReportOpen(false), []);
+  const reportAll = useMemo<ReportTargets>(
+    () => ({ label: String(order.length), elemKeys: order.flatMap((sid) => sections[sid]?.elementKeys || []), sectionIds: order }),
+    [order, sections],
+  );
+  const reportSel = useMemo<ReportTargets | null>(
+    () =>
+      selectedSid && sections[selectedSid]
+        ? { label: sectionGroupLabel(t, selectedSid, sections[selectedSid]), elemKeys: sections[selectedSid].elementKeys, sectionIds: [selectedSid] }
+        : null,
+    [selectedSid, sections, t],
+  );
   const selectedGrp = selectedSid ? sections[selectedSid] : null;
   const selectedJudge = selectedSid ? judgments[selectedSid] : null;
   const selectedVerdict = selectedSid ? verdicts[selectedSid] : null;
@@ -542,6 +556,7 @@ export function BeamBoard() {
 
   return (
     <div className="beam-board">
+      <ReportDrawer member="BEAM" open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} all={reportAll} />
       {/* --- toolbar: connection-driven load + global materials --- */}
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">
@@ -556,6 +571,11 @@ export function BeamBoard() {
           {order.length > 0 && (
             <button className="btn board-fetch-all" type="button" onClick={fetchAllDemand} disabled={fetchingAll}>
               {fetchingAll ? t("board.fetchingAll") : t("board.fetchAllBtn")}
+            </button>
+          )}
+          {order.length > 0 && (
+            <button className="btn" type="button" onClick={() => setReportOpen(true)}>
+              {t("report.openBtn")}
             </button>
           )}
           <div className="board-mat">

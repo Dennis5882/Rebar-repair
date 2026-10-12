@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useLoadAll } from "../context/LoadAllContext";
@@ -9,6 +9,7 @@ import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, segmentLabel, type WallFo
 import { useMemberVerdict, type EffVerdict } from "../lib/useMemberVerdict";
 import { numToMm, numToModel } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
+import { ReportDrawer, type ReportTargets } from "./ReportDrawer";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
@@ -221,6 +222,14 @@ export function WallBoard() {
   }, [order, groupMode, marks, thicknessMm, t]);
 
   const selectedGroup = useMemo(() => groups.find((g) => selectedId != null && g.members.includes(selectedId)) || null, [groups, selectedId]);
+  const [reportOpen, setReportOpen] = useState(false);
+  const closeReport = useCallback(() => setReportOpen(false), []);
+  // Walls report by Wall ID; "whole board" lists every loaded wall explicitly.
+  const reportAll = useMemo<ReportTargets>(() => ({ label: String(groups.length), wallIds: groups.flatMap((g) => g.members) }), [groups]);
+  const reportSel = useMemo<ReportTargets | null>(
+    () => (selectedGroup ? { label: selectedGroup.label, wallIds: selectedGroup.members } : null),
+    [selectedGroup],
+  );
 
   // Worst-case verdict across a group's members (any NG ⇒ group NG).
   const groupVerdicts = useMemo(() => {
@@ -407,6 +416,7 @@ export function WallBoard() {
 
   return (
     <div className="beam-board">
+      <ReportDrawer member="WALL" open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} all={reportAll} />
       {/* --- toolbar --- */}
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">
@@ -416,6 +426,11 @@ export function WallBoard() {
           {order.length > 0 && (
             <button className="btn primary board-recheck" type="button" onClick={handleRecheck} disabled={rechecking} title={t("board.recheckHint")}>
               {rechecking ? t("board.rechecking") : t("board.recheckBtn")}
+            </button>
+          )}
+          {order.length > 0 && (
+            <button className="btn" type="button" onClick={() => setReportOpen(true)}>
+              {t("report.openBtn")}
             </button>
           )}
           {order.length > 0 && (

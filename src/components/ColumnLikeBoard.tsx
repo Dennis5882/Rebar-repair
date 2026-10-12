@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useLoadAll } from "../context/LoadAllContext";
@@ -9,6 +9,7 @@ import { EMPTY_COLUMN_FORM, buildColumnPayload, fillColumnForm, type FormState }
 import { useMemberVerdict } from "../lib/useMemberVerdict";
 import { lenToMm, lenToModel, numToMm } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
+import { ReportDrawer, type ReportTargets } from "./ReportDrawer";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
@@ -309,6 +310,19 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
 
   const selected = selectedSid ? rows[selectedSid] : null;
   const selectedGrp = selectedSid ? sections[selectedSid] : null;
+  const [reportOpen, setReportOpen] = useState(false);
+  const closeReport = useCallback(() => setReportOpen(false), []);
+  const reportAll = useMemo<ReportTargets>(
+    () => ({ label: String(order.length), elemKeys: order.flatMap((sid) => sections[sid]?.elementKeys || []), sectionIds: order }),
+    [order, sections],
+  );
+  const reportSel = useMemo<ReportTargets | null>(
+    () =>
+      selectedSid && sections[selectedSid]
+        ? { label: sectionGroupLabel(t, selectedSid, sections[selectedSid]), elemKeys: sections[selectedSid].elementKeys, sectionIds: [selectedSid] }
+        : null,
+    [selectedSid, sections, t],
+  );
   const selectedVerdict = selectedSid ? verdicts[selectedSid] : null;
   // Both preview payloads in mm: `after` is built from the mm form; `before`
   // is the loaded (model-unit) payload converted to mm so the diagrams match.
@@ -317,6 +331,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
 
   return (
     <div className="beam-board">
+      <ReportDrawer member={type} open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} all={reportAll} />
       {/* --- toolbar --- */}
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">
@@ -326,6 +341,11 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
           {order.length > 0 && (
             <button className="btn primary board-recheck" type="button" onClick={handleRecheck} disabled={rechecking} title={t("board.recheckHint")}>
               {rechecking ? t("board.rechecking") : t("board.recheckBtn")}
+            </button>
+          )}
+          {order.length > 0 && (
+            <button className="btn" type="button" onClick={() => setReportOpen(true)}>
+              {t("report.openBtn")}
             </button>
           )}
         </div>
