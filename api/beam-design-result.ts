@@ -27,7 +27,8 @@ import { parseColumnRows, parseWallRows, parseBraceRows } from "../src/lib/membe
 //
 // Each path/literal below is its own constant, not derived from ENDPOINTS, so a
 // future edit there can't silently break this file — all in the KDS-41-20-2022
-// namespace (RC design is KDS-only; non-KDS models return empty → no verdict).
+// namespace. Despite the name, BC-TABLE also returns a GB/T50010-10 model's
+// check results (live 2026-10-12); a model with no results returns empty.
 const BC_TABLE_PATH = "/DESIGN/RC/KDS-41-20-2022/BC-TABLE";
 
 // The design-check PERFORM endpoint. Long documented as a Gen NX crash risk,
@@ -84,7 +85,12 @@ function bcTableBody(elemNum: number) {
       ELEMS: { KEYS: [elemNum] },
       RESULT: 0,
       UNIT: { FORCE: "KN", DIST: "M" },
-      COMPONENTS: ["MEMB", "POS", "Neg_Mu", "Pos_Mu", "Sh_Vu"],
+      // COMPONENTS is a strict column filter: anything parseBcTable reads must
+      // be listed here or BC-TABLE never returns it. The verdict columns were
+      // missing from 2026-07-25 to 2026-10-12, so beams only ever showed the
+      // in-browser "예상" estimate, never Gen NX's own verdict (found live on a
+      // GB model; the same KDS-path table serves GB/T50010-10 results too).
+      COMPONENTS: ["MEMB", "POS", "Neg_Mu", "Pos_Mu", "Sh_Vu", "CHK_STR", "CHK_RBR", "Rat-N", "Rat-P", "Rat-V"],
     },
   };
 }

@@ -122,9 +122,16 @@ route files under `api/`).
   → `*-ANAL` then read `*-TABLE`). Scope via `PERFORM_TYPE`: `"ALL"` (whole board)
   or `"SECTIONS":[n]`/`"ELEMS":{KEYS}` (per-section recheck; column/brace also
   scope the `*-TABLE` read with `ELEMS` to that section's elements). Still treat
-  with care: design-code-scoped to **KDS-41-20-2022** only (non-KDS ⇒ empty ⇒
-  "판정 보류", except beam which falls back to its in-browser formula), keep the
-  short timeout + "results may have committed even on timeout" readback.
+  with care: keep the short timeout + "results may have committed even on
+  timeout" readback. **Despite the `KDS-41-20-2022` in the URL, `BC-TABLE` also
+  serves a GB/T50010-10 model's results** (live 2026-10-12: a GUI-run GB check
+  read back exactly — Mr 328.577, Vc 160.660, CHK_STR OK). Whether `*-ANAL` via
+  that path runs the GB check is NOT yet verified. Models with no check results
+  ⇒ empty ⇒ "판정 보류" (beam falls back to its in-browser formula).
+- **`*-TABLE` `COMPONENTS` is a strict column filter** — every column the parser
+  reads must be listed, or it silently never arrives. The beam request omitted
+  `CHK_STR`/`Rat-*` from 2026-07-25 to 2026-10-12, so beams never showed a Gen NX
+  verdict (only "예상"), on KDS models too.
   `/doc/ANAL` (plain FE analysis, `api/model.ts` action `analyze`) is the "해석
   실행" step — required after a rebar save before a recheck (`*-ANAL` returns 200
   `{error:"…Please perform analysis."}` until then). Reading `*-TABLE` without any
@@ -165,7 +172,8 @@ route files under `api/`).
   single-rebar approx) used as a **fallback/preview**. GB is a design-strength
   code (no phi): its branch reports phi=1 and the design resistance, and reads the
   board's fck/fy as Gen NX's GB values (grade fcu,k / fyk) mapped through the
-  表4.1.4/4.2.3 tables — the only verdict a GB model gets, since `*-ANAL` is KDS-only.
+  表4.1.4/4.2.3 tables — a GB model's preview until its Gen NX check results exist
+  (C30/HRB400 Vc matched Gen NX's GB check exactly: 160.66 kN).
   It is shown when there's no Gen NX verdict
   (non-KDS, or before a recheck) and forced on a dirty (unsaved) row; the board
   badges each verdict "Gen NX" vs "예상". Column/wall/brace have **no** in-browser
