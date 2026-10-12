@@ -68,8 +68,14 @@ route files under `api/`).
    field** to save slots — `model` = verify | unit | analyze; `rebar` =
    list | update; `member-sections` = COLUMN | BRACE; **`beam-design-result` =
    beam (`elemKey`/`elemKeys[]`) | member check (`member` = COLUMN | WALL |
-   BRACE)** — the one endpoint runs every design check (BC/CC/WC/BRC-ANAL +
-   `*-TABLE`). Extend the switch inside one of these before adding a new file.
+   BRACE) | report export (`report` = {member, by, mode, …} → BC/CC/BRC/WC-REPORT,
+   built by pure `src/lib/reportArgs.ts`)** — the one endpoint runs every design
+   check (BC/CC/WC/BRC-ANAL + `*-TABLE`) and the Gen NX report export. Report
+   gotchas (live 2026-10-12): EXPORT_PATH needs forward slashes (backslashes are
+   unescaped twice → files land elsewhere while SUCCESS), a missing folder also
+   answers SUCCESS and writes nothing, Graphic = .jpg+.emf+~24 MB .bmp, Detail
+   is .txt not DOC; files land on the Gen NX PC, not in the browser.
+   Extend the switch inside one of these before adding a new file.
 2. **ESM**: `package.json` is `"type": "module"` and Vercel runs each `api/*.ts`
    under native ESM with no bundling. Relative imports **must** use an explicit
    `.js` extension (`../server/midas.js`, even from a `.ts` source). Do **not**
