@@ -136,18 +136,24 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
     ],
   },
 
+  // EN/BS share ONE Gen NX bar DB ("BS/EN" in Rebar Information), labelled
+  // with a "P" prefix — live-verified 2026-10-12 on a model created with the
+  // EN04(RC) default: the GUI lists P5–P13, P16, P20, P25, P32, P40 (dia =
+  // the number) and REBB accepted every one tested (P7/P9/P11 GUI-only);
+  // "Ø20" etc. are rejected as "Wrong Field". Only the LABELS are verified —
+  // dbName/grades are still unconfirmed, so these entries stay unverified.
   "EN 10080": {
-    label: "EN 10080 / Eurocode 2", country: "EU", system: "Ø", unit: "mm",
+    label: "EN 10080 / Eurocode 2", country: "EU", system: "P", unit: "mm",
     dbName: ["EN04(RC)", "EN(RC)"],
     grades: ["B500A", "B500B", "B500C"],
-    bars: [6, 8, 10, 12, 14, 16, 20, 25, 28, 32, 40].map((d) => ({ label: `Ø${d}`, nominal_mm: d })),
+    bars: [5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 25, 32, 40].map((d) => ({ label: `P${d}`, nominal_mm: d })),
   },
 
   "BS 4449": {
-    label: "BS 4449", country: "UK", system: "Ø", unit: "mm",
+    label: "BS 4449", country: "UK", system: "P", unit: "mm",
     dbName: ["BS(RC)"],
     grades: ["B500A", "B500B", "B500C", "Gr460 (구)"],
-    bars: [6, 8, 10, 12, 16, 20, 25, 32, 40].map((d) => ({ label: `Ø${d}`, nominal_mm: d })),
+    bars: [5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 25, 32, 40].map((d) => ({ label: `P${d}`, nominal_mm: d })),
   },
 
   "GB/T 1499.2": {
