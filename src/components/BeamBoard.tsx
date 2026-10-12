@@ -575,6 +575,11 @@ export function BeamBoard() {
             {t("board.unsupportedCode")}
           </div>
         )}
+        {family === "GB" && (
+          <div className="hint" style={{ marginTop: 6, marginBottom: 0 }}>
+            {t("board.gbMaterialHint")}
+          </div>
+        )}
       </div>
 
       {/* --- summary strip (dashed stand-ins until the board has data) --- */}

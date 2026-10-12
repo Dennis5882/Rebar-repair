@@ -52,7 +52,7 @@ export interface MaterialDbEntry {
 }
 
 // src/lib/rcBeamCheck.ts's set of verified phi/beta1/Vc coefficient tables.
-export type RcFormulaFamily = "KDS" | "TWN_ACI";
+export type RcFormulaFamily = "KDS" | "TWN_ACI" | "GB";
 
 export interface DesignCodeEntry {
   country: string;
@@ -210,7 +210,9 @@ export const DESIGN_CODES: Record<string, DesignCodeEntry> = {
   "TWN-USD100": { country: "TW", materialDB: "CNS 560" },
   "TWN-USD92":  { country: "TW", materialDB: "CNS 560" },
   // 중국
-  "GB/T50010-10": { country: "CN", materialDB: "GB/T 1499.2" },
+  // GB 수식: GB/T 50010-2010(2024年版) 4.1.4·4.2.3·6.2.6·6.2.7·6.2.10·6.3.1·6.3.4
+  // 원문(COde/CN/knowledge/gb50010-2010) 대조. GB50010-02(구판)는 미검증이라 연결 안 함.
+  "GB/T50010-10": { country: "CN", materialDB: "GB/T 1499.2", rcCheckFamily: "GB" },
   "GB50010-02":   { country: "CN", materialDB: "GB/T 1499.2" },
   // 미국 (imperial)
   "ACI318-25": { country: "US", materialDB: "ASTM A615/A706" },

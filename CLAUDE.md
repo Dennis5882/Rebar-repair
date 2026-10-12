@@ -161,8 +161,12 @@ route files under `api/`).
   it honest if this changes.
 - **OK/NG now comes from Gen NX's own design check** (`*-ANAL`+`*-TABLE`) for all
   four members — the authoritative verdict. **Beam additionally has an in-browser
-  formula** (`rcBeamCheck.ts`, KDS 41 20:2022 + TWN-USD112 only, single-rebar
-  approx) used as a **fallback/preview**: shown when there's no Gen NX verdict
+  formula** (`rcBeamCheck.ts`, KDS 41 20:2022 + TWN-USD112 + GB/T50010-10 only,
+  single-rebar approx) used as a **fallback/preview**. GB is a design-strength
+  code (no phi): its branch reports phi=1 and the design resistance, and reads the
+  board's fck/fy as Gen NX's GB values (grade fcu,k / fyk) mapped through the
+  表4.1.4/4.2.3 tables — the only verdict a GB model gets, since `*-ANAL` is KDS-only.
+  It is shown when there's no Gen NX verdict
   (non-KDS, or before a recheck) and forced on a dirty (unsaved) row; the board
   badges each verdict "Gen NX" vs "예상". Column/wall/brace have **no** in-browser
   formula — Gen NX-only. On save, a section's stale Gen NX verdict is cleared
