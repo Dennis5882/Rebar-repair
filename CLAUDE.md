@@ -44,7 +44,8 @@ npm run check:funcs    # vercel build + count .func (fails > 11) — REQUIRED fo
 Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
 `beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`, `beamBoard`
 (`genVerdictFromDemand`), `memberCheck` (`memberVerdictFromRows` + the CC/WC/BRC
-table parsers). Add a test alongside when you touch one of these. `apiLayout`
+table parsers), `rcCodePresets` (live-verified GB bar labels). Add a test
+alongside when you touch one of these. `apiLayout`
 guards the function budget structurally (no subdirs / no helper files / ≤11
 route files under `api/`).
 
@@ -98,7 +99,21 @@ route files under `api/`).
 - **BEAM REBB write shape == read shape** — send the canonical `BeamPayload`
   (`MAIN_BAR_TOP:{LAYER1:{NAME,NUM}}` + item-level `DT`/`DB`) via **PUT**. The
   manual's `vMAIN_BAR_*` "legacy" shape is silently dropped (200 no-op). Always
-  read back to confirm a write applied.
+  read back to confirm a write applied. **POST with the same shape CREATES a
+  record** for a section that has none (live-verified 2026-10-12).
+- **Bar-name label families are per MODEL FILE, not per design code
+  (live-verified 2026-10-12).** Gen NX fixes a model's bar DB when the file is
+  created, from *Preferences → Property → Initial Material DB*; changing the
+  design code / MATD rebar code later does NOT change it (the greyed "Rebar
+  Code" in Design Criteria for Rebars → Rebar…). Seen: KS → `D19`; BS/EN
+  (EN04 default) → `P20` (P5–P40); **GB → lowercase `d20`** (d4–d40, no d50).
+  **A bar name outside the model's DB fails as HTTP 200
+  `{"error":{"message":"Wrong Field"}}`** — even an otherwise-perfect payload.
+  So "Wrong Field" on REBB/REBC ⇒ suspect the bar label first. GB works through
+  the same `/DESIGN/RC/KDS-41-20-2022/REB*` paths (no GB-specific path exists —
+  all 404); valid GB rebar codes are `GB/T10(RC)` and `GB 50917-13(RC)`.
+  Rebar writes also need a design code set (`/db/DCON` empty ⇒ every label
+  rejected).
 - **`*-ANAL` (design-check perform) — RE-VERIFIED 2026-07-25: no longer hangs on
   current Gen NX builds.** The old rule was "NEVER call `BC-ANAL`/`CC-ANAL`/…" —
   it reproducibly hung/crashed the app on Gen NX 2026 v2.1. On the current build

@@ -46,7 +46,7 @@ export interface MaterialDbEntry {
   grades: string[];
   bars: RebarSize[];
   // true = 실제 Gen NX Rebar Selection 화면(Code/Grade 드롭다운)과 1:1 대조 완료.
-  // 현재 한국(KS D 3504)/대만(CNS 560)/미국(ASTM A615/A706) 세 곳만 해당 — 나머지는
+  // 현재 한국(KS D 3504)/대만(CNS 560)/미국(ASTM A615/A706)/중국(GB/T 1499.2) 네 곳만 해당 — 나머지는
   // 매뉴얼·제공 데이터 기반 참고용. 다른 국가가 실제로 필요해지면 그때 화면 대조 후 승격.
   verified?: boolean;
 }
@@ -151,10 +151,20 @@ export const MATERIAL_DBS: Record<string, MaterialDbEntry> = {
   },
 
   "GB/T 1499.2": {
-    label: "GB/T 1499.2", country: "CN", system: "Ø", unit: "mm",
-    dbName: ["GB 50917-13(RC)", "GB/T10(RC)", "GB(RC)"],
+    // Live-verified 2026-10-12 on a GB/T50010-10 model: Gen NX's GB bar DB
+    // labels bars with a LOWERCASE "d" ("d20") — "D20"/"Φ20"/"Ø20"/"C20" are
+    // all rejected with 200 {"error":"Wrong Field"}. The 16 sizes below are
+    // exactly the ones REBB accepted (d4–d40; no d50). Rebar codes: Gen NX
+    // accepts "GB/T10(RC)" (its own Preferences default) and
+    // "GB 50917-13(RC)"; "GB(RC)" is rejected as a rebar code.
+    // Note: which label family a model uses is fixed when the FILE is
+    // created (Preferences > initial material DB), not by the design code —
+    // see [[genxn-api-schema-findings]].
+    label: "GB/T 1499.2", country: "CN", system: "d", unit: "mm",
+    dbName: ["GB/T10(RC)", "GB 50917-13(RC)"],
     grades: ["HPB300", "HRB335", "HRB400", "HRB500", "HRB600"],
-    bars: [6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 28, 32, 36, 40, 50].map((d) => ({ label: `Ø${d}`, nominal_mm: d })),
+    verified: true,
+    bars: [4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 28, 32, 36, 40].map((d) => ({ label: `d${d}`, nominal_mm: d })),
   },
 
   "CSA G30.18": {
@@ -306,7 +316,7 @@ export function rcCheckFamily(designCode: string): RcFormulaFamily | null {
   return DESIGN_CODES[designCode]?.rcCheckFamily ?? null;
 }
 
-/** 이 재료 DB가 실제 Gen NX 화면과 1:1 대조 검증됐는지 (현재 KS·CNS·ASTM만 해당) */
+/** 이 재료 DB가 실제 Gen NX 화면과 1:1 대조 검증됐는지 (현재 KS·CNS·ASTM·GB만 해당) */
 export function isVerified(materialDB: string): boolean {
   return MATERIAL_DBS[materialDB]?.verified === true;
 }
