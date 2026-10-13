@@ -50,6 +50,16 @@ function toStr(v: unknown): string {
   return v === undefined || v === null ? "" : String(v);
 }
 
+export const DEFAULT_MAIN_ROW = "2";
+
+// Pre-save check for what Gen NX rejects with an unhelpful message: MAIN_BAR.ROW
+// must be an integer ≥ 2 (ROW 1 ⇒ HTTP 200 {"error":"Unknown Error"}).
+export type ColumnFormIssue = "rowMin";
+export function columnFormIssue(form: FormState): ColumnFormIssue | null {
+  const row = Number(form.mainRow);
+  return form.mainRow.trim() === "" || !Number.isInteger(row) || row < 2 ? "rowMin" : null;
+}
+
 export function buildColumnPayload(form: FormState, isColumn: boolean): ColumnLikePayload {
   const item: ColumnLikeItem = {
     MAIN_BAR: { NAME: form.mainName, NUM: num(form.mainNum), ROW: num(form.mainRow) },
@@ -77,7 +87,11 @@ export function fillColumnForm(payload: ColumnLikePayload, isColumn: boolean, fa
   return {
     mainName: toStr(mb.NAME),
     mainNum: toStr(mb.NUM),
-    mainRow: toStr(mb.ROW),
+    // Only a BARE section (no MAIN_BAR record at all) gets the visible default
+    // ROW 2 — Gen NX rejects ROW 1 ("Unknown Error") and a missing ROW on create
+    // ("Wrong Field"), live 2026-10-13. A stored record without ROW stays blank
+    // so columnFormIssue blocks the save instead of silently writing 2.
+    mainRow: mb.ROW != null ? toStr(mb.ROW) : it.MAIN_BAR ? "" : DEFAULT_MAIN_ROW,
     useCorner: isColumn ? !!mb.USE_CORNER : false,
     cornerName: toStr(mb.NAME_CORNER),
     endName: toStr(se.NAME),

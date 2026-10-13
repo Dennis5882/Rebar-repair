@@ -440,3 +440,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .byline-version { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
 .byline-version:hover { text-decoration-style: solid; }
 .release-ver { font-family: var(--mono); color: var(--accent); }
+
+/* 平法 notation (GB beam board) */
+.cell-pingfa { white-space: nowrap; font-size: 11.5px; color: var(--ink-2); }
+.pingfa-sub { font-size: 11px; font-weight: 600; color: var(--muted); margin: 8px 0 4px; }
+.pingfa-lines { display: grid; gap: 2px; font-size: 13px; color: var(--ink); padding-left: 10px; border-left: 3px solid var(--accent); }
+.pingfa-insitu { list-style: none; margin: 0; padding: 0 0 0 10px; display: grid; gap: 3px; border-left: 3px solid var(--hoop); font-size: 13px; }
+.pingfa-at { display: inline-block; min-width: 92px; font-size: 11.5px; color: var(--muted); }

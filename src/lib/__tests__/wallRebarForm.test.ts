@@ -83,3 +83,24 @@ describe("segmentLabel", () => {
     expect(segmentLabel({}, 1)).toBe("#2");
   });
 });
+
+// Live 2026-10-13: REBW requires CONCRETE_FACE_TO_CENTER_OF_REBAR {DW, DE}
+// ("Wrong Field" without), so a bare wall defaults to 40 mm and saves are checked.
+describe("wall cover guard", () => {
+  it("defaults DW/DE to 40 mm for a bare wall, keeps stored values", () => {
+    const f = fillWallForm({});
+    expect([f.dw, f.de]).toEqual(["40", "40"]);
+    expect(buildWallItem(f).CONCRETE_FACE_TO_CENTER_OF_REBAR).toEqual({ DW: 40, DE: 40 });
+    const stored = fillWallForm({ VERTICAL_REBAR: { NAME: "D13", DIST: 200 } });
+    expect([stored.dw, stored.de]).toEqual(["", ""]); // stored item without covers: no silent default
+    const g = fillWallForm({ CONCRETE_FACE_TO_CENTER_OF_REBAR: { DW: 50, DE: 60 } });
+    expect([g.dw, g.de]).toEqual(["50", "60"]);
+  });
+  it("flags a missing or zero cover", async () => {
+    const { wallItemIssue } = await import("../wallRebarForm");
+    expect(wallItemIssue({})).toBe("wallCover");
+    expect(wallItemIssue(buildWallItem(form({ dw: "", de: "40" })))).toBe("wallCover");
+    expect(wallItemIssue(buildWallItem(form({ dw: "0", de: "40" })))).toBe("wallCover");
+    expect(wallItemIssue(buildWallItem(form({ dw: "40", de: "40" })))).toBeNull();
+  });
+});

@@ -5,7 +5,7 @@ import { useLoadAll } from "../context/LoadAllContext";
 import { getModelUnit, listRebar, runAnalysis, runWallCheck, saveRebar, type MemberCheckRow } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
-import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, segmentLabel, type WallFormState } from "../lib/wallRebarForm";
+import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, isBareWallItem, segmentLabel, wallItemIssue, type WallFormState } from "../lib/wallRebarForm";
 import { useMemberVerdict, type EffVerdict } from "../lib/useMemberVerdict";
 import { numToMm, numToModel } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
@@ -141,7 +141,13 @@ export function WallBoard() {
   useEffect(() => {
     const ids = Object.keys(orig);
     const next: Record<string, WallRowState> = {};
-    for (const id of ids) next[id] = { items: (orig[id]?.ITEMS || []).map((it) => mapWallItemLen(it, (v) => numToMm(v, unit))), dirty: false };
+    // A bare wall's placeholder {} is seeded with the form defaults (DW/DE 40 mm)
+    // so the row data matches what the form shows and what the save guard checks.
+    for (const id of ids)
+      next[id] = {
+        items: (orig[id]?.ITEMS || []).map((it) => (isBareWallItem(it) ? buildWallItem(fillWallForm(it)) : mapWallItemLen(it, (v) => numToMm(v, unit)))),
+        dirty: false,
+      };
     setRows(next);
     setOrder(ids);
     setSelectedId(ids.length ? ids[0] : null);
@@ -283,6 +289,7 @@ export function WallBoard() {
     const repId = group.members[0];
     const row = rows[repId];
     if (!row) return;
+    if (row.items.some((it) => wallItemIssue(it))) return setActionMsg({ ok: false, kind: "saveInvalid", issue: "wallCover" });
     // Working items are mm; REBW expects the model's length unit — convert
     // every segment's lengths back on the way out.
     const payload: WallPayload = { ITEMS: row.items.map((it) => mapWallItemLen(it, (v) => numToModel(v, unit))) };

@@ -4,6 +4,7 @@ import { barArea_mm2, flexuralCapacity, shearCapacity } from "./rcBeamCheck";
 import { toModelDiameter } from "../data/rcCodePresets";
 import type { SectorFormValues } from "./beamRebarForm";
 import type { DemandBySector, MatProps } from "./beamBoard";
+import { TENSION_FACE, foldBySector } from "./detailIssues";
 
 // KDS beam rebar-DETAILING checks the board shows next to the verdict — rules
 // that are about the bar arrangement itself, not strength vs demand. Advisory
@@ -82,12 +83,13 @@ export function kdsBeamDetailing(
         found.push({ sector: key, issue: { kind: "avMin", actual: round(av), limit: round(avMin), demandKnown: needed != null } });
     }
 
-    // --- flexural minimum: φMn ≥ 1.2·Mcr (each face that carries bars) ---
+    // --- flexural minimum: φMn ≥ 1.2·Mcr on the tension face (TENSION_FACE) ---
     const faces: { kind: "mcrTop" | "mcrBot"; name: string; cnt: string; dd: number; mu?: number }[] = [
       { kind: "mcrTop", name: s.topName, cnt: s.topNum, dd: dNeg, mu: dem?.muNeg },
       { kind: "mcrBot", name: s.botName, cnt: s.botNum, dd: dPos, mu: dem?.muPos },
     ];
     for (const f of faces) {
+      if (!TENSION_FACE[key][f.kind === "mcrTop" ? "top" : "bot"]) continue;
       const dia = toModelDiameter(materialDB, f.name, "mm");
       const as = dia && f.cnt ? barArea_mm2(dia) * num(f.cnt) : 0;
       if (!(as > 0 && f.dd > 0)) continue;
@@ -100,15 +102,5 @@ export function kdsBeamDetailing(
     }
   }
 
-  // "All"/"end-center" input modes copy one value into several stations — fold
-  // identical issues together so the drawer lists each once with its stations.
-  const out: DetailIssue[] = [];
-  for (const { sector, issue } of found) {
-    const same = out.find(
-      (o) => o.kind === issue.kind && o.actual === issue.actual && o.limit === issue.limit && o.halved === issue.halved && o.demandKnown === issue.demandKnown
-    );
-    if (same) same.sectors.push(sector);
-    else out.push({ ...issue, sectors: [sector] });
-  }
-  return out;
+  return foldBySector(found);
 }

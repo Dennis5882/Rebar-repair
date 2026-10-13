@@ -2,7 +2,9 @@
 
 Web tool to edit MIDAS **Gen NX** rebar over the Gen NX Open API. Anyone pastes
 their own MAPI key and edits their own running Gen NX model. Deployed at
-**https://rebar-repair.vercel.app** (repo `Dennis5882/Rebar-repair`, `main`).
+**https://rebar.midasapi.space** (repo `Dennis5882/Rebar-repair`, `main`). Custom domain since
+2026-10-13: Cloudflare DNS-only CNAME `rebar` → Vercel (`27bfe285ffb4ebc4.vercel-dns-017.com`,
+proxy must stay OFF or Vercel cert issuance breaks); `rebar-repair.vercel.app` 308-redirects to it.
 
 ## Stack & layout
 
@@ -63,7 +65,7 @@ from the old date-keyed entries (ids `dYYMMDD` kept).
 Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
 `beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`, `beamBoard`
 (`genVerdictFromDemand`), `memberCheck` (`memberVerdictFromRows` + the CC/WC/BRC
-table parsers), `rcCodePresets` (live-verified GB bar labels), `kdsDetailing` (KDS stirrup spacing / Av,min / 1.2Mcr). Add a test
+table parsers), `rcCodePresets` (live-verified GB bar labels), `kdsDetailing` (KDS stirrup spacing / Av,min / 1.2Mcr), `gbDetailingPingfa` (GB detailing + 平法). Add a test
 alongside when you touch one of these. `apiLayout`
 guards the function budget structurally (no subdirs / no helper files / ≤11
 route files under `api/`).
@@ -150,9 +152,27 @@ route files under `api/`).
   with care: keep the short timeout + "results may have committed even on
   timeout" readback. **Despite the `KDS-41-20-2022` in the URL, `BC-TABLE` also
   serves a GB/T50010-10 model's results** (live 2026-10-12: a GUI-run GB check
-  read back exactly — Mr 328.577, Vc 160.660, CHK_STR OK). Whether `*-ANAL` via
-  that path runs the GB check is NOT yet verified. Models with no check results
-  ⇒ empty ⇒ "판정 보류" (beam falls back to its in-browser formula).
+  read back exactly — Mr 328.577, Vc 160.660, CHK_STR OK). **GB end-to-end live-verified
+  2026-10-13** on a fresh API-built GB dummy (beam/column/brace/wall):
+  BC/CC/BRC/WC-ANAL via the KDS path all "success" and DO run the GB check
+  (BC-TABLE Sh_phiVc 168.168 = 0.7·ft·b·h0 exactly; ρmin 0.200%, ρmax GB);
+  all four *-TABLE reads and *-REPORT exports work (reports headed
+  "[ GB/T50010-10 ]", English text, include Uc=N/(fc·A) axial ratio + seismic
+  level). GB gotchas: `/ope/LCOM-CONC` auto-combos work for KDS 41 20 ONLY ("Unknown Error" for
+  TWN-USD112, ACI318-19, Eurocode2:04, GB/T50010-10, GB50010-02) — write `/db/LCOM-CONC` rows directly (ACTIVE
+  STRENGTH/SERVICE) or generate in the GUI; `/db/STOR` POST needs the full
+  WIND_*/SEIS_* field set ("Wrong Field" otherwise); wall PMCurve export is a
+  JPEG written WITHOUT an extension. Models with no check results ⇒ empty ⇒ "판정 보류"
+  (beam falls back to its in-browser formula).
+- **Rebar write validation traps (live 2026-10-13, identical under KDS 41 20,
+  TWN-USD112 and GB/T50010-10):** REBC/REBR `MAIN_BAR.ROW` = 1 ⇒ HTTP 200
+  `{"error":{"message":"Unknown Error"}}` (always). When CREATING a record
+  (bare section/wall), a missing ROW ⇒ "Wrong Field" and a REBW item without
+  `CONCRETE_FACE_TO_CENTER_OF_REBAR {DW, DE}` ⇒ "Wrong Field"; updating an
+  existing record keeps the stored values, so these only bite on first save.
+  Guarded since v1.6.6: bare forms default ROW 2 / DW=DE 40 mm
+  (`fillColumnForm`/`fillWallForm`), and `columnFormIssue`/`wallItemIssue`
+  block the save with a readable message (`saveInvalid`).
 - **`*-TABLE` `COMPONENTS` is a strict column filter** — every column the parser
   reads must be listed, or it silently never arrives. The beam request omitted
   `CHK_STR`/`Rat-*` from 2026-07-25 to 2026-10-12, so beams never showed a Gen NX
@@ -201,7 +221,7 @@ route files under `api/`).
   (C30/HRB400 Vc matched Gen NX's GB check exactly: 160.66 kN).
   It is shown when there's no Gen NX verdict
   (non-KDS, or before a recheck) and forced on a dirty (unsaved) row; the board
-  badges each verdict "Gen NX" vs "예상". KDS models also get advisory **detailing warnings** (`src/lib/kdsDetailing.ts`: stirrup spacing d/2·600 halved at high Vs, Av,min, φMn ≥ 1.2Mcr, clauses from the KCSC text) — a ⚠ count on the row + a list in the drawer, never folded into OK/NG. Column/wall/brace have **no** in-browser
+  badges each verdict "Gen NX" vs "예상". KDS models also get advisory **detailing warnings** (`src/lib/kdsDetailing.ts`: stirrup spacing d/2·600 halved at high Vs, Av,min, φMn ≥ 1.2Mcr, clauses from the KCSC text) — a ⚠ count on the row + a list in the drawer, never folded into OK/NG. **GB models (v1.7.0)** get the GB counterpart `src/lib/gbDetailing.ts` (non-seismic: ρmin = max(0.20%, 45ft/fy) per GB 55008-2021 表4.4.6 — GB 50010 8.5.1 defers to it since the 2024 revision; 表9.2.9 stirrup spacing; ρsv ≥ 0.24ft/fyv; min stirrup/bar Ø) in the same list UI, plus **平法 (22G101-1) notation** from `src/lib/pingfa.ts` — a 平法 table column + 集中/原位标注 in the drawer, grade letters A/B/C/D = HPB300/HRB335/HRB400/HRB500 from the board fy/fyt (plain-text convention; the stroked Φ glyphs have no Unicode). Beam only: the column/wall boards have no grade input, so their 平法 needs the grade from Gen NX MATD first. GB 50011 seismic-grade (抗震等级) rules are NOT covered. Column/wall/brace have **no** in-browser
   formula — Gen NX-only. On save, a section's stale Gen NX verdict is cleared
   (member boards) / stripped keeping Mu/Vu (beam) so it can't show as authoritative
   until re-checked.

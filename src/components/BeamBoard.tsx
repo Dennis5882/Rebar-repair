@@ -15,7 +15,11 @@ import {
   type SectorFormValues,
 } from "../lib/beamRebarForm";
 import { genVerdictFromDemand, judgeSection, type DemandBySector, type GenVerdict, type MatProps } from "../lib/beamBoard";
-import { kdsBeamDetailing, type DetailIssue } from "../lib/kdsDetailing";
+import { kdsBeamDetailing } from "../lib/kdsDetailing";
+import { gbBeamDetailing } from "../lib/gbDetailing";
+import { beamPingfa, beamPingfaLine, type BeamPingfa } from "../lib/pingfa";
+import { toModelDiameter } from "../data/rcCodePresets";
+import type { IssueBase } from "../lib/detailIssues";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
@@ -24,6 +28,12 @@ import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import { SECTORS, type SectorKey } from "../types/rebar";
+
+// A detailing warning ready to render: KDS and GB rules share one list UI.
+type ShownIssue = IssueBase & { sectors: SectorKey[]; msgKey: string };
+// complete=false: GB strength-dependent rules were skipped (grade outside the
+// GB tables), so the panel must not say "all rules met".
+type ShownDetail = { issues: ShownIssue[]; complete: boolean };
 
 // The BEAM tab's primary interface: every beam section on one board (row =
 // section), with live φMn/φVn OK-NG judgment and inline editing — see
@@ -220,18 +230,39 @@ export function BeamBoard() {
     return out;
   }, [family, order, rows, mat, materialDB, demand]);
 
-  // KDS rebar-detailing warnings (stirrup spacing, Av,min, 1.2Mcr) — advisory,
-  // never folded into the OK/NG verdict. KDS models only.
+  // Rebar-detailing warnings — KDS (stirrup spacing, Av,min, 1.2Mcr) or GB
+  // (ρmin, 表9.2.9 spacing, ρsv, diameters). Advisory, never folded into OK/NG.
   const detailing = useMemo(() => {
-    const out: Record<string, DetailIssue[]> = {};
-    if (family !== "KDS") return out;
+    const out: Record<string, ShownDetail> = {};
+    if (family !== "KDS" && family !== "GB") return out;
     for (const sid of order) {
       const r = rows[sid];
       if (!r) continue;
-      out[sid] = kdsBeamDetailing(mat, materialDB, n(r.b), n(r.h), n(r.dt), n(r.db), r.sectors, demand[sid] || {});
+      const args = [mat, materialDB, n(r.b), n(r.h), n(r.dt), n(r.db), r.sectors, demand[sid] || {}] as const;
+      if (family === "KDS") {
+        const issues = kdsBeamDetailing(...args).map((d) => ({ ...d, msgKey: d.kind === "sMax" && d.halved ? "board.detail.sMaxHalved" : `board.detail.${d.kind}` }));
+        out[sid] = { issues, complete: true };
+      } else {
+        const gb = gbBeamDetailing(...args);
+        out[sid] = { issues: gb.issues.map((d) => ({ ...d, msgKey: `board.gbDetail.${d.kind}` })), complete: gb.complete };
+      }
     }
     return out;
   }, [family, order, rows, mat, materialDB, demand]);
+
+  // 平法 (22G101-1) notation — GB models only; adds one board column.
+  const showPingfa = family === "GB";
+  const boardColCount = 8 + (showPingfa ? 1 : 0);
+  const pingfa = useMemo(() => {
+    const out: Record<string, BeamPingfa | null> = {};
+    if (family !== "GB") return out;
+    const dia = (label: string) => toModelDiameter(materialDB, label, "mm");
+    for (const sid of order) {
+      const r = rows[sid];
+      if (r) out[sid] = beamPingfa(r.sectors, n(r.b), n(r.h), mat.fy, mat.fyt, dia);
+    }
+    return out;
+  }, [family, order, rows, mat, materialDB]);
 
   // Gen NX's own verdict per section, derived from the fetched BC-TABLE data
   // (null when the model isn't KDS or no check has run yet).
@@ -694,6 +725,7 @@ export function BeamBoard() {
                 <th>{t("js.botSpec")}</th>
                 <th>{t("js.stirrupSpec")}</th>
                 <th>{t("board.colCover")}</th>
+                {showPingfa && <th>{t("board.colPingfa")}</th>}
                 <th>{t("board.colVerdict")}</th>
               </tr>
             </thead>
@@ -726,11 +758,12 @@ export function BeamBoard() {
                     <td className="mono">{rep.botNum && rep.botName ? <><b>{rep.botNum}</b>×<span className="bar-main">{rep.botName}</span></> : "—"}</td>
                     <td className="mono">{rep.shearName ? <><span className="bar-stir">{rep.shearName}</span>@{rep.shearDist || "?"}</> : "—"}</td>
                     <td className="mono">{r.dt || "?"}/{r.db || "?"}</td>
+                    {showPingfa && <td className="mono cell-pingfa">{pingfa[sid] ? beamPingfaLine(pingfa[sid]!) || "—" : "—"}</td>}
                     <td>
                       {verdict}
-                      {(detailing[sid]?.length ?? 0) > 0 && (
-                        <span className="detail-warn" title={t("board.detailWarn", { count: detailing[sid].length })}>
-                          ⚠ {detailing[sid].length}
+                      {(detailing[sid]?.issues.length ?? 0) > 0 && (
+                        <span className="detail-warn" title={t("board.detailWarn", { count: detailing[sid].issues.length })}>
+                          ⚠ {detailing[sid].issues.length}
                         </span>
                       )}
                     </td>
@@ -739,7 +772,7 @@ export function BeamBoard() {
               })}
               {visibleOrder.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="board-empty">{t("board.filterEmpty")}</td>
+                  <td colSpan={boardColCount} className="board-empty">{t("board.filterEmpty")}</td>
                 </tr>
               )}
             </tbody>
@@ -880,24 +913,58 @@ export function BeamBoard() {
               </div>
             )}
 
-            {/* --- KDS detailing rules (advisory, KDS models only) --- */}
-            {family === "KDS" && selectedSid && detailing[selectedSid] && (
+            {/* --- 平法 notation (GB models only) --- */}
+            {family === "GB" && selectedSid && (
+              <div className="judge-block pingfa-block">
+                <div className="judge-title">{t("board.pingfaTitle")}</div>
+                {pingfa[selectedSid] ? (
+                  <>
+                    <div className="pingfa-sub">{t("board.pingfaJizhong")}</div>
+                    <div className="pingfa-lines mono">
+                      <div>{selectedGrp.name ? `${selectedGrp.name} ` : ""}{pingfa[selectedSid]!.section}</div>
+                      {pingfa[selectedSid]!.stirrup && <div>{pingfa[selectedSid]!.stirrup}</div>}
+                      {pingfa[selectedSid]!.longitudinal && <div>{pingfa[selectedSid]!.longitudinal}</div>}
+                    </div>
+                    {pingfa[selectedSid]!.inSitu.length > 0 && (
+                      <>
+                        <div className="pingfa-sub">{t("board.pingfaYuanwei")}</div>
+                        <ul className="pingfa-insitu">
+                          {pingfa[selectedSid]!.inSitu.map((x) => (
+                            <li key={x.at + x.face}>
+                              <span className="pingfa-at">{t(`board.pingfaAt.${x.at}${x.face}`)}</span>
+                              <span className="mono">{x.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    <div className="hint detail-note">{t("board.pingfaNote")}</div>
+                  </>
+                ) : (
+                  <div className="hint detail-note">{t("board.pingfaNone")}</div>
+                )}
+              </div>
+            )}
+
+            {/* --- detailing rules (advisory; KDS or GB models) --- */}
+            {(family === "KDS" || family === "GB") && selectedSid && detailing[selectedSid] && (
               <div className="judge-block detail-block">
-                <div className="judge-title">{t("board.detailTitle")}</div>
-                {detailing[selectedSid].length === 0 ? (
-                  <div className="detail-ok">{t("board.detailOk")}</div>
+                <div className="judge-title">{t(family === "GB" ? "board.gbDetailTitle" : "board.detailTitle")}</div>
+                {!detailing[selectedSid].complete && <div className="hint detail-note">{t("board.gbDetailPartial")}</div>}
+                {detailing[selectedSid].issues.length === 0 ? (
+                  detailing[selectedSid].complete && <div className="detail-ok">{t(family === "GB" ? "board.gbDetailOk" : "board.detailOk")}</div>
                 ) : (
                   <ul className="detail-list">
-                    {detailing[selectedSid].map((d, i) => (
+                    {detailing[selectedSid].issues.map((d, i) => (
                       <li key={i}>
                         <span className="detail-st">{d.sectors.join("·")}</span>
-                        {t(d.kind === "sMax" && d.halved ? "board.detail.sMaxHalved" : `board.detail.${d.kind}`, { actual: d.actual, limit: d.limit })}
+                        {t(d.msgKey, { actual: d.actual, limit: d.limit })}
                         {!d.demandKnown && <span className="detail-nd">{t("board.detail.noDemand")}</span>}
                       </li>
                     ))}
                   </ul>
                 )}
-                <div className="hint detail-note">{t("board.detailNote")}</div>
+                <div className="hint detail-note">{t(family === "GB" ? "board.gbDetailNote" : "board.detailNote")}</div>
               </div>
             )}
           </div>

@@ -74,3 +74,21 @@ describe("fillColumnForm", () => {
     expect(back.hookType).toBe("0");
   });
 });
+
+// Live 2026-10-13: Gen NX rejects MAIN_BAR.ROW 1 ("Unknown Error") and a missing
+// ROW ("Wrong Field"), so bare sections default to 2 and the save is pre-checked.
+describe("column ROW guard", () => {
+  it("defaults ROW to 2 only for a bare section; a stored record without ROW stays blank", () => {
+    expect(fillColumnForm({ ITEMS: [{ MAIN_BAR: { NAME: "d20", NUM: 12 } }] }, true, "Ties").mainRow).toBe("");
+    expect(fillColumnForm({ ITEMS: [{}] }, true, "Ties").mainRow).toBe("2");
+    expect(fillColumnForm({ ITEMS: [{ MAIN_BAR: { NAME: "d20", NUM: 12, ROW: 3 } }] }, true, "Ties").mainRow).toBe("3");
+  });
+  it("flags ROW blank, 1, or non-integer; accepts ≥ 2", async () => {
+    const { columnFormIssue } = await import("../columnRebarForm");
+    expect(columnFormIssue(form({ mainRow: "" }))).toBe("rowMin");
+    expect(columnFormIssue(form({ mainRow: "1" }))).toBe("rowMin");
+    expect(columnFormIssue(form({ mainRow: "2.5" }))).toBe("rowMin");
+    expect(columnFormIssue(form({ mainRow: "2" }))).toBeNull();
+    expect(columnFormIssue(form({ mainRow: "4" }))).toBeNull();
+  });
+});

@@ -58,7 +58,10 @@ export type StatusMsg =
   | { ok: true; kind: "sectionChecking" }
   | { ok: true; kind: "sectionChecked" }
   // Recheck couldn't run because the model needs re-analysis first.
-  | { ok: false; kind: "needAnalysis" };
+  | { ok: false; kind: "needAnalysis" }
+  // Save blocked before reaching Gen NX: a value Gen NX would reject with an
+  // opaque "Unknown Error"/"Wrong Field" (column ROW < 2, wall without cover).
+  | { ok: false; kind: "saveInvalid"; issue: "rowMin" | "wallCover" };
 
 const LIST_KINDS = new Set(["listLoaded", "sectionsLoaded", "listFail", "listError"]);
 
@@ -138,6 +141,8 @@ export function statusText(t: TFn, s: StatusMsg): string {
       return t("board.sectionChecked");
     case "needAnalysis":
       return t("board.needAnalysis");
+    case "saveInvalid":
+      return s.issue === "rowMin" ? t("board.invalid.rowMin") : t("board.invalid.wallCover");
   }
 }
 

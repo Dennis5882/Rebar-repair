@@ -5,7 +5,7 @@ import { useLoadAll } from "../context/LoadAllContext";
 import { listMemberSections, runAnalysis, runBraceCheck, runColumnCheck, saveRebar, sectionGroupLabel, type MemberCheckRow, type MemberSectionGroup } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
-import { EMPTY_COLUMN_FORM, buildColumnPayload, fillColumnForm, type FormState } from "../lib/columnRebarForm";
+import { EMPTY_COLUMN_FORM, buildColumnPayload, columnFormIssue, fillColumnForm, type FormState } from "../lib/columnRebarForm";
 import { useMemberVerdict } from "../lib/useMemberVerdict";
 import { lenToMm, lenToModel, numToMm } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
@@ -204,6 +204,8 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     const r = rows[sid];
     const grp = sections[sid];
     if (!r || !grp) return;
+    const issue = columnFormIssue(r.form);
+    if (issue) return setActionMsg({ ok: false, kind: "saveInvalid", issue });
     // Row form is mm; REBC/REBR expect the model's length unit — convert the
     // length fields back on the way out.
     const payload = buildColumnPayload(formLenTo(r.form, unit, lenToModel), isColumn);

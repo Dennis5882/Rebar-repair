@@ -57,6 +57,22 @@ function toStr(v: unknown): string {
   return v === undefined || v === null ? "" : String(v);
 }
 
+export const DEFAULT_WALL_COVER_MM = "40";
+
+// A placeholder segment for a wall with no REBW record yet (doListWall's {}).
+export function isBareWallItem(it: WallItem): boolean {
+  return Object.keys(it).length === 0;
+}
+
+// Pre-save check: REBW items REQUIRE CONCRETE_FACE_TO_CENTER_OF_REBAR {DW, DE}
+// — without it Gen NX answers HTTP 200 {"error":"Wrong Field"}.
+export type WallItemIssue = "wallCover";
+export function wallItemIssue(item: WallItem): WallItemIssue | null {
+  const cc = item.CONCRETE_FACE_TO_CENTER_OF_REBAR;
+  const ok = (v: number | undefined) => v != null && Number.isFinite(v) && v > 0;
+  return cc && ok(cc.DW) && ok(cc.DE) ? null : "wallCover";
+}
+
 export function buildWallItem(form: WallFormState): WallItem {
   const item: WallItem = {
     CREATE_SUB_WALL_ID: form.createSub,
@@ -111,8 +127,13 @@ export function fillWallForm(it: WallItem): WallFormState {
     beName: toStr(be.NAME),
     beDist: toStr(be.DIST),
     beLen: toStr(it.BOUNDARY_ELEMENT_LENGTH),
-    dw: toStr(cc.DW),
-    de: toStr(cc.DE),
+    // REBW requires the cover pair; only a BARE segment (empty item, no record
+    // yet) gets 40 mm so its first save isn't rejected with "Wrong Field" (live
+    // 2026-10-13). A stored item without covers stays blank and wallItemIssue
+    // blocks the save. WallBoard seeds bare rows with this same form so the
+    // shown values and the saved/validated item never disagree.
+    dw: cc.DW != null ? toStr(cc.DW) : isBareWallItem(it) ? DEFAULT_WALL_COVER_MM : "",
+    de: cc.DE != null ? toStr(cc.DE) : isBareWallItem(it) ? DEFAULT_WALL_COVER_MM : "",
     useModelThk: it.USE_MODEL_THICKNESS !== false,
     thickness: toStr(it.THICKNESS),
   };
