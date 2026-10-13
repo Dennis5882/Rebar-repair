@@ -1,16 +1,18 @@
 {
   "name": "rebar-repair",
-  "version": "1.0.0",
+  "version": "1.6.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/i18n-check.mjs && tsc --noEmit && tsc -p tsconfig.server.json && vite build",
+    "build": "node scripts/i18n-check.mjs && node scripts/release-check.mjs && tsc --noEmit && tsc -p tsconfig.server.json && vite build",
     "check:funcs": "npx vercel build && node scripts/check-funcs.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "i18n:check": "node scripts/i18n-check.mjs"
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "release": "node scripts/release.mjs",
+    "release:check": "node scripts/release-check.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",

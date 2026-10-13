@@ -36,10 +36,29 @@ their own MAPI key and edits their own running Gen NX model. Deployed at
 
 ```bash
 npm run dev            # vite dev server
-npm run build          # i18n:check + tsc (frontend) + tsc -p tsconfig.server.json (api/ + server/) + vite build
+npm run build          # i18n:check + release:check + tsc (frontend) + tsc -p tsconfig.server.json (api/ + server/) + vite build
 npm test               # vitest run — pure-logic unit tests in src/lib/__tests__/
 npm run check:funcs    # vercel build + count .func (fails > 11) — REQUIRED for any api/ or server/ change
+npm run release -- patch|minor|major [--items N]   # bump version + open empty release notes
 ```
+
+## Versioning & release notes (user rule, 2026-10-13)
+
+**Every push of a user-visible change bumps the version, and the bump always
+carries its release notes — automatically, without being asked.** Before the
+commit: `npm run release -- minor` (new feature) or `patch` (fix/wording/docs
+the user sees); `major` only if the user says so. It bumps `package.json`
+(+ lock), prepends `src/data/releases.json` (`{version,date,id,items}`, date =
+today KST) and inserts EMPTY keys `guide.release.<id>.item1..N` in all four
+locales. Write the notes (KO first, then EN/zh-CN/zh-TW, user-facing language,
+one line per change) in the SAME commit. `release:check` (in `npm run build`,
+so also on Vercel) fails unless package.json version == newest release and every
+note is non-empty in every locale — never hand-edit the version. Purely internal
+changes (tests, refactors, CLAUDE.md) don't need a bump. The footer shows
+`v{__APP_VERSION__}` (from package.json via vite `define`); clicking it opens
+the Guide drawer on the release tab (`openReleaseNotes()` window event,
+`src/lib/releaseNotes.ts`). History 1.0.0–1.6.0 was numbered retroactively
+from the old date-keyed entries (ids `dYYMMDD` kept).
 
 Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
 `beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`, `beamBoard`
@@ -215,7 +234,7 @@ route files under `api/`).
   荷载(CN)/載重(TW), Check 验算(CN)/檢核(TW) — never copy a term across the two
   files. Also: Brace = 支撑/支撐 (not 斜撑), 加载 means *applying load* so UI
   "load data" is 载入, Element = 单元/單元 vs Member = 构件/構件.
-- Footer byline: `기획자: Gavi · 개발자: Dennis · 최신업데이트: {__BUILD_DATE__}`
+- Footer byline: `기획자: Gavi · 개발자: Dennis` + `v{__APP_VERSION__} · 최신업데이트: {__BUILD_DATE__}`
   (build-time constant — do not hardcode the date).
 
 ## Reference (sibling dirs on this machine)

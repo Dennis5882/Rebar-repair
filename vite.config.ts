@@ -1,5 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { readFileSync } from "node:fs";
+
+// App version shown in the footer — package.json is the single source; it is
+// bumped only by `npm run release`, which also opens the matching release-notes
+// entry (scripts/release-check.mjs fails the build if the two ever diverge).
+const appVersion: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 
 // Stamps the footer byline with the actual build date (KST, matching the
 // existing YYMMDD convention) so it stays in sync with each deployment
@@ -19,6 +25,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     __BUILD_DATE__: JSON.stringify(buildDateStamp()),
+    __APP_VERSION__: JSON.stringify(appVersion),
   },
   // GeometryCanvas (three.js + @react-three/*) is lazy-loaded as its own
   // chunk specifically so it's excluded from the initial page load — its

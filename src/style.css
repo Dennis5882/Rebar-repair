@@ -434,3 +434,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .detail-nd { display: block; font-size: 11px; color: var(--muted); }
 .detail-ok { font-size: 12px; color: var(--good); }
 .detail-note { margin: 8px 0 0; }
+
+/* Footer version → opens release notes */
+.byline-version { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.byline-version:hover { text-decoration-style: solid; }
+.release-ver { font-family: var(--mono); color: var(--accent); }

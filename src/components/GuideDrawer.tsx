@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useEscapeClose } from "../lib/useEscapeClose";
 import { CodeReferenceSection } from "./CodeReferenceSection";
+import { OPEN_RELEASE_NOTES, RELEASES } from "../lib/releaseNotes";
 
 export function GuideDrawer() {
   const { t } = useI18n();
@@ -9,6 +10,16 @@ export function GuideDrawer() {
   const [section, setSection] = useState<"guide" | "release">("guide");
   const close = useCallback(() => setOpen(false), []);
   useEscapeClose(open, close);
+
+  // Footer version link (Byline) → open straight on the release tab.
+  useEffect(() => {
+    const show = () => {
+      setSection("release");
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_RELEASE_NOTES, show);
+    return () => window.removeEventListener(OPEN_RELEASE_NOTES, show);
+  }, []);
 
   return (
     <>
@@ -54,6 +65,7 @@ export function GuideDrawer() {
                 <li>{t("guide.step7")}</li>
                 <li>{t("guide.step5")}</li>
                 <li>{t("guide.step6")}</li>
+                <li>{t("guide.step8")}</li>
               </ol>
               <div className="subhead" style={{ marginTop: 4 }}>
                 {t("guide.codeTableTitle")}
@@ -62,68 +74,18 @@ export function GuideDrawer() {
             </>
           ) : (
             <div className="release-notes">
-              <div className="release-entry">
-                <div className="release-date">2026-07-31</div>
-                <ul>
-                  <li>{t("guide.release.d260731.item1")}</li>
-                  <li>{t("guide.release.d260731.item2")}</li>
-                  <li>{t("guide.release.d260731.item3")}</li>
-                  <li>{t("guide.release.d260731.item4")}</li>
-                </ul>
-              </div>
-              <div className="release-entry">
-                <div className="release-date">2026-07-27</div>
-                <ul>
-                  <li>{t("guide.release.d260727.item1")}</li>
-                  <li>{t("guide.release.d260727.item2")}</li>
-                  <li>{t("guide.release.d260727.item3")}</li>
-                  <li>{t("guide.release.d260727.item4")}</li>
-                </ul>
-              </div>
-              <div className="release-entry">
-                <div className="release-date">2026-07-25</div>
-                <ul>
-                  <li>{t("guide.release.d260725.item1")}</li>
-                  <li>{t("guide.release.d260725.item2")}</li>
-                  <li>{t("guide.release.d260725.item3")}</li>
-                  <li>{t("guide.release.d260725.item4")}</li>
-                  <li>{t("guide.release.d260725.item5")}</li>
-                  <li>{t("guide.release.d260725.item6")}</li>
-                  <li>{t("guide.release.d260725.item7")}</li>
-                </ul>
-              </div>
-              <div className="release-entry">
-                <div className="release-date">2026-07-23</div>
-                <ul>
-                  <li>{t("guide.release.d260723.item1")}</li>
-                  <li>{t("guide.release.d260723.item2")}</li>
-                  <li>{t("guide.release.d260723.item3")}</li>
-                  <li>{t("guide.release.d260723.item4")}</li>
-                  <li>{t("guide.release.d260723.item5")}</li>
-                  <li>{t("guide.release.d260723.item6")}</li>
-                  <li>{t("guide.release.d260723.item7")}</li>
-                </ul>
-              </div>
-              <div className="release-entry">
-                <div className="release-date">2026-07-22</div>
-                <ul>
-                  <li>{t("guide.release.d260722.item1")}</li>
-                  <li>{t("guide.release.d260722.item2")}</li>
-                  <li>{t("guide.release.d260722.item3")}</li>
-                  <li>{t("guide.release.d260722.item4")}</li>
-                  <li>{t("guide.release.d260722.item5")}</li>
-                  <li>{t("guide.release.d260722.item6")}</li>
-                </ul>
-              </div>
-              <div className="release-entry">
-                <div className="release-date">2026-07-16</div>
-                <ul>
-                  <li>{t("guide.release.d260716.item1")}</li>
-                  <li>{t("guide.release.d260716.item2")}</li>
-                  <li>{t("guide.release.d260716.item3")}</li>
-                  <li>{t("guide.release.d260716.item4")}</li>
-                </ul>
-              </div>
+              {RELEASES.map((r) => (
+                <div className="release-entry" key={r.version}>
+                  <div className="release-date">
+                    <span className="release-ver">v{r.version}</span> · {r.date}
+                  </div>
+                  <ul>
+                    {Array.from({ length: r.items }, (_, i) => (
+                      <li key={i}>{t(`guide.release.${r.id}.item${i + 1}`)}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           )}
         </div>
