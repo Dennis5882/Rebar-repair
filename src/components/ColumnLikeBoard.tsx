@@ -15,6 +15,10 @@ import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
 import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import type { ColumnLikePayload, MemberType } from "../types/rebar";
+import { useDesignCode } from "../context/DesignCodeContext";
+import { rcCheckFamily, toModelDiameter } from "../data/rcCodePresets";
+import { gbColumnSeismic, type ColumnSeisResult } from "../lib/gbSeismic";
+import { SeisCell, SeisDetail } from "./SeisDetail";
 
 // Section-centric board shared by the COLUMN and BRACE tabs — every section on
 // one screen (row = section), summary strip, search/sort, and a per-section
@@ -139,6 +143,12 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
 
   const unit = boardUnit || lengthUnit;
 
+  // GB + a seismic grade: 审图-style seismic column checks (axial ratio, ρmin,
+  // dense-zone ties, ρv) — advisory, never folded into the Gen NX verdict.
+  // Materials and Pu come from the CC-TABLE rows, so most rules wait for 재검토.
+  const { designCode, materialDB, gbGrade, gbSystem } = useDesignCode();
+  const showSeis = isColumn && rcCheckFamily(designCode) === "GB" && gbGrade > 0;
+
   async function handleList() {
     setListLoading(true);
     try {
@@ -178,6 +188,30 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
 
   // Gen NX verdict per section + OK/NG summary (shared with the wall board).
   const { verdicts, summary } = useMemberVerdict(order, rows, check);
+
+  const seis = useMemo(() => {
+    const out: Record<string, ColumnSeisResult> = {};
+    if (!showSeis || !gbGrade) return out;
+    const dia = (label: string) => (label ? toModelDiameter(materialDB, label, "mm") : null);
+    const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    for (const sid of order) {
+      const r = rows[sid];
+      if (!r) continue;
+      const f = r.form;
+      out[sid] = gbColumnSeismic(
+        gbGrade,
+        gbSystem,
+        num(r.b),
+        num(r.h),
+        num(f.doVal),
+        { dia: dia(f.mainName), num: num(f.mainNum) },
+        { dia: dia(f.endName), legY: num(f.endLegY), legZ: num(f.endLegZ), s: num(f.endDist) },
+        { s: num(f.cenDist) },
+        r.dirty ? undefined : check[sid]
+      );
+    }
+    return out;
+  }, [showSeis, gbGrade, gbSystem, order, rows, check, materialDB]);
 
   const visibleOrder = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -427,6 +461,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                 <th>{t(k("colCenHoop"))}</th>
                 <th>{t(k("colCover"))}</th>
                 <th>{t(k("colHoopType"))}</th>
+                {showSeis && <th>{t("board.colAxialRatio")}</th>}
                 <th>{t("board.colVerdict")}</th>
               </tr>
             </thead>
@@ -449,13 +484,14 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                     <td className="mono">{hoopCell(f.cenName, f.cenLegY, f.cenLegZ, f.cenDist)}</td>
                     <td className="mono">{f.doVal || "—"}</td>
                     <td className="mono">{f.hoopType}</td>
-                    <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} />
+                    {showSeis && <SeisCell res={seis[sid]} />}
+                    <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} warn={showSeis ? seis[sid]?.issues.length : 0} />
                   </tr>
                 );
               })}
               {visibleOrder.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="board-empty">{t("board.filterEmpty")}</td>
+                  <td colSpan={8 + (showSeis ? 1 : 0)} className="board-empty">{t("board.filterEmpty")}</td>
                 </tr>
               )}
             </tbody>
@@ -603,6 +639,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                 <JudgeBar label={t("board.shearLabel")} sym="Rat" ratio={selectedVerdict.ratShear} cap={null} unit="" t={t} />
               </div>
             )}
+            {showSeis && seis[selectedSid] && <SeisDetail res={seis[selectedSid]} member="column" waiting={!check[selectedSid] || selected.dirty} />}
           </div>
         </div>
       )}

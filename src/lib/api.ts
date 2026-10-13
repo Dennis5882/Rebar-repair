@@ -192,6 +192,15 @@ export interface MemberCheckRow {
   chkRbr?: string; // CHK_RBR (walls only; a position code for columns)
   ratPM?: number; // governing axial/moment (P-M) ratio
   ratShear?: number; // governing shear ratio
+  // GB seismic inputs (column CC-TABLE / wall WC-TABLE), already in kN / mm / MPa.
+  pu?: number; // governing axial force (column: at the governing P-M combination)
+  fck?: number; // concrete grade value (GB: fcu,k)
+  fy?: number; // main bar fy (GB: fyk)
+  fys?: number; // tie/stirrup fy
+  lw?: number; // wall length (mm)
+  tw?: number; // wall thickness (mm)
+  rhoV?: number; // wall vertical distribution ρ used (%)
+  rhoH?: number; // wall horizontal distribution ρ used (%)
 }
 export interface MemberCheckOk {
   ok: true;

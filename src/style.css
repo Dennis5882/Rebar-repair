@@ -447,3 +447,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .pingfa-lines { display: grid; gap: 2px; font-size: 13px; color: var(--ink); padding-left: 10px; border-left: 3px solid var(--accent); }
 .pingfa-insitu { list-style: none; margin: 0; padding: 0 0 0 10px; display: grid; gap: 3px; border-left: 3px solid var(--hoop); font-size: 13px; }
 .pingfa-at { display: inline-block; min-width: 92px; font-size: 11.5px; color: var(--muted); }
+/* GB seismic (抗震等级): axial-ratio cell + drawer line, design-code row */
+.cell-mu { white-space: nowrap; font-size: 12px; }
+.cell-mu small { color: var(--muted); }
+.cell-mu.over { color: var(--critical); font-weight: 700; }
+.seis-mu { font-family: var(--mono); font-size: 12.5px; color: var(--ink); margin: 2px 0 6px; }
+.gb-seismic { margin-top: 10px; }

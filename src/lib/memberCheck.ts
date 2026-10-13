@@ -77,6 +77,21 @@ function maxAbs(row: string[], idxs: number[]): number | undefined {
   return m;
 }
 
+// GB seismic extras. Tables are requested in kN·m, so stresses come back in
+// kN/m² (fck 30000 = 30 MPa) and lengths in m.
+const kPa = (row: string[], idx: number) => {
+  const v = readAbsNum(row, idx);
+  return v === undefined ? undefined : v / 1000;
+};
+const mToMm = (row: string[], idx: number) => {
+  const v = readAbsNum(row, idx);
+  return v === undefined ? undefined : v * 1000;
+};
+function drop<T extends object>(o: T): T {
+  for (const k of Object.keys(o) as (keyof T)[]) if (o[k] === undefined) delete o[k];
+  return o;
+}
+
 // CC-TABLE → rows grouped by SECT (the board's section id). CHK_RBR is a
 // position code for columns (not OK/NG), so only CHK_STR is used. ratPM = worst
 // of Rat_P/Rat_M/Rat_My/Rat_Mz; ratShear = worst of Rat_V_end/Rat_V_mid.
@@ -85,12 +100,15 @@ export function parseColumnRows(head: string[], rows: string[][]): Record<string
   const chkIdx = head.indexOf("CHK_STR");
   const pmIdx = ["Rat_P", "Rat_M", "Rat_My", "Rat_Mz"].map((c) => head.indexOf(c));
   const vIdx = ["Rat_V_end", "Rat_V_mid"].map((c) => head.indexOf(c));
+  const [puI, fckI, fyI, fysI] = ["Pu", "fck", "fy", "fys"].map((c) => head.indexOf(c));
   const out: Record<string, MemberCheckRow[]> = {};
   if (sectIdx < 0) return out;
   for (const row of rows) {
     const sid = readStr(row, sectIdx);
     if (!sid) continue;
-    (out[sid] ||= []).push({ chk: readStr(row, chkIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, vIdx) });
+    (out[sid] ||= []).push(
+      drop({ chk: readStr(row, chkIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, vIdx), pu: readAbsNum(row, puI), fck: kPa(row, fckI), fy: kPa(row, fyI), fys: kPa(row, fysI) })
+    );
   }
   return out;
 }
@@ -125,12 +143,18 @@ export function parseWallRows(head: string[], rows: string[][]): Record<string, 
   const chkRbrIdx = head.indexOf("CHK_RBR");
   const pmIdx = ["Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz"].map((c) => head.indexOf(c));
   const vIdx = head.indexOf("Rat-V");
+  const [puI, lwI, hwI, fckI, rvI, rhI] = ["Pu", "Lw", "hw", "fck", "rhoV.use(%)", "rhoH.use(%)"].map((c) => head.indexOf(c));
   const out: Record<string, MemberCheckRow[]> = {};
   if (widIdx < 0) return out;
   for (const row of rows) {
     const wid = readStr(row, widIdx);
     if (!wid) continue;
-    (out[wid] ||= []).push({ chk: readStr(row, chkIdx), chkRbr: readStr(row, chkRbrIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, [vIdx]) });
+    (out[wid] ||= []).push(
+      drop({
+        chk: readStr(row, chkIdx), chkRbr: readStr(row, chkRbrIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, [vIdx]),
+        pu: readAbsNum(row, puI), lw: mToMm(row, lwI), tw: mToMm(row, hwI), fck: kPa(row, fckI), rhoV: readAbsNum(row, rvI), rhoH: readAbsNum(row, rhI),
+      })
+    );
   }
   return out;
 }

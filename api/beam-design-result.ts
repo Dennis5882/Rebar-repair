@@ -247,7 +247,9 @@ const ccTableBody = (elems?: number[]) => ({
     TABLE_TYPE: "MEMB",
     UNIT: { FORCE: "KN", DIST: "M" },
     ...(elems && elems.length ? { ELEMS: { KEYS: elems } } : {}),
-    COMPONENTS: ["MEMB", "SECT", "CHK_STR", "Rat_P", "Rat_M", "Rat_My", "Rat_Mz", "Rat_V_end", "Rat_V_mid"],
+    // Pu/fck/fy/fys feed the GB seismic checks (axial ratio, ρmin) — present on
+    // every code's CC-TABLE (live 2026-10-13: unlisted/unknown names are ignored).
+    COMPONENTS: ["MEMB", "SECT", "CHK_STR", "Rat_P", "Rat_M", "Rat_My", "Rat_Mz", "Rat_V_end", "Rat_V_mid", "Pu", "fck", "fy", "fys"],
   },
 });
 
@@ -256,7 +258,7 @@ const wcTableBody = (_elems?: number[]) => ({
   Argument: {
     TABLE_TYPE: "WID+STORY",
     UNIT: { FORCE: "KN", DIST: "M" },
-    COMPONENTS: ["WID", "Story", "CHK_STR", "CHK_RBR", "Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz", "Rat-V"],
+    COMPONENTS: ["WID", "Story", "CHK_STR", "CHK_RBR", "Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz", "Rat-V", "Pu", "Lw", "hw", "fck", "rhoV.use(%)", "rhoH.use(%)"],
   },
 });
 

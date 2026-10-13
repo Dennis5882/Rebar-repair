@@ -15,6 +15,10 @@ import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
 import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import type { WallItem, WallPayload } from "../types/rebar";
+import { useDesignCode } from "../context/DesignCodeContext";
+import { rcCheckFamily } from "../data/rcCodePresets";
+import { gbWallSeismic, type WallSeisResult } from "../lib/gbSeismic";
+import { SeisCell, SeisDetail } from "./SeisDetail";
 
 // The WALL tab's board. Walls don't fit the SECT-grouped section model the
 // column/brace boards use — a wall is keyed by Wall ID and carries MULTIPLE
@@ -226,6 +230,21 @@ export function WallBoard() {
       return { key, members: sorted, label };
     });
   }, [order, groupMode, marks, thicknessMm, t]);
+
+  // GB + a seismic grade: wall axial ratio (GB 50011 6.4.2) and distribution ρ
+  // (GB 55008 4.4.7-1) from the WC-TABLE rows of the group's walls (worst
+  // story). Advisory; members with unsaved edits are left out (stale table).
+  const { designCode, gbGrade } = useDesignCode();
+  const showSeis = rcCheckFamily(designCode) === "GB" && gbGrade > 0;
+  const seis = useMemo(() => {
+    const out: Record<string, WallSeisResult> = {};
+    if (!showSeis || !gbGrade) return out;
+    for (const g of groups) {
+      const rs = g.members.filter((m) => !rows[m]?.dirty).flatMap((m) => check[m] || []);
+      out[g.key] = gbWallSeismic(gbGrade, rs.length ? rs : undefined);
+    }
+    return out;
+  }, [showSeis, gbGrade, groups, rows, check]);
 
   const selectedGroup = useMemo(() => groups.find((g) => selectedId != null && g.members.includes(selectedId)) || null, [groups, selectedId]);
   const [reportOpen, setReportOpen] = useState(false);
@@ -515,6 +534,7 @@ export function WallBoard() {
                 <th>{t("wboard.colHorizontal")}</th>
                 <th>{t("wboard.colEnd")}</th>
                 <th>{t("wboard.colCover")}</th>
+                {showSeis && <th>{t("board.colAxialRatio")}</th>}
                 <th>{t("board.colVerdict")}</th>
               </tr>
             </thead>
@@ -548,12 +568,13 @@ export function WallBoard() {
                     <td className="mono">{h.NAME ? <><span className="bar-stir">{h.NAME}</span>@{h.DIST ?? "?"}</> : "—"}</td>
                     <td className="mono">{it0.USE_END_REBAR && er.NAME ? <><b>{er.NUM ?? "?"}</b>×{er.NAME}</> : "—"}</td>
                     <td className="mono">{cc.DW ?? "?"}/{cc.DE ?? "?"}</td>
-                    <MemberVerdictCell v={groupVerdicts[g.key]} genNxLabel={t("board.verdictGenNx")} />
+                    {showSeis && <SeisCell res={seis[g.key]} />}
+                    <MemberVerdictCell v={groupVerdicts[g.key]} genNxLabel={t("board.verdictGenNx")} warn={showSeis ? seis[g.key]?.issues.length : 0} />
                   </tr>
                 );
               })}
               {visibleGroups.length === 0 && (
-                <tr><td colSpan={9} className="board-empty">{t("board.filterEmpty")}</td></tr>
+                <tr><td colSpan={9 + (showSeis ? 1 : 0)} className="board-empty">{t("board.filterEmpty")}</td></tr>
               )}
             </tbody>
           </table>
@@ -736,6 +757,13 @@ export function WallBoard() {
                 <JudgeBar label={t("board.axialFlexLabel")} sym="Rat" ratio={selectedVerdict.ratPM} cap={null} unit="" t={t} />
                 <JudgeBar label={t("board.shearLabel")} sym="Rat" ratio={selectedVerdict.ratShear} cap={null} unit="" t={t} />
               </div>
+            )}
+            {showSeis && selectedGroup && seis[selectedGroup.key] && (
+              <SeisDetail
+                res={seis[selectedGroup.key]}
+                member="wall"
+                waiting={!selectedGroup.members.some((m) => (check[m]?.length ?? 0) > 0) || selectedGroup.members.some((m) => rows[m]?.dirty)}
+              />
             )}
           </div>
         </div>

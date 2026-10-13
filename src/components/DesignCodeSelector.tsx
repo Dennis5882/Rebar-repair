@@ -1,6 +1,7 @@
 import { useI18n } from "../i18n/useI18n";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { DESIGN_CODE_ORDER, DESIGN_CODES, MATERIAL_DBS, defaultMaterialDB, isVerified } from "../data/rcCodePresets";
+import { DESIGN_CODE_ORDER, DESIGN_CODES, MATERIAL_DBS, defaultMaterialDB, isVerified, rcCheckFamily } from "../data/rcCodePresets";
+import type { GbSystem, SeismicGrade } from "../lib/gbSeismic";
 
 const MATERIAL_DB_KEYS = Object.keys(MATERIAL_DBS);
 
@@ -15,7 +16,8 @@ const MATERIAL_DB_KEYS = Object.keys(MATERIAL_DBS);
 // the material dropdown here can be overridden away from its default.
 export function DesignCodeSelector() {
   const { t } = useI18n();
-  const { designCode, setDesignCode, materialDB, setMaterialDB, isOverride } = useDesignCode();
+  const { designCode, setDesignCode, materialDB, setMaterialDB, isOverride, gbGrade, setGbGrade, gbSystem, setGbSystem } = useDesignCode();
+  const isGb = rcCheckFamily(designCode) === "GB";
 
   return (
     <section className="panel">
@@ -46,6 +48,32 @@ export function DesignCodeSelector() {
           </select>
         </div>
       </div>
+      {/* GB only: seismic grade + structure type drive the 审图-style seismic
+          detailing checks on every board (Gen NX has no API field for them). */}
+      {isGb && (
+        <>
+          <div className="row2 gb-seismic">
+            <div className="field">
+              <label htmlFor="gbGrade">{t("designCode.gbGradeLabel")}</label>
+              <select id="gbGrade" value={gbGrade} onChange={(e) => setGbGrade(Number(e.target.value) as 0 | SeismicGrade)}>
+                <option value={0}>{t("designCode.gbGrade0")}</option>
+                {[1, 2, 3, 4].map((g) => (
+                  <option key={g} value={g}>{t(`designCode.gbGrade${g}`)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="gbSystem">{t("designCode.gbSystemLabel")}</label>
+              <select id="gbSystem" value={gbSystem} disabled={gbGrade === 0} onChange={(e) => setGbSystem(e.target.value as GbSystem)}>
+                {(["frame", "dual", "frameSupported"] as const).map((s) => (
+                  <option key={s} value={s}>{t(`designCode.gbSystem.${s}`)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="hint" style={{ marginTop: 0 }}>{t("designCode.gbSeismicHint")}</div>
+        </>
+      )}
       {isOverride ? (
         <div className="hint" style={{ marginTop: 0 }}>
           {t("designCode.overrideHint")}{" "}

@@ -115,7 +115,7 @@ const MODE_LABEL: Record<BeamInputMode, string> = { all: "beam.modeAll", endCent
 export function BeamBoard() {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
-  const { designCode, materialDB } = useDesignCode();
+  const { designCode, materialDB, gbGrade } = useDesignCode();
   const { nonce: loadAllNonce } = useLoadAll();
 
   const [sections, setSections] = useState<Record<string, BeamSectionGroup>>({});
@@ -243,12 +243,12 @@ export function BeamBoard() {
         const issues = kdsBeamDetailing(...args).map((d) => ({ ...d, msgKey: d.kind === "sMax" && d.halved ? "board.detail.sMaxHalved" : `board.detail.${d.kind}` }));
         out[sid] = { issues, complete: true };
       } else {
-        const gb = gbBeamDetailing(...args);
+        const gb = gbBeamDetailing(...args, gbGrade || undefined);
         out[sid] = { issues: gb.issues.map((d) => ({ ...d, msgKey: `board.gbDetail.${d.kind}` })), complete: gb.complete };
       }
     }
     return out;
-  }, [family, order, rows, mat, materialDB, demand]);
+  }, [family, order, rows, mat, materialDB, demand, gbGrade]);
 
   // 平法 (22G101-1) notation — GB models only; adds one board column.
   const showPingfa = family === "GB";
@@ -964,7 +964,9 @@ export function BeamBoard() {
                     ))}
                   </ul>
                 )}
-                <div className="hint detail-note">{t(family === "GB" ? "board.gbDetailNote" : "board.detailNote")}</div>
+                <div className="hint detail-note">
+                  {family !== "GB" ? t("board.detailNote") : gbGrade ? t("board.gbDetailNoteSeis", { grade: t(`designCode.gbGrade${gbGrade}`) }) : t("board.gbDetailNote")}
+                </div>
               </div>
             )}
           </div>

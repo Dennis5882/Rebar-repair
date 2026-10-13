@@ -3,6 +3,7 @@ import { useI18n } from "../i18n/useI18n";
 import type { LangCode } from "../i18n/types";
 import { DEFAULT_LANG } from "../i18n/types";
 import { defaultMaterialDB, getBars, isOverride as isOverrideFn, type RebarSize } from "../data/rcCodePresets";
+import type { GbSystem, SeismicGrade } from "../lib/gbSeismic";
 
 interface DesignCodeContextValue {
   designCode: string;
@@ -14,6 +15,13 @@ interface DesignCodeContextValue {
   // combination in practice, not just a hypothetical.
   isOverride: boolean;
   bars: RebarSize[];
+  // GB only: 抗震等级 (0 = non-seismic, the default — nothing changes) and the
+  // structure type row of GB 50011 表6.3.6. Gen NX doesn't expose either over
+  // the API (live 2026-10-13), so the user picks them here.
+  gbGrade: 0 | SeismicGrade;
+  setGbGrade: (g: 0 | SeismicGrade) => void;
+  gbSystem: GbSystem;
+  setGbSystem: (s: GbSystem) => void;
 }
 
 const DesignCodeContext = createContext<DesignCodeContextValue | null>(null);
@@ -99,12 +107,29 @@ export function DesignCodeProvider({ children }: { children: ReactNode }) {
     writeSession("materialDB", db);
   }, []);
 
+  const [gbGrade, setGbGradeState] = useState<0 | SeismicGrade>(() => {
+    const g = Number(readSession("gbGrade", "0"));
+    return g >= 1 && g <= 4 ? (g as SeismicGrade) : 0;
+  });
+  const [gbSystem, setGbSystemState] = useState<GbSystem>(() => {
+    const s = readSession("gbSystem", "frame");
+    return s === "dual" || s === "frameSupported" ? s : "frame";
+  });
+  const setGbGrade = useCallback((g: 0 | SeismicGrade) => {
+    setGbGradeState(g);
+    writeSession("gbGrade", String(g));
+  }, []);
+  const setGbSystem = useCallback((s: GbSystem) => {
+    setGbSystemState(s);
+    writeSession("gbSystem", s);
+  }, []);
+
   const bars = useMemo(() => (materialDB ? getBars(materialDB) : []), [materialDB]);
   const overridden = useMemo(() => isOverrideFn(designCode, materialDB), [designCode, materialDB]);
 
   const value = useMemo<DesignCodeContextValue>(
-    () => ({ designCode, setDesignCode, materialDB, setMaterialDB, isOverride: overridden, bars }),
-    [designCode, setDesignCode, materialDB, setMaterialDB, overridden, bars]
+    () => ({ designCode, setDesignCode, materialDB, setMaterialDB, isOverride: overridden, bars, gbGrade, setGbGrade, gbSystem, setGbSystem }),
+    [designCode, setDesignCode, materialDB, setMaterialDB, overridden, bars, gbGrade, setGbGrade, gbSystem, setGbSystem]
   );
 
   return <DesignCodeContext.Provider value={value}>{children}</DesignCodeContext.Provider>;
