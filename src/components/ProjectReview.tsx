@@ -7,6 +7,7 @@ import { errText } from "../lib/errText";
 import type { ProjectSummary } from "../types/project";
 import type { TFn } from "../i18n/types";
 import { Geometry3DSection } from "./Geometry3DSection";
+import { StoryStrengthSection } from "./StoryStrengthSection";
 
 export function ProjectReview() {
   const { t } = useI18n();
@@ -60,6 +61,8 @@ export function ProjectReview() {
         <div className="hint" style={{ marginTop: 8, marginBottom: 0 }}>{t("project.hint")}</div>
         {status && <div className="hint" style={{ marginTop: 6, marginBottom: 0 }}>{status}</div>}
       </div>
+
+      <StoryStrengthSection />
 
       {summary && (
         <>

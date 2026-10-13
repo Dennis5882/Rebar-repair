@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useDesignCode } from "../context/DesignCodeContext";
 import type { SeisIssue } from "../lib/gbSeismic";
@@ -24,7 +25,7 @@ export function SeisCell({ res }: { res?: SeisRes }) {
   );
 }
 
-export function SeisDetail({ res, member, waiting }: { res: SeisRes; member: "column" | "wall"; waiting: boolean }) {
+export function SeisDetail({ res, member, waiting, children }: { res: SeisRes; member: "column" | "wall"; waiting: boolean; children?: ReactNode }) {
   const { t } = useI18n();
   const { gbGrade } = useDesignCode();
   const grade = t(`designCode.gbGrade${gbGrade}`);
@@ -37,6 +38,7 @@ export function SeisDetail({ res, member, waiting }: { res: SeisRes; member: "co
           {t("board.seisMu", { mu: res.mu.toFixed(3), limit: res.muLimit != null ? res.muLimit.toFixed(2) : "—" })}
         </div>
       )}
+      {children}
       {res.issues.length === 0 ? (
         !waiting && <div className="detail-ok">{t("board.seisOk")}</div>
       ) : (

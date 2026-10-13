@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useLoadAll } from "../context/LoadAllContext";
-import { listMemberSections, runAnalysis, runBraceCheck, runColumnCheck, saveRebar, sectionGroupLabel, type MemberCheckRow, type MemberSectionGroup } from "../lib/api";
+import { getProjectGeometry, listMemberSections, runAnalysis, runBraceCheck, runColumnCheck, saveRebar, sectionGroupLabel, type MemberCheckRow, type MemberSectionGroup } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { EMPTY_COLUMN_FORM, buildColumnPayload, columnFormIssue, fillColumnForm, type FormState } from "../lib/columnRebarForm";
@@ -17,7 +17,9 @@ import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import type { ColumnLikePayload, MemberType } from "../types/rebar";
 import { useDesignCode } from "../context/DesignCodeContext";
 import { rcCheckFamily, toModelDiameter } from "../data/rcCodePresets";
-import { gbColumnSeismic, type ColumnSeisResult } from "../lib/gbSeismic";
+import { gbColumnSeismic, type ColumnSeisResult, type ColumnSituation } from "../lib/gbSeismic";
+import { classifyColumns, type ColumnClass } from "../lib/gbMemberClass";
+import type { ModelGeometry } from "../types/geometry";
 import { SeisCell, SeisDetail } from "./SeisDetail";
 import { PingfaBlock } from "./PingfaBlock";
 import { columnPingfa, columnPingfaLine, type ColumnPingfa } from "../lib/pingfa";
@@ -154,6 +156,50 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   const showPingfa = isColumn && rcCheckFamily(designCode) === "GB";
   const colCount = 8 + (showSeis ? 1 : 0) + (showPingfa ? 1 : 0);
 
+  // Where each column sits (corner / 柱根 / clear height) — derived from the
+  // model geometry once per list load, overridable per section in the drawer.
+  const [geo, setGeo] = useState<ModelGeometry | null>(null);
+  const [sitOverride, setSitOverride] = useState<Record<string, { corner?: boolean; base?: boolean }>>({});
+  useEffect(() => {
+    setGeo(null);
+    setSitOverride({});
+  }, [sections]);
+  useEffect(() => {
+    if (!showSeis || geo || Object.keys(sections).length === 0) return;
+    let live = true;
+    getProjectGeometry(conn)
+      .then((r) => {
+        if (live && r.ok) setGeo(r.data);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSeis, sections, geo]);
+  const autoSit = useMemo(() => {
+    const out: Record<string, ColumnSituation & { corners: number; bases: number }> = {};
+    if (!geo) return out;
+    const cls: Record<string, ColumnClass> = classifyColumns(geo, (v) => Number(numToMm(v, unit)) || 0);
+    for (const [sid, grp] of Object.entries(sections)) {
+      const mine = grp.elementKeys.map((k) => cls[k]).filter((c): c is ColumnClass => !!c);
+      if (!mine.length) continue;
+      const hns = mine.map((c) => c.hn).filter((v): v is number => v != null && v > 0);
+      out[sid] = {
+        corner: mine.some((c) => c.corner),
+        base: mine.some((c) => c.base),
+        hn: hns.length ? Math.min(...hns) : null,
+        corners: mine.filter((c) => c.corner).length,
+        bases: mine.filter((c) => c.base).length,
+      };
+    }
+    return out;
+  }, [geo, sections, unit]);
+  const situation = useCallback(
+    (sid: string): ColumnSituation => ({ ...autoSit[sid], ...sitOverride[sid] }),
+    [autoSit, sitOverride]
+  );
+
   async function handleList() {
     setListLoading(true);
     try {
@@ -212,11 +258,12 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
         { dia: dia(f.mainName), num: num(f.mainNum) },
         { dia: dia(f.endName), legY: num(f.endLegY), legZ: num(f.endLegZ), s: num(f.endDist) },
         { s: num(f.cenDist) },
-        r.dirty ? undefined : check[sid]
+        r.dirty ? undefined : check[sid],
+        situation(sid)
       );
     }
     return out;
-  }, [showSeis, gbGrade, gbSystem, order, rows, check, materialDB]);
+  }, [showSeis, gbGrade, gbSystem, order, rows, check, materialDB, situation]);
 
   const pingfa = useMemo(() => {
     const out: Record<string, ColumnPingfa | null> = {};
@@ -673,7 +720,39 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                 noteKey="board.pingfaNoteColumn"
               />
             )}
-            {showSeis && seis[selectedSid] && <SeisDetail res={seis[selectedSid]} member="column" waiting={!check[selectedSid] || selected.dirty} />}
+            {showSeis && seis[selectedSid] && (
+              <SeisDetail res={seis[selectedSid]} member="column" waiting={!check[selectedSid] || selected.dirty}>
+                <div className="seis-sit">
+                  <span className="seis-sit-k">{t("board.sitTitle")}</span>
+                  {(["corner", "base"] as const).map((k) => {
+                    const auto = autoSit[selectedSid];
+                    const ov = sitOverride[selectedSid]?.[k];
+                    const val = ov ?? !!auto?.[k];
+                    return (
+                      <label key={k} className="seis-sit-opt">
+                        <input
+                          type="checkbox"
+                          checked={val}
+                          onChange={(e) => setSitOverride((p) => ({ ...p, [selectedSid]: { ...p[selectedSid], [k]: e.target.checked } }))}
+                        />
+                        {t(`board.sit.${k}`)}
+                        {auto && ov === undefined && (
+                          <small>
+                            {" "}
+                            {t("board.sitAuto", { n: k === "corner" ? auto.corners : auto.bases, total: selectedGrp.elementKeys.length })}
+                          </small>
+                        )}
+                      </label>
+                    );
+                  })}
+                  <span className="seis-sit-opt mono">
+                    λ = {seis[selectedSid].lambda != null ? seis[selectedSid].lambda!.toFixed(2) : "—"}
+                    {seis[selectedSid].lambda != null && seis[selectedSid].lambda! <= 2 && <b className="seis-short"> ≤ 2</b>}
+                  </span>
+                </div>
+                {!geo && <div className="hint detail-note">{t("board.sitNoGeo")}</div>}
+              </SeisDetail>
+            )}
           </div>
         </div>
       )}

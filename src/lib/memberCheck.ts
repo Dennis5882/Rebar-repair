@@ -152,6 +152,7 @@ export function parseWallRows(head: string[], rows: string[][]): Record<string, 
     if (!wid) continue;
     (out[wid] ||= []).push(
       drop({
+        story: readStr(row, head.indexOf("Story")),
         chk: readStr(row, chkIdx), chkRbr: readStr(row, chkRbrIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, [vIdx]),
         pu: readAbsNum(row, puI), lw: mToMm(row, lwI), tw: mToMm(row, hwI), fck: kPa(row, fckI), fy: kPa(row, fyI), fys: kPa(row, fysI), rhoV: readAbsNum(row, rvI), rhoH: readAbsNum(row, rhI),
         vRebar: readStr(row, vrI), hRebar: readStr(row, hrI),

@@ -47,12 +47,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
 
   try {
-    const [nodeRes, elemRes, consRes, sectRes, thikRes] = await Promise.all([
+    const [nodeRes, elemRes, consRes, sectRes, thikRes, storRes] = await Promise.all([
       getJson(base, "/db/NODE", apiKey),
       getJson(base, "/db/ELEM", apiKey),
       getJson(base, "/db/CONS", apiKey),
       getJson(base, "/db/SECT", apiKey),
       getJson(base, "/db/THIK", apiKey),
+      // Stories (name + level, model units) — used by the GB seismic checks to
+      // find the bottom storey / 底部加强部位. A model without stories reads {}.
+      getJson(base, "/db/STOR", apiKey).catch(() => ({})),
     ]);
 
     const nodeItems: Record<string, any> = nodeRes.NODE || {};
@@ -73,13 +76,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const dimsBySect = new Map<string, { w?: number; h?: number }>();
     for (const [sid, s] of Object.entries(sectItems)) dimsBySect.set(sid, sectWH(s));
 
-    interface FrameMember { a: string; b: string; w?: number; h?: number; angle?: number }
+    // `id` (element key) + `sect` let the column board classify its own
+    // elements (corner / base / clear height) from this geometry.
+    interface FrameMember { id: string; sect?: string; a: string; b: string; w?: number; h?: number; angle?: number }
     const cols: FrameMember[] = [];
     const beams: FrameMember[] = [];
     const braces: FrameMember[] = [];
     const walls: { nodes: string[]; thickness?: number }[] = [];
 
-    for (const v of Object.values<any>(elemItems)) {
+    for (const [eid, v] of Object.entries<any>(elemItems)) {
       const nodeIds: string[] = (v?.NODE || []).map((n: number) => String(n));
       // Real "Wall" elements (TYPE:"WALL") are one option, but models commonly
       // represent walls as generic shell elements (TYPE:"PLATE"). Both render
@@ -95,7 +100,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!A || !B) continue;
       const dims = v?.SECT != null ? dimsBySect.get(String(v.SECT)) : undefined;
       const angle = Number(v?.ANGLE);
-      const m: FrameMember = { a: nodeIds[0], b: nodeIds[1] };
+      const m: FrameMember = { id: eid, a: nodeIds[0], b: nodeIds[1] };
+      if (v?.SECT != null) m.sect = String(v.SECT);
       if (dims?.w) m.w = dims.w;
       if (dims?.h) m.h = dims.h;
       if (Number.isFinite(angle) && angle !== 0) m.angle = angle;
@@ -109,7 +115,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.json({
       ok: true,
-      data: { nodes, cols, beams, braces, walls, baseNodes: Object.keys(consItems) },
+      data: {
+        nodes,
+        cols,
+        beams,
+        braces,
+        walls,
+        baseNodes: Object.keys(consItems),
+        stories: Object.values<any>((storRes as any)?.STOR || {})
+          .map((s) => ({ name: String(s?.STORY_NAME ?? ""), level: Number(s?.STORY_LEVEL) }))
+          .filter((s) => s.name && Number.isFinite(s.level))
+          .sort((a, b) => a.level - b.level),
+      },
     });
   } catch (e: any) {
     return res.json({ ok: false, error: e.message });

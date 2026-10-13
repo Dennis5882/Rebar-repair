@@ -18,6 +18,8 @@ export type MemberPair = [string, string];
 // optional local rotation angle (deg). Members without w/h render as a line
 // instead of an extruded box.
 export interface FrameMember {
+  id?: string; // element key
+  sect?: string; // section id
   a: string;
   b: string;
   w?: number;
@@ -39,4 +41,6 @@ export interface ModelGeometry {
   braces: FrameMember[];
   walls: WallPanel[];
   baseNodes: string[];
+  // /db/STOR, ascending level (model units). Empty when the model has none.
+  stories?: { name: string; level: number }[];
 }

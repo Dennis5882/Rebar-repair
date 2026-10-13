@@ -152,12 +152,14 @@ async function doListWall(res: VercelResponse, apiKey: string, base: string) {
     for (const wid of wids) data[wid] = rebItems[wid] || emptyPayload;
 
     const stor: Record<string, any> = storRes.STOR || {};
-    const stories = Object.values(stor)
+    const sortedStor = Object.values(stor)
       .filter((s: any) => s?.STORY_NAME)
-      .sort((a: any, b: any) => (a.STORY_LEVEL ?? 0) - (b.STORY_LEVEL ?? 0))
-      .map((s: any) => String(s.STORY_NAME));
+      .sort((a: any, b: any) => (a.STORY_LEVEL ?? 0) - (b.STORY_LEVEL ?? 0));
+    const stories = sortedStor.map((s: any) => String(s.STORY_NAME));
+    // Same order, model length unit — GB 底部加强部位 (6.1.10) needs heights.
+    const storyLevels = sortedStor.map((s: any) => Number(s.STORY_LEVEL) || 0);
 
-    return res.json({ ok: true, data, marks, thicknessMm, stories });
+    return res.json({ ok: true, data, marks, thicknessMm, stories, storyLevels });
   } catch (e: any) {
     return res.json({ ok: false, error: e.message });
   }

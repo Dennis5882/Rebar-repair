@@ -1,5 +1,6 @@
 import type { BeamPayload, MemberPayload, MemberType, SectorKey } from "../types/rebar";
 import type { ReportRequest } from "./reportArgs";
+import type { StoryStrengthRow } from "./storyStrength";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
 import type { TFn } from "../i18n/types";
@@ -68,6 +69,7 @@ export interface ListOk<T> {
   // WALL only: the model's real story names, bottom-to-top, for the Sub Wall
   // ID story-range dropdowns (STORY.FROM/TO must be an exact story name).
   stories?: string[];
+  storyLevels?: number[]; // same order as stories, model length unit
 }
 export type ListResult<T> = ListOk<T> | ApiError;
 
@@ -207,6 +209,7 @@ export interface MemberCheckRow {
   vRebar?: string; // wall "d12 @200" (mm spacing as Gen NX formats it)
   hRebar?: string;
   layers?: number; // wall BarLayer: Double ⇒ 2, Single ⇒ 1
+  story?: string; // wall WC-TABLE Story name
 }
 export interface MemberCheckOk {
   ok: true;
@@ -276,6 +279,12 @@ export function listRebar<T = unknown>(memberType: MemberType, conn: ConnInfo): 
 
 export function getProjectSummary(conn: ConnInfo): Promise<ProjectSummaryResult> {
   return post<ProjectSummaryResult>("/api/project-summary", conn);
+}
+
+// Gen NX's story shear strength per direction (CAPACITY_IRREGULARITY), for
+// the 楼层受剪承载力比 check on the project tab.
+export function getStoryStrength(conn: ConnInfo): Promise<{ ok: true; rows: StoryStrengthRow[] } | ApiError> {
+  return post("/api/project-summary", { action: "storyStrength", ...conn });
 }
 
 export function getProjectGeometry(conn: ConnInfo): Promise<ProjectGeometryResult> {

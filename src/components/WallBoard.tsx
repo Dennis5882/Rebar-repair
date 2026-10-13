@@ -17,7 +17,9 @@ import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import type { WallItem, WallPayload } from "../types/rebar";
 import { useDesignCode } from "../context/DesignCodeContext";
 import { rcCheckFamily, toModelDiameter } from "../data/rcCodePresets";
-import { gbWallSeismic, type WallSeisResult } from "../lib/gbSeismic";
+import { gbWallBoundary, gbWallSeismic, type WallBoundaryResult, type WallSeisResult } from "../lib/gbSeismic";
+import { strengthenedStories } from "../lib/gbMemberClass";
+import { gbConcrete } from "../lib/rcBeamCheck";
 import { SeisCell, SeisDetail } from "./SeisDetail";
 import { PingfaBlock } from "./PingfaBlock";
 import { wallPingfa, wallPingfaLine, type WallPingfa } from "../lib/pingfa";
@@ -83,6 +85,7 @@ export function WallBoard() {
   const [orig, setOrig] = useState<Record<string, WallPayload>>({});
   const [marks, setMarks] = useState<Record<string, string>>({}); // Wall ID -> Wall Mark name (/db/WMAK)
   const [thicknessMm, setThicknessMm] = useState<Record<string, number>>({}); // Wall ID -> model thickness, mm (/db/THIK)
+  const [storyLevels, setStoryLevels] = useState<number[]>([]); // model unit, same order as `stories`
   const [stories, setStories] = useState<string[]>([]); // model's real story names, bottom-to-top (/db/STOR) — STORY.FROM/TO must match one exactly
   const [groupMode, setGroupMode] = useState<WallGroupMode>("mark");
   const [boardUnit, setBoardUnit] = useState("");
@@ -125,6 +128,7 @@ export function WallBoard() {
       setMarks(res.marks || {});
       setThicknessMm(res.thicknessMm || {});
       setStories(res.stories || []);
+      setStoryLevels(res.storyLevels || []);
       if (unitRes.ok) setBoardUnit(unitRes.unit || "");
       setListLoadedOnce(true);
       setStatus({ ok: true, kind: "sectionsLoaded", count: Object.keys(res.data).length });
@@ -239,16 +243,60 @@ export function WallBoard() {
   const { designCode, materialDB, gbGrade } = useDesignCode();
   const showSeis = rcCheckFamily(designCode) === "GB" && gbGrade > 0;
   const showPingfa = rcCheckFamily(designCode) === "GB";
+  const selectedGroup = useMemo(() => groups.find((g) => selectedId != null && g.members.includes(selectedId)) || null, [groups, selectedId]);
+
+  // 6.4.5 boundary element of a group: bottom-storey axial ratio decides
+  // 构造/约束; the group's shown segment (edited one when selected) supplies the
+  // end bars / ties / BE length; its STORY range decides 底部加强部位 or not.
+  const boundary = useCallback(
+    (members: string[], it: WallItem | undefined): WallBoundaryResult | null => {
+      if (!showSeis || !gbGrade || !it) return null;
+      const rs = members.filter((m) => !rows[m]?.dirty).flatMap((m) => check[m] || []);
+      if (!rs.length) return null;
+      const idx = (name?: string) => (name ? stories.indexOf(name) : -1);
+      const bottomRow = rs.slice().sort((a, b) => (idx(a.story) < 0 ? 1e9 : idx(a.story)) - (idx(b.story) < 0 ? 1e9 : idx(b.story)))[0];
+      const c = bottomRow.fck != null ? gbConcrete(bottomRow.fck) : null;
+      const muBottom = c && bottomRow.pu != null && bottomRow.lw && bottomRow.tw ? (bottomRow.pu * 1000) / (c.fc * bottomRow.lw * bottomRow.tw) : null;
+      const strong = strengthenedStories(storyLevels.map((v) => Number(numToMm(v, unit)) || 0));
+      const from = idx(it.STORY?.FROM);
+      const to = idx(it.STORY?.TO);
+      const covered = from >= 0 && to >= 0 ? Array.from({ length: Math.abs(to - from) + 1 }, (_, i) => Math.min(from, to) + i) : stories.map((_, i) => i);
+      const zoneTop = strong.length ? Math.max(...strong) : 0;
+      const dia = (label?: string) => (label ? toModelDiameter(materialDB, label, "mm") : null);
+      const er = it.USE_END_REBAR ? it.END_REBAR : undefined;
+      const be = it.BE_HORIZONTAL_REBAR;
+      return gbWallBoundary({
+        g: gbGrade,
+        muBottom,
+        inStrengthened: covered.length === 0 || covered.some((i) => strong.includes(i)),
+        inConstrainZone: covered.length === 0 || covered.some((i) => i <= zoneTop + 1),
+        hw: bottomRow.lw ?? 0,
+        bw: bottomRow.tw ?? 0,
+        fcuk: bottomRow.fck ?? null,
+        fyvk: bottomRow.fys ?? bottomRow.fy ?? null,
+        cover: it.CONCRETE_FACE_TO_CENTER_OF_REBAR?.DE ?? 40,
+        end: er && er.NAME ? { dia: dia(er.NAME), num: Number(er.NUM) || 0 } : null,
+        tie: be && be.NAME ? { dia: dia(be.NAME), s: Number(be.DIST) || 0 } : null,
+        beLen: it.BOUNDARY_ELEMENT_LENGTH ?? null,
+      });
+    },
+    [showSeis, gbGrade, rows, check, stories, storyLevels, unit, materialDB]
+  );
+
   const seis = useMemo(() => {
     const out: Record<string, WallSeisResult> = {};
     if (!showSeis || !gbGrade) return out;
     const dia = (label: string) => toModelDiameter(materialDB, label, "mm");
     for (const g of groups) {
       const rs = g.members.filter((m) => !rows[m]?.dirty).flatMap((m) => check[m] || []);
-      out[g.key] = gbWallSeismic(gbGrade, rs.length ? rs : undefined, dia);
+      const base = gbWallSeismic(gbGrade, rs.length ? rs : undefined, dia);
+      const isSel = selectedGroup?.key === g.key;
+      const repId = isSel && selectedId ? selectedId : g.members[0];
+      const be = boundary(g.members, rows[repId]?.items[isSel ? segIndex : 0]);
+      out[g.key] = be ? { ...base, issues: [...base.issues, ...be.issues], boundary: be } : base;
     }
     return out;
-  }, [showSeis, gbGrade, groups, rows, check, materialDB]);
+  }, [showSeis, gbGrade, groups, rows, check, materialDB, boundary, selectedGroup, selectedId, segIndex]);
 
   // 平法 墙身 line per group, from the shown REBW item (mm) + the WC-TABLE's
   // fy/fys, thickness and BarLayer — so it appears after a 재검토.
@@ -273,7 +321,6 @@ export function WallBoard() {
     [showPingfa, check, materialDB, thicknessMm]
   );
 
-  const selectedGroup = useMemo(() => groups.find((g) => selectedId != null && g.members.includes(selectedId)) || null, [groups, selectedId]);
   const [reportOpen, setReportOpen] = useState(false);
   const closeReport = useCallback(() => setReportOpen(false), []);
   // Walls report by Wall ID; "whole board" lists every loaded wall explicitly.
@@ -801,7 +848,16 @@ export function WallBoard() {
                 res={seis[selectedGroup.key]}
                 member="wall"
                 waiting={!selectedGroup.members.some((m) => (check[m]?.length ?? 0) > 0) || selectedGroup.members.some((m) => rows[m]?.dirty)}
-              />
+              >
+                {seis[selectedGroup.key].boundary && (
+                  <div className="seis-mu">
+                    {t(seis[selectedGroup.key].boundary!.type === "constrain" ? "board.beConstrain" : "board.beConstruct", {
+                      lc: seis[selectedGroup.key].boundary!.lc ?? "—",
+                      ac: seis[selectedGroup.key].boundary!.ac,
+                    })}
+                  </div>
+                )}
+              </SeisDetail>
             )}
           </div>
         </div>

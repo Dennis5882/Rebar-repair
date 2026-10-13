@@ -130,6 +130,6 @@ describe("GB seismic extras from the live GB dummy's tables (2026-10-13)", () =>
   it("wall: Pu, Lw/hw m → mm, distribution ρ", () => {
     const head = ["WID", "Story", "CHK_STR", "Pu", "Lw", "hw", "fck", "rhoV.use(%)", "rhoH.use(%)", "V-Rebar", "H-Rebar", "BarLayer"];
     const out = parseWallRows(head, [["1", "1F", "OK", "419.291", "6.0000", "0.2000", "30000.0", "0.584", "0.000", "d12 @200", "d10 @200", "Double"]]);
-    expect(out["1"][0]).toEqual({ chk: "OK", pu: 419.291, lw: 6000, tw: 200, fck: 30, rhoV: 0.584, rhoH: 0, vRebar: "d12 @200", hRebar: "d10 @200", layers: 2 });
+    expect(out["1"][0]).toEqual({ story: "1F", chk: "OK", pu: 419.291, lw: 6000, tw: 200, fck: 30, rhoV: 0.584, rhoH: 0, vRebar: "d12 @200", hRebar: "d10 @200", layers: 2 });
   });
 });

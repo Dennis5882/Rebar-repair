@@ -363,6 +363,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .verdict .rr { font-weight: 500; opacity: .75; font-variant-numeric: tabular-nums; }
 .verdict.ok { color: var(--good); background: color-mix(in srgb, var(--good) 13%, transparent); }
 .verdict.ng { color: var(--critical); background: color-mix(in srgb, var(--critical) 13%, transparent); }
+.th-unit { text-transform: none; }
+.verdict.warnv { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
 .verdict.none { color: var(--muted); }
 /* Source tag on a verdict: Gen NX's authoritative check vs the in-browser
    formula estimate. Small, low-emphasis — the OK/NG stays the focus. */
@@ -453,6 +455,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .cell-mu.over { color: var(--critical); font-weight: 700; }
 .seis-mu { font-family: var(--mono); font-size: 12.5px; color: var(--ink); margin: 2px 0 6px; }
 .gb-seismic { margin-top: 10px; }
+.seis-sit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 12.5px; margin: 2px 0 8px; }
+.seis-sit-k { font-weight: 600; color: var(--muted); }
+.seis-sit-opt { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.seis-sit-opt input { width: auto; margin: 0; flex: none; }
+.seis-sit-opt small { color: var(--muted); }
+.seis-short { color: var(--warn); }
 .crack-ctrl { align-items: end; margin: 6px 0 8px; }
 .crack-run .btn { width: 100%; }
 .crack-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0 6px; }

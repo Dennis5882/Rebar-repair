@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getJson, resolveBase, setCorsPost } from "../server/midas.js";
+import { fetchMidas, getJson, resolveBase, setCorsPost } from "../server/midas.js";
+import { parseStoryStrength } from "../src/lib/storyStrength.js";
 
 const MM_PER_DIST: Record<string, number> = { MM: 1, CM: 10, M: 1000, IN: 25.4, FT: 304.8 };
 
@@ -8,10 +9,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { product, apiKey, baseUrl } = req.body || {};
+  const { product, apiKey, baseUrl, action } = req.body || {};
   const base = resolveBase(product, baseUrl);
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
+
+  // 楼层受剪承载力比: Gen NX's story shear strength table (multiplexed here to
+  // stay inside the function budget). Read-only; needs a run analysis.
+  if (action === "storyStrength") {
+    const r = await fetchMidas(`${base}/post/TABLE`, apiKey, {
+      method: "POST",
+      body: { Argument: { TABLE_NAME: "CAP", TABLE_TYPE: "CAPACITY_IRREGULARITY", UNIT: { FORCE: "KN", DIST: "M" }, STYLES: { FORMAT: "Fixed", PLACE: 4 } } },
+    });
+    if (!r.ok) return res.json({ ok: false, error: r.error });
+    if (r.data?.error) return res.json({ ok: false, error: r.data.error.message || "Unknown Error" });
+    const t: any = r.data && typeof r.data === "object" ? Object.values(r.data)[0] : null;
+    return res.json({ ok: true, rows: parseStoryStrength(t?.HEAD ?? [], t?.DATA ?? []) });
+  }
 
   try {
     const [elemRes, sectRes, matlRes, lcomRes, consRes, thikRes, unitRes] = await Promise.all([
