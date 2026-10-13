@@ -434,6 +434,7 @@
   "guide.codeBarsHeaderXref": "對應規格（美國）",
   "guide.codeConfirmWarning": "此設計規範的材料規格對應可能存在地區差異 — 建議於實際專案中再次確認。",
 
+  "guide.release.v1_6_3.item1": "左右抽屜開啟時不再突然彈出，改為平緩起步、順滑滑入",
   "guide.release.v1_6_2.item1": "左右抽屜（使用說明、連線設定、回饋、匯出計算書）的開合時間調整為 0.8 秒，動作更平穩",
   "guide.release.v1_6_1.item1": "頁尾顯示應用程式版本——點擊版本即可開啟本更新日誌",
   "guide.release.v1_6_1.item2": "更新日誌依版本管理——每次版本升級都會同時記錄更新說明",

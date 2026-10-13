@@ -434,6 +434,7 @@
   "guide.codeBarsHeaderXref": "US Cross-ref",
   "guide.codeConfirmWarning": "This design code's material mapping has regional variation — please double-check for your actual project.",
 
+  "guide.release.v1_6_3.item1": "Side drawers no longer snap out when opening — they now start gently and glide in",
   "guide.release.v1_6_2.item1": "Side drawers (guide, settings, feedback, report) now open and close over 0.8 s for a calmer motion",
   "guide.release.v1_6_1.item1": "The footer now shows the app version — click it to open these release notes",
   "guide.release.v1_6_1.item2": "Release notes are now kept per version: every version bump ships with its notes",
