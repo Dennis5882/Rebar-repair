@@ -641,7 +641,7 @@ export function WallBoard() {
                     <td className="mono">{thk != null ? `${thk} mm` : "—"}</td>
                     <td className="mono">{v.NAME ? <><span className="bar-main">{v.NAME}</span>@{v.DIST ?? "?"}</> : "—"}</td>
                     <td className="mono">{h.NAME ? <><span className="bar-stir">{h.NAME}</span>@{h.DIST ?? "?"}</> : "—"}</td>
-                    <td className="mono">{it0.USE_END_REBAR && er.NAME ? <><b>{er.NUM ?? "?"}</b>×{er.NAME}</> : "—"}</td>
+                    <td className="mono" title={it0.USE_END_REBAR && er.NAME ? t("wall.endNumTip") : undefined}>{it0.USE_END_REBAR && er.NAME ? <><b>{er.NUM ?? "?"}</b>×{er.NAME}</> : "—"}</td>
                     <td className="mono">{cc.DW ?? "?"}/{cc.DE ?? "?"}</td>
                     {showPingfa && <td className="mono cell-pingfa">{((p) => (p ? wallPingfaLine(p) || "—" : "—"))(pingfaOf(repId, it0))}</td>}
                     {showSeis && <SeisCell res={seis[g.key]} />}
@@ -771,7 +771,7 @@ export function WallBoard() {
             {form.useEnd && (
               <div className="row3">
                 <div className="field"><label>{t("common.spec")}</label><BarSelect id="wb-endName" placeholder="D22" value={form.endName} onChange={(v) => setField("endName", v)} /></div>
-                <div className="field"><label>{t("common.count")}</label><input type="number" value={form.endNum} onChange={(e) => setField("endNum", e.target.value)} /></div>
+                <div className="field"><label title={t("wall.endNumTip")}>{t("wall.endNumPerEnd")}</label><input type="number" value={form.endNum} onChange={(e) => setField("endNum", e.target.value)} /></div>
                 <div className="field"><label>{t("common.dist")} (mm)</label><input type="number" step="any" value={form.endDist} onChange={(e) => setField("endDist", e.target.value)} /></div>
               </div>
             )}

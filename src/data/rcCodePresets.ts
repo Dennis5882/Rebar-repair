@@ -336,7 +336,12 @@ export const MM_PER_UNIT: Record<string, number> = { mm: 1, cm: 10, m: 1000, in:
 
 /** 규격 라벨 -> 모델 활성단위 기준 지름값으로 변환 */
 export function toModelDiameter(materialDB: string, label: string, modelUnit = "mm"): number | null {
-  const bar = getBars(materialDB).find((b) => b.label === label);
+  // A model's bar labels follow the file's Initial Material DB, not its design
+  // code (see CLAUDE.md), so a KDS model can carry GB "d10" labels (live
+  // 2026-10-14). Fall back to any DB that knows the label before giving up.
+  const bar =
+    getBars(materialDB).find((b) => b.label === label) ??
+    Object.values(MATERIAL_DBS).flatMap((db) => db.bars).find((b) => b.label === label);
   if (!bar) return null;
   const perUnit = MM_PER_UNIT[modelUnit];
   return perUnit ? bar.nominal_mm / perUnit : bar.nominal_mm;

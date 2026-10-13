@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultMaterialDB, defaultRebarCode, getBars, isVerified } from "../../data/rcCodePresets";
+import { defaultMaterialDB, defaultRebarCode, getBars, isVerified, toModelDiameter } from "../../data/rcCodePresets";
 
 // GB bar labels were live-verified against a GB/T50010-10 Gen NX model
 // (2026-10-12): REBB accepts exactly these lowercase-"d" names and rejects
@@ -38,5 +38,16 @@ describe("EN 10080 / BS 4449 rebar presets", () => {
   it("stays unverified until dbName/grades are checked too", () => {
     expect(isVerified("EN 10080")).toBe(false);
     expect(isVerified("BS 4449")).toBe(false);
+  });
+});
+
+describe("toModelDiameter label fallback", () => {
+  it("resolves a label from another bar DB (GB d10 on a KDS model, live 2026-10-14)", () => {
+    expect(toModelDiameter("KS D 3504", "d10")).toBe(10);
+    expect(toModelDiameter("KS D 3504", "d20", "m")).toBeCloseTo(0.02);
+  });
+  it("still prefers the selected DB and returns null for unknown labels", () => {
+    expect(toModelDiameter("KS D 3504", "D10")).toBeCloseTo(9.53);
+    expect(toModelDiameter("KS D 3504", "X99")).toBeNull();
   });
 });

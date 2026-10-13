@@ -10,7 +10,8 @@ import { getJson, resolveBase, setCorsPost } from "../server/midas.js";
 // genxn-api-schema-findings memory): /db/MBTP (member-type) is empty on a
 // model where types were never explicitly assigned, so Gen NX auto-classifies
 // frame elements by orientation — horizontal ⇒ beam, vertical ⇒ column. This
-// endpoint does the same, then groups beam-oriented elements by section.
+// endpoint does the same, then groups beam-oriented elements by section —
+// except elements MBTP explicitly types as something other than BEAM.
 
 const MM_PER_DIST: Record<string, number> = { MM: 1, CM: 10, M: 1000, IN: 25.4, FT: 304.8 };
 
@@ -46,13 +47,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
 
   try {
-    const [elemRes, nodeRes, sectRes, unitRes, rebbRes] = await Promise.all([
+    const [elemRes, nodeRes, sectRes, unitRes, rebbRes, mbtpRes] = await Promise.all([
       getJson(base, "/db/ELEM", apiKey),
       getJson(base, "/db/NODE", apiKey),
       getJson(base, "/db/SECT", apiKey),
       getJson(base, "/db/UNIT", apiKey),
       getJson(base, "/DESIGN/RC/KDS-41-20-2022/REBB", apiKey),
+      getJson(base, "/DESIGN/RC/KDS-41-20-2022/MBTP", apiKey),
     ]);
+    // Explicit member types ({"27":{TYPE:"BRACE"}}), when the model has them.
+    // A shallow brace (dz < dxy) passes the orientation test below, so an
+    // element typed anything but BEAM is left out (live 2026-10-14: a 6 m ×
+    // 3.5 m brace was listed on the beam board).
+    const mbtp: Record<string, any> = mbtpRes.MBTP || {};
 
     const elems: Record<string, any> = elemRes.ELEM || {};
     const nodes: Record<string, any> = nodeRes.NODE || {};
@@ -69,6 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const bySect: Record<string, string[]> = {};
     for (const [key, el] of Object.entries(elems)) {
       if (el?.TYPE !== "BEAM") continue; // frame elements only
+      const mt = mbtp[key]?.TYPE;
+      if (mt && mt !== "BEAM") continue; // typed as column / brace in Gen NX
       const sid = el?.SECT;
       if (sid == null) continue;
       const nodeIds = el?.NODE;

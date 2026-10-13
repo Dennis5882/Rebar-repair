@@ -6,6 +6,7 @@ import { useLoadAll } from "../context/LoadAllContext";
 import { rcCheckFamily } from "../data/rcCodePresets";
 import { getStoryStrength } from "../lib/api";
 import { errText } from "../lib/errText";
+import { MODEL_CHANGED } from "../lib/modelEvents";
 import { judgeStrengthRatio, type StoryStrengthRow, type StrengthClass } from "../lib/storyStrength";
 
 // 楼层受剪承载力比 card on the project tab: Gen NX's own story shear strength
@@ -22,10 +23,13 @@ export function StoryStrengthSection() {
   const [cls, setCls] = useState<StrengthClass>("A");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  // A rebar save or analysis run after the read leaves the rows out of date.
+  const [stale, setStale] = useState(false);
 
   async function load() {
     setBusy(true);
     setMsg("");
+    setStale(false);
     try {
       const r = await getStoryStrength(payload);
       if (!r.ok) {
@@ -45,6 +49,11 @@ export function StoryStrengthSection() {
     if (loadAllNonce > 0) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAllNonce]);
+  useEffect(() => {
+    const onChange = () => setStale(true);
+    window.addEventListener(MODEL_CHANGED, onChange);
+    return () => window.removeEventListener(MODEL_CHANGED, onChange);
+  }, []);
 
   const cell = (d: StoryStrengthRow["dirs"][number]) => {
     const v = isGb ? judgeStrengthRatio(d.ratio, cls) : null;
@@ -84,9 +93,10 @@ export function StoryStrengthSection() {
         )}
       </div>
       {msg && <div className="hint" style={{ margin: "6px 0" }}>{msg}</div>}
+      {stale && rows && rows.length > 0 && <div className="hint warn" style={{ margin: "6px 0" }}>{t("story.stale")}</div>}
       {rows && rows.length > 0 && (
         <div className="table-scroll">
-          <table className="board-table">
+          <table className="board-table" style={stale ? { opacity: 0.55 } : undefined}>
             <thead>
               <tr>
                 <th>{t("story.colStory")}</th>
@@ -112,7 +122,7 @@ export function StoryStrengthSection() {
           </table>
         </div>
       )}
-      <div className="hint" style={{ marginTop: 6 }}>{t("story.note")}</div>
+      <div className="hint" style={{ marginTop: 6 }}>{t(isGb ? "story.noteGb" : "story.note")}</div>
     </div>
   );
 }

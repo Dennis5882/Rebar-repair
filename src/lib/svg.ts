@@ -246,22 +246,35 @@ function drawWallSvg(t: TFn, payload: WallPayload | null | undefined, dims: Sect
   const dist = vr.DIST || 200;
   const count = Math.min(dist ? Math.floor(w / (dist * scale)) : 0, 18);
   const radius = 3.2;
+  // END_REBAR.NUM is PER END (live-verified 2026-10-13: NUM 6 = 3 rows × 2
+  // layers at each end), laid out in rows of two (one per face) at DIST along
+  // the wall; an odd count puts its last bar mid-thickness. Distributed bars
+  // inside that end zone are not drawn, so the two don't overlap.
+  const endN = it.USE_END_REBAR ? Math.max(0, Math.floor(Number(er.NUM) || 0)) : 0;
+  const endRows = Math.min(Math.ceil(endN / 2), 8);
+  const endStep = Math.max((Number(er.DIST) || 100) * scale, 7);
+  const endZone = endRows > 0 ? 7 + (endRows - 1) * endStep + endStep / 2 : 0;
   if (count > 0) {
     for (let i = 0; i <= count; i++) {
       const xx = x0 + (w * i) / count;
+      if (xx - x0 < endZone || x0 + w - xx < endZone) continue;
       for (const yy of [y0 + dwpx, y0 + h - dwpx]) {
         s += `<circle cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="${radius}" class="mainbar"/>`;
       }
     }
   }
 
-  if (it.USE_END_REBAR) {
-    const endCount = Math.min(er.NUM || 0, 4);
+  if (endRows > 0) {
+    const yFaces = h > 14 ? [y0 + Math.max(dwpx, 4), y0 + h - Math.max(dwpx, 4)] : [y0 + h / 2];
     for (const side of [0, 1]) {
-      const ex = side === 0 ? x0 + 7 : x0 + w - 7;
-      for (let k = 0; k < endCount; k++) {
-        const offset = (k - (endCount - 1) / 2) * 7;
-        s += `<circle cx="${ex.toFixed(1)}" cy="${(y0 + h / 2 + offset).toFixed(1)}" r="3.6" class="endbar"/>`;
+      for (let r = 0; r < endRows; r++) {
+        const off = 7 + r * endStep;
+        if (off > w / 2) break;
+        const ex = side === 0 ? x0 + off : x0 + w - off;
+        const single = endN % 2 === 1 && r === endRows - 1;
+        for (const yy of single || yFaces.length === 1 ? [y0 + h / 2] : yFaces) {
+          s += `<circle cx="${ex.toFixed(1)}" cy="${yy.toFixed(1)}" r="3.6" class="endbar"/>`;
+        }
       }
     }
   }

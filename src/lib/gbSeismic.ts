@@ -332,7 +332,7 @@ export interface WallBoundaryInput {
   fcuk: number | null;
   fyvk: number | null;
   cover: number; // DE, face → bar centre (mm)
-  end: { dia: number | null; num: number } | null; // per end (REBW NUM_END_BAR, see note)
+  end: { dia: number | null; num: number } | null; // per end (REBW END_REBAR.NUM; live-verified 2026-10-13)
   tie: { dia: number | null; s: number } | null; // BE_HORIZONTAL_REBAR
   beLen: number | null; // BOUNDARY_ELEMENT_LENGTH (mm)
 }

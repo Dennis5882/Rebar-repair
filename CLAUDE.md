@@ -65,7 +65,7 @@ from the old date-keyed entries (ids `dYYMMDD` kept).
 Tests cover the pure conversion/math helpers only (no live API): `keyRange`,
 `beamRebarForm`, `columnRebarForm`, `wallRebarForm`, `rcBeamCheck`, `beamBoard`
 (`genVerdictFromDemand`), `memberCheck` (`memberVerdictFromRows` + the CC/WC/BRC
-table parsers), `rcCodePresets` (live-verified GB bar labels), `kdsDetailing` (KDS stirrup spacing / Av,min / 1.2Mcr), `gbDetailingPingfa` (GB detailing + 平法), `gbSeismic` (GB seismic-grade tables + column/wall evaluators), `gbCrack` (GB 50010 7.1.2 crack width + BEAMFORCE parser), `gbMemberClass` (column position + 底部加强部位), `storyStrength` (CAPACITY_IRREGULARITY parser + JGJ 3 3.5.3 verdict). Add a test
+table parsers), `rcCodePresets` (live-verified GB bar labels), `kdsDetailing` (KDS stirrup spacing / Av,min / 1.2Mcr), `gbDetailingPingfa` (GB detailing + 平法), `gbSeismic` (GB seismic-grade tables + column/wall evaluators), `gbCrack` (GB 50010 7.1.2 crack width + BEAMFORCE parser), `gbMemberClass` (column position + 底部加强部位), `storyStrength` (CAPACITY_IRREGULARITY parser + JGJ 3 3.5.3 verdict), `wallSvg` (END_REBAR.NUM drawn per end). Add a test
 alongside when you touch one of these. `apiLayout`
 guards the function budget structurally (no subdirs / no helper files / ≤11
 route files under `api/`).
@@ -140,7 +140,20 @@ route files under `api/`).
   the same `/DESIGN/RC/KDS-41-20-2022/REB*` paths (no GB-specific path exists —
   all 404); valid GB rebar codes are `GB/T10(RC)` and `GB 50917-13(RC)`.
   Rebar writes also need a design code set (`/db/DCON` empty ⇒ every label
-  rejected).
+  rejected). So the app's label→diameter lookup (`toModelDiameter`) falls back
+  to every bar DB when the selected material DB lacks the label (live
+  2026-10-14: a KDS model with GB `d10` labels gave a false "stirrup 0 mm²").
+- **Three-code live pass (2026-10-14, one dummy switched KDS 41 20 → TWN-USD112
+  → GB/T50010-10):** every flow worked for all three — no-combo ⇒
+  `needLoadComb`, first save on bare REBC/REBR/REBW, analysis, all four
+  rechecks, per-section recheck, weaken→NG→restore, SERVICE BEAMFORCE,
+  CAPACITY_IRREGULARITY, *-REPORT. **Changing DCON wipes the analysis results**
+  (boards show "run analysis first", storey table "no analysis result"). The
+  storey strength differs per code (it is a code-dependent capacity). TWN
+  showed `CHK_STR` "OK" with `CHK_RBR` "P" on a weakened beam — the beam
+  verdict already treats a non-OK CHK_RBR as NG. `beam-sections` now drops
+  elements MBTP types as non-BEAM (a 6 m × 3.5 m brace has dz < dxy and was
+  listed as a beam section).
 - **`*-ANAL` (design-check perform) — RE-VERIFIED 2026-07-25: no longer hangs on
   current Gen NX builds.** The old rule was "NEVER call `BC-ANAL`/`CC-ANAL`/…" —
   it reproducibly hung/crashed the app on Gen NX 2026 v2.1. On the current build

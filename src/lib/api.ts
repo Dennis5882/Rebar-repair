@@ -4,6 +4,7 @@ import type { StoryStrengthRow } from "./storyStrength";
 import type { ProjectSummary } from "../types/project";
 import type { ModelGeometry } from "../types/geometry";
 import type { TFn } from "../i18n/types";
+import { notifyModelChanged } from "./modelEvents";
 
 export interface ConnInfo {
   apiKey: string;
@@ -327,7 +328,7 @@ export function runBeamCheckSection(elemKey: string, sectionId: string, conn: Co
 // and post()'s own parse-error fallback (code:"parse_error") covers a raw
 // platform 504 — the caller treats both as "still running", not a failure.
 export function runAnalysis(conn: ConnInfo): Promise<RunAnalysisResult> {
-  return post<RunAnalysisResult>("/api/model", { action: "analyze", ...conn });
+  return post<RunAnalysisResult>("/api/model", { action: "analyze", ...conn }).finally(notifyModelChanged);
 }
 
 // BEAM's write endpoint takes the SAME shape it returns on read — the
@@ -341,7 +342,10 @@ export function runAnalysis(conn: ConnInfo): Promise<RunAnalysisResult> {
 // Exist" on an existing section — so writes must use PUT, which the handler
 // already does.)
 export function saveRebar(memberType: MemberType, key: string, payload: MemberPayload, conn: ConnInfo): Promise<SaveResult> {
-  return post<SaveResult>("/api/rebar", { action: "update", memberType, key, payload, ...conn });
+  return post<SaveResult>("/api/rebar", { action: "update", memberType, key, payload, ...conn }).then((r) => {
+    if (r.ok) notifyModelChanged();
+    return r;
+  });
 }
 
 // Export Gen NX's own design-check report (Graphic/Detail/Summary/PMCurve) for
