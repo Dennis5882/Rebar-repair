@@ -434,6 +434,8 @@
   "guide.codeBarsHeaderXref": "对应规格（美国）",
   "guide.codeConfirmWarning": "该设计规范的材料规格对应关系可能存在地区差异 — 建议在实际项目中再次确认。",
 
+  "guide.release.v1_6_5.item1": "新增浏览器标签页图标——以 RC 梁截面（箍筋与主筋）取代默认地球图标",
+  "guide.release.v1_6_5.item2": "左右抽屉开合速度调整为与 story 应用相同的 0.3 秒（0.8 秒过慢）",
   "guide.release.v1_6_4.item1": "修复：在关闭 Windows「动画效果」的电脑上，左右抽屉会无动画地瞬间弹出——现在始终平滑滑入，背景轻微模糊",
   "guide.release.v1_6_3.item1": "左右抽屉打开时不再突然弹出，改为平缓起步、顺滑滑入",
   "guide.release.v1_6_2.item1": "左右抽屉（使用说明、连接设置、反馈、导出计算书）的开合时间调整为 0.8 秒，动作更平稳",

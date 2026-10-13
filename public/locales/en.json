@@ -434,6 +434,8 @@
   "guide.codeBarsHeaderXref": "US Cross-ref",
   "guide.codeConfirmWarning": "This design code's material mapping has regional variation — please double-check for your actual project.",
 
+  "guide.release.v1_6_5.item1": "New browser-tab icon: an RC beam section (stirrup and main bars) instead of the default globe",
+  "guide.release.v1_6_5.item2": "Side drawers now open and close at the same quick 0.3 s pace as the story app",
   "guide.release.v1_6_4.item1": "Fixed: side drawers popped open instantly on PCs with Windows \"Animation effects\" turned off — they now always slide, with a soft blur behind",
   "guide.release.v1_6_3.item1": "Side drawers no longer snap out when opening — they now start gently and glide in",
   "guide.release.v1_6_2.item1": "Side drawers (guide, settings, feedback, report) now open and close over 0.8 s for a calmer motion",
