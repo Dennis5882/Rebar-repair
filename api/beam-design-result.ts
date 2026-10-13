@@ -4,6 +4,7 @@ import { fetchMidas, resolveBase, setCorsPost } from "../server/midas.js";
 // with the mandatory explicit .js extension (see the ESM notes in server/midas.ts).
 import { parseColumnRows, parseWallRows, parseBraceRows } from "../src/lib/memberCheck.js";
 import { buildReportArgument, type ReportRequest } from "../src/lib/reportArgs.js";
+import { parseServiceMoments } from "../src/lib/gbCrack.js";
 
 // Reads already-computed Mu/Vu demand from Gen NX's BC-TABLE (manual §55,
 // DESIGN/RC/KDS-41-20-2022/BC-TABLE) — a read of results the user already
@@ -226,6 +227,10 @@ async function runAnal(base: string, apiKey: string, analPath: string, arg: Reco
 // again before the design check can produce results. The board surfaces this as
 // a prompt to press "해석 실행" (the middle button in the detail drawer).
 const needsAnalysis = (msg: string | null): boolean => !!msg && /perform analysis/i.test(msg);
+// *-ANAL with no design load combinations answers 200 {"error":"failed:LoadCombination"}
+// (live 2026-10-13). /ope/LCOM-CONC auto-generation works for KDS 41 20 only,
+// so the board tells the user to generate the combos in Gen NX's GUI.
+const needsLoadComb = (msg: string | null): boolean => !!msg && /LoadCombination/i.test(msg);
 
 // --- COLUMN / WALL member checks. The CC/WC-TABLE column-name mapping + row
 // grouping is pure and lives in src/lib/memberCheck.ts (parseColumnRows /
@@ -258,7 +263,7 @@ const wcTableBody = (_elems?: number[]) => ({
   Argument: {
     TABLE_TYPE: "WID+STORY",
     UNIT: { FORCE: "KN", DIST: "M" },
-    COMPONENTS: ["WID", "Story", "CHK_STR", "CHK_RBR", "Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz", "Rat-V", "Pu", "Lw", "hw", "fck", "rhoV.use(%)", "rhoH.use(%)"],
+    COMPONENTS: ["WID", "Story", "CHK_STR", "CHK_RBR", "Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz", "Rat-V", "Pu", "Lw", "hw", "fck", "fy", "fys", "rhoV.use(%)", "rhoH.use(%)", "V-Rebar", "H-Rebar", "BarLayer"],
   },
 });
 
@@ -320,6 +325,7 @@ async function handleMemberCheck(
     const sn = Number(opts.sectionId);
     const arg = cfg.scoped && Number.isFinite(sn) ? { PERFORM_TYPE: "SECTIONS", SECTIONS: [sn] } : { PERFORM_TYPE: "ALL" };
     const analErr = await runAnal(base, apiKey, cfg.anal, arg);
+    if (needsLoadComb(analErr)) return res.json({ ok: true, byKey: {}, needLoadComb: true });
     if (needsAnalysis(analErr)) return res.json({ ok: true, byKey: {}, needAnalysis: true });
   }
 
@@ -355,12 +361,45 @@ async function handleReport(base: string, apiKey: string, reqBody: ReportRequest
   }
 }
 
+// Crack-width support (GB 50010 7.1.2): list the model's SERVICE design combos
+// (/db/LCOM-CONC ACTIVE "SERVICE") and, when `lc` is given, read each element's
+// service moment My at I / mid / J from /post/TABLE BEAMFORCE — design combos
+// are addressed as "NAME(CBC)" (live 2026-10-13; "(CB)" returns nothing).
+async function handleService(base: string, apiKey: string, svc: { elemKeys?: unknown; lc?: unknown }, res: VercelResponse) {
+  const comb = await fetchMidas(`${base}/db/LCOM-CONC`, apiKey, { method: "GET" });
+  const recs = comb.ok ? (comb.data?.["LCOM-CONC"] ?? {}) : {};
+  const combos = Object.values(recs as Record<string, any>)
+    .filter((c) => String(c?.ACTIVE || "").toUpperCase() === "SERVICE" && c?.NAME)
+    .map((c) => String(c.NAME));
+  const lc = typeof svc.lc === "string" ? svc.lc : "";
+  const keys = Array.isArray(svc.elemKeys) ? svc.elemKeys.map(Number).filter(Number.isFinite) : [];
+  if (!lc || !keys.length) return res.json({ ok: true, combos });
+  const r = await fetchMidas(`${base}/post/TABLE`, apiKey, {
+    method: "POST",
+    body: {
+      Argument: {
+        TABLE_NAME: "SVC",
+        TABLE_TYPE: "BEAMFORCE",
+        UNIT: { FORCE: "KN", DIST: "M" },
+        NODE_ELEMS: { KEYS: keys },
+        LOAD_CASE_NAMES: [`${lc}(CBC)`],
+        PARTS: ["PartI", "Part2/4", "PartJ"],
+        COMPONENTS: ["Elem", "Load", "Part", "Moment-y"],
+      },
+    },
+  });
+  if (!r.ok) return res.json({ ok: false, error: r.error });
+  if (r.data?.error) return res.json({ ok: false, error: r.data.error.message || "Unknown Error" });
+  const { head, rows } = tableHeadRows(r.data);
+  return res.json({ ok: true, combos, byElem: parseServiceMoments(head, rows) });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsPost(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { product, apiKey, baseUrl, elemKey, elemKeys, recheck, sectionId, member, report } = req.body || {};
+  const { product, apiKey, baseUrl, elemKey, elemKeys, recheck, sectionId, member, report, service } = req.body || {};
   const base = resolveBase(product, baseUrl);
   if (!apiKey) return res.status(400).json({ ok: false, code: "missing_key" });
   if (!base) return res.status(400).json({ ok: false, code: "unknown_product", product });
@@ -368,6 +407,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // --- design-check report export (*-REPORT) — multiplexed here instead of a
   // new route to stay inside the Hobby function budget.
   if (report && typeof report === "object") return handleReport(base, apiKey, report as ReportRequest, res);
+
+  // --- service-moment read for the GB crack-width check (combos + My at I/M/J)
+  if (service && typeof service === "object") return handleService(base, apiKey, service, res);
 
   // --- COLUMN / WALL / BRACE member check (single read, grouped by SECT / WID)
   if (member === "COLUMN" || member === "WALL" || member === "BRACE") {
@@ -395,6 +437,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // A rebar/member edit invalidated the solve: BC-TABLE would only return the
     // stale pre-edit verdict, which must not be surfaced as authoritative. Skip
     // the (wasted) reads and tell the frontend to run "해석 실행" first.
+    if (needsLoadComb(analErr)) return res.json({ ok: true, byElem: {}, needLoadComb: true });
     if (needsAnalysis(analErr)) return res.json({ ok: true, byElem: {}, needAnalysis: true });
     const byElem: Record<string, Record<SectorKey, DemandPoint>> = {};
     let partial = false;
@@ -439,6 +482,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const tableErr = result.ok ? bcTableErrorMessage(result.data) : result.error;
     // A rebar edit invalidated the solve — surface a dedicated code so the UI
     // can tell the user to run "해석 실행" first, not a generic failure.
+    if (needsLoadComb(analErr)) return res.json({ ok: false, code: "need_load_comb" });
     if (needsAnalysis(analErr) || needsAnalysis(tableErr)) return res.json({ ok: false, code: "need_analysis" });
     if (!result.ok) return res.json({ ok: false, error: result.error });
     if (tableErr) return res.json({ ok: false, error: tableErr });

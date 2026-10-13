@@ -228,8 +228,23 @@ export interface WallSeisResult {
   muLimit: number | null;
 }
 
-/** GB seismic wall rules for one Wall ID from its WC-TABLE rows (worst story). */
-export function gbWallSeismic(g: SeismicGrade, rows: MemberCheckRow[] | undefined): WallSeisResult {
+// ρ (%) of a distribution-bar string "d10 @200" over thickness t (mm), `layers`
+// curtains. null when the string doesn't parse or the bar is unknown.
+export function distRho(bar: string | undefined, t: number | undefined, layers: number | undefined, dia: (label: string) => number | null): number | null {
+  const m = bar?.match(/^\s*(\S+)\s*@\s*([\d.]+)/);
+  if (!m || !t || !layers) return null;
+  const d = dia(m[1]);
+  const s = Number(m[2]);
+  return d && s > 0 ? (100 * layers * barArea_mm2(d)) / (t * s) : null;
+}
+
+/**
+ * GB seismic wall rules for one Wall ID from its WC-TABLE rows (worst story).
+ * Gen NX's rhoV/rhoH.use read 0.000 when it didn't compute them (seen for
+ * rhoH on the live GB dummy), so a non-positive value falls back to the bar
+ * string + BarLayer + thickness.
+ */
+export function gbWallSeismic(g: SeismicGrade, rows: MemberCheckRow[] | undefined, dia: (label: string) => number | null = () => null): WallSeisResult {
   const issues: SeisIssue[] = [];
   const muLimit = wallAxialRatioLimit(g);
   let mu: number | null = null;
@@ -238,12 +253,14 @@ export function gbWallSeismic(g: SeismicGrade, rows: MemberCheckRow[] | undefine
   for (const r of rows || []) {
     const c = r.fck != null ? gbConcrete(r.fck) : null;
     if (c && r.pu != null && r.lw && r.tw) mu = Math.max(mu ?? 0, axialRatio(r.pu, r.lw * r.tw, c.fc));
-    if (r.rhoV != null) rv = Math.min(rv ?? Infinity, r.rhoV);
-    if (r.rhoH != null) rh = Math.min(rh ?? Infinity, r.rhoH);
+    const v = r.rhoV != null && r.rhoV > 0 ? r.rhoV : distRho(r.vRebar, r.tw, r.layers, dia);
+    const h = r.rhoH != null && r.rhoH > 0 ? r.rhoH : distRho(r.hRebar, r.tw, r.layers, dia);
+    if (v != null) rv = Math.min(rv ?? Infinity, v);
+    if (h != null) rh = Math.min(rh ?? Infinity, h);
   }
   if (mu != null && muLimit != null && mu > muLimit + 1e-9) issues.push({ kind: "wallAxial", actual: r3(mu), limit: muLimit });
   const min = wallDistRhoMin(g);
-  if (rv != null && rv < min - 1e-9) issues.push({ kind: "wallRhoV", actual: rv, limit: min });
-  if (rh != null && rh < min - 1e-9) issues.push({ kind: "wallRhoH", actual: rh, limit: min });
+  if (rv != null && rv < min - 1e-9) issues.push({ kind: "wallRhoV", actual: r3(rv), limit: min });
+  if (rh != null && rh < min - 1e-9) issues.push({ kind: "wallRhoH", actual: r3(rh), limit: min });
   return { issues, mu: mu != null ? r3(mu) : null, muLimit };
 }

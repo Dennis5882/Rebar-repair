@@ -24,6 +24,7 @@ export type ErrorCode =
   // BC-ANAL precondition: a rebar/member edit invalidated the solve, so the
   // model needs "해석 실행" (/doc/ANAL) run before the design check can succeed.
   | "need_analysis"
+  | "need_load_comb"
   // Report export (*-REPORT) request validation — see src/lib/reportArgs.ts.
   | "report_bad_member"
   | "report_bad_mode"
@@ -175,6 +176,8 @@ export interface BeamDesignResultsAllOk {
   // True when the batch got nothing back because the model needs re-analysis
   // (BC-ANAL "please perform analysis") — distinct from a non-KDS empty result.
   needAnalysis?: boolean;
+  // *-ANAL found no design load combinations (failed:LoadCombination).
+  needLoadComb?: boolean;
 }
 export type BeamDesignResultsAllResult = BeamDesignResultsAllOk | ApiError;
 
@@ -200,7 +203,10 @@ export interface MemberCheckRow {
   lw?: number; // wall length (mm)
   tw?: number; // wall thickness (mm)
   rhoV?: number; // wall vertical distribution ρ used (%)
-  rhoH?: number; // wall horizontal distribution ρ used (%)
+  rhoH?: number; // wall horizontal distribution ρ used (%) — Gen NX may report 0 (not computed)
+  vRebar?: string; // wall "d12 @200" (mm spacing as Gen NX formats it)
+  hRebar?: string;
+  layers?: number; // wall BarLayer: Double ⇒ 2, Single ⇒ 1
 }
 export interface MemberCheckOk {
   ok: true;
@@ -209,6 +215,8 @@ export interface MemberCheckOk {
   // True when *-ANAL reported the "please perform analysis" precondition — run
   // "해석 실행" first (distinct from a non-KDS/empty result).
   needAnalysis?: boolean;
+  // *-ANAL found no design load combinations (failed:LoadCombination).
+  needLoadComb?: boolean;
 }
 export type MemberCheckResult = MemberCheckOk | ApiError;
 
@@ -219,6 +227,17 @@ export type MemberCheckResult = MemberCheckOk | ApiError;
 // doesn't return the whole model. Non-KDS models come back with an empty map.
 export function runColumnCheck(conn: ConnInfo, opts?: { recheck?: boolean; sectionId?: string; elemKeys?: string[] }): Promise<MemberCheckResult> {
   return post<MemberCheckResult>("/api/beam-design-result", { member: "COLUMN", recheck: opts?.recheck, sectionId: opts?.sectionId, elemKeys: opts?.elemKeys, ...conn });
+}
+
+// GB crack width: the model's SERVICE design combos, and (with `lc`) each
+// element's service moment My at I / M (mid-span) / J, kN·m signed.
+export interface ServiceMomentsOk {
+  ok: true;
+  combos: string[];
+  byElem?: Record<string, Partial<Record<"I" | "M" | "J", number>>>;
+}
+export function readServiceMoments(conn: ConnInfo, opts?: { lc?: string; elemKeys?: string[] }): Promise<ServiceMomentsOk | ApiError> {
+  return post<ServiceMomentsOk | ApiError>("/api/beam-design-result", { service: { lc: opts?.lc, elemKeys: opts?.elemKeys }, ...conn });
 }
 
 // Read/re-check wall verdicts (keyed by WID). `recheck` runs WC-ANAL "ALL" first

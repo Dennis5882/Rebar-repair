@@ -19,6 +19,8 @@ import { useDesignCode } from "../context/DesignCodeContext";
 import { rcCheckFamily, toModelDiameter } from "../data/rcCodePresets";
 import { gbColumnSeismic, type ColumnSeisResult } from "../lib/gbSeismic";
 import { SeisCell, SeisDetail } from "./SeisDetail";
+import { PingfaBlock } from "./PingfaBlock";
+import { columnPingfa, columnPingfaLine, type ColumnPingfa } from "../lib/pingfa";
 
 // Section-centric board shared by the COLUMN and BRACE tabs — every section on
 // one screen (row = section), summary strip, search/sort, and a per-section
@@ -148,6 +150,9 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   // Materials and Pu come from the CC-TABLE rows, so most rules wait for 재검토.
   const { designCode, materialDB, gbGrade, gbSystem } = useDesignCode();
   const showSeis = isColumn && rcCheckFamily(designCode) === "GB" && gbGrade > 0;
+  // 平法 for GB columns (any grade) — bar grade letters from the CC-TABLE fy/fys.
+  const showPingfa = isColumn && rcCheckFamily(designCode) === "GB";
+  const colCount = 8 + (showSeis ? 1 : 0) + (showPingfa ? 1 : 0);
 
   async function handleList() {
     setListLoading(true);
@@ -212,6 +217,18 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     }
     return out;
   }, [showSeis, gbGrade, gbSystem, order, rows, check, materialDB]);
+
+  const pingfa = useMemo(() => {
+    const out: Record<string, ColumnPingfa | null> = {};
+    if (!showPingfa) return out;
+    const dia = (label: string) => toModelDiameter(materialDB, label, "mm");
+    for (const sid of order) {
+      const r = rows[sid];
+      const m = check[sid]?.find((x) => x.fy != null);
+      out[sid] = r && m?.fy != null ? columnPingfa(r.form, Number(r.b), Number(r.h), m.fy, m.fys ?? m.fy, dia) : null;
+    }
+    return out;
+  }, [showPingfa, order, rows, check, materialDB]);
 
   const visibleOrder = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -286,7 +303,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
       setStatus(
         loaded
           ? { ok: true, kind: "recheckDone", loaded, total: order.length }
-          : res.needAnalysis
+          : res.needLoadComb ? { ok: false, kind: "needLoadComb" } : res.needAnalysis
             ? { ok: false, kind: "needAnalysis" }
             : { ok: false, kind: "recheckEmptyMember" }
       );
@@ -315,7 +332,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
       setActionMsg(
         rowsForSid && rowsForSid.some((r) => r.chk != null)
           ? { ok: true, kind: "sectionChecked" }
-          : res.needAnalysis
+          : res.needLoadComb ? { ok: false, kind: "needLoadComb" } : res.needAnalysis
             ? { ok: false, kind: "needAnalysis" }
             : { ok: false, kind: "recheckEmptyMember" }
       );
@@ -461,6 +478,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                 <th>{t(k("colCenHoop"))}</th>
                 <th>{t(k("colCover"))}</th>
                 <th>{t(k("colHoopType"))}</th>
+                {showPingfa && <th>{t("board.colPingfa")}</th>}
                 {showSeis && <th>{t("board.colAxialRatio")}</th>}
                 <th>{t("board.colVerdict")}</th>
               </tr>
@@ -484,6 +502,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                     <td className="mono">{hoopCell(f.cenName, f.cenLegY, f.cenLegZ, f.cenDist)}</td>
                     <td className="mono">{f.doVal || "—"}</td>
                     <td className="mono">{f.hoopType}</td>
+                    {showPingfa && <td className="mono cell-pingfa">{pingfa[sid] ? columnPingfaLine(pingfa[sid]!) || "—" : "—"}</td>}
                     {showSeis && <SeisCell res={seis[sid]} />}
                     <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} warn={showSeis ? seis[sid]?.issues.length : 0} />
                   </tr>
@@ -491,7 +510,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
               })}
               {visibleOrder.length === 0 && (
                 <tr>
-                  <td colSpan={8 + (showSeis ? 1 : 0)} className="board-empty">{t("board.filterEmpty")}</td>
+                  <td colSpan={colCount} className="board-empty">{t("board.filterEmpty")}</td>
                 </tr>
               )}
             </tbody>
@@ -638,6 +657,21 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                 <JudgeBar label={t("board.axialFlexLabel")} sym="Rat" ratio={selectedVerdict.ratPM} cap={null} unit="" t={t} />
                 <JudgeBar label={t("board.shearLabel")} sym="Rat" ratio={selectedVerdict.ratShear} cap={null} unit="" t={t} />
               </div>
+            )}
+            {showPingfa && (
+              <PingfaBlock
+                lines={
+                  pingfa[selectedSid]
+                    ? [
+                        `${selectedGrp.name ? selectedGrp.name + " " : ""}${pingfa[selectedSid]!.section}`,
+                        pingfa[selectedSid]!.longitudinal,
+                        pingfa[selectedSid]!.stirrup,
+                        pingfa[selectedSid]!.legs && t("board.pingfaLegs", { legs: pingfa[selectedSid]!.legs! }),
+                      ].filter((x): x is string => !!x)
+                    : null
+                }
+                noteKey="board.pingfaNoteColumn"
+              />
             )}
             {showSeis && seis[selectedSid] && <SeisDetail res={seis[selectedSid]} member="column" waiting={!check[selectedSid] || selected.dirty} />}
           </div>

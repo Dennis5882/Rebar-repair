@@ -119,3 +119,80 @@ export function beamPingfa(
 export function beamPingfaLine(p: BeamPingfa): string {
   return [p.stirrup, p.longitudinal].filter(Boolean).join("  ");
 }
+
+// --- columns (22G101-1 柱平法 截面注写) ------------------------------------
+// 集中标注: section, 全部纵筋 (or 角筋 + 中部筋 when a corner bar is set — the
+// per-side split isn't in REBC, so the middle bars are given as one total),
+// 箍筋 "C10@100/200" (加密区/非加密区) and the leg layout m×n as 箍筋类型.
+
+export interface ColumnPingfa {
+  section: string; // "500×500"
+  longitudinal: string | null; // "12C20" or "角筋4C25 中部筋8C20"
+  stirrup: string | null; // "C10@100/200"
+  legs: string | null; // "4×4"
+}
+
+export function columnPingfa(
+  f: { mainName: string; mainNum: string; useCorner: boolean; cornerName: string; endName: string; endLegY: string; endLegZ: string; endDist: string; cenName: string; cenDist: string },
+  b_mm: number,
+  h_mm: number,
+  fy: number,
+  fyt: number,
+  dia: DiaOf
+): ColumnPingfa | null {
+  const g = gbGradeLetter(fy);
+  const gv = gbGradeLetter(fyt);
+  if (!g || !gv) return null;
+  const n = int(f.mainNum);
+  const d = f.mainName ? dia(f.mainName) : null;
+  const dc = f.useCorner && f.cornerName ? dia(f.cornerName) : null;
+  let longitudinal: string | null = null;
+  if (n && d) longitudinal = dc && n > 4 ? `角筋4${g}${round(dc)} 中部筋${n - 4}${g}${round(d)}` : `${n}${g}${round(d)}`;
+  const end = zone({ shearName: f.endName, shearDist: f.endDist, shearLeg: "" } as SectorFormValues, dia);
+  const cen = zone({ shearName: f.cenName, shearDist: f.cenDist, shearLeg: "" } as SectorFormValues, dia);
+  const dense = end ?? cen;
+  const ly = int(f.endLegY);
+  const lz = int(f.endLegZ);
+  return {
+    section: `${round(b_mm)}×${round(h_mm)}`,
+    longitudinal,
+    stirrup: dense ? stirrupText(dense, end ? cen : null, gv) : null,
+    legs: ly && lz ? `${ly}×${lz}` : null,
+  };
+}
+export const columnPingfaLine = (p: ColumnPingfa): string => [p.longitudinal, p.stirrup].filter(Boolean).join("  ");
+
+// --- walls (22G101-1 剪力墙身 列表注写) -------------------------------------
+// 墙身: Q(n排) 厚度 · 水平分布筋 · 垂直分布筋. 拉筋 isn't part of REBW, so it's
+// left for the drawing. Spacing strings come in mm.
+
+export interface WallPingfa {
+  body: string; // "Q(2排) 200"
+  horizontal: string | null; // "C10@200"
+  vertical: string | null; // "C12@200"
+}
+
+export function wallPingfa(
+  v: { name: string; dist: string },
+  h: { name: string; dist: string },
+  t_mm: number | null,
+  layers: number | null,
+  fyV: number,
+  fyH: number,
+  dia: DiaOf
+): WallPingfa | null {
+  const gV = gbGradeLetter(fyV);
+  const gH = gbGradeLetter(fyH);
+  if (!gV || !gH) return null;
+  const dist = (bar: { name: string; dist: string }, gl: string) => {
+    const d = bar.name ? dia(bar.name) : null;
+    const s = Number(bar.dist);
+    return d && s > 0 ? `${gl}${round(d)}@${round(s)}` : null;
+  };
+  return {
+    body: `Q${layers ? `(${layers}排)` : ""}${t_mm ? ` ${round(t_mm)}` : ""}`,
+    horizontal: dist(h, gH),
+    vertical: dist(v, gV),
+  };
+}
+export const wallPingfaLine = (p: WallPingfa): string => [p.horizontal && `H ${p.horizontal}`, p.vertical && `V ${p.vertical}`].filter(Boolean).join("  ");

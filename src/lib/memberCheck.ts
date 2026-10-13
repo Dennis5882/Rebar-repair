@@ -143,7 +143,8 @@ export function parseWallRows(head: string[], rows: string[][]): Record<string, 
   const chkRbrIdx = head.indexOf("CHK_RBR");
   const pmIdx = ["Rat-Py", "Rat-Pz", "Rat-My", "Rat-Mz"].map((c) => head.indexOf(c));
   const vIdx = head.indexOf("Rat-V");
-  const [puI, lwI, hwI, fckI, rvI, rhI] = ["Pu", "Lw", "hw", "fck", "rhoV.use(%)", "rhoH.use(%)"].map((c) => head.indexOf(c));
+  const [fyI, fysI] = ["fy", "fys"].map((c) => head.indexOf(c));
+  const [puI, lwI, hwI, fckI, rvI, rhI, vrI, hrI, blI] = ["Pu", "Lw", "hw", "fck", "rhoV.use(%)", "rhoH.use(%)", "V-Rebar", "H-Rebar", "BarLayer"].map((c) => head.indexOf(c));
   const out: Record<string, MemberCheckRow[]> = {};
   if (widIdx < 0) return out;
   for (const row of rows) {
@@ -152,7 +153,9 @@ export function parseWallRows(head: string[], rows: string[][]): Record<string, 
     (out[wid] ||= []).push(
       drop({
         chk: readStr(row, chkIdx), chkRbr: readStr(row, chkRbrIdx), ratPM: maxAbs(row, pmIdx), ratShear: maxAbs(row, [vIdx]),
-        pu: readAbsNum(row, puI), lw: mToMm(row, lwI), tw: mToMm(row, hwI), fck: kPa(row, fckI), rhoV: readAbsNum(row, rvI), rhoH: readAbsNum(row, rhI),
+        pu: readAbsNum(row, puI), lw: mToMm(row, lwI), tw: mToMm(row, hwI), fck: kPa(row, fckI), fy: kPa(row, fyI), fys: kPa(row, fysI), rhoV: readAbsNum(row, rvI), rhoH: readAbsNum(row, rhI),
+        vRebar: readStr(row, vrI), hRebar: readStr(row, hrI),
+        layers: ((l) => (l == null ? undefined : /double/i.test(l) ? 2 : /single/i.test(l) ? 1 : undefined))(readStr(row, blI)),
       })
     );
   }

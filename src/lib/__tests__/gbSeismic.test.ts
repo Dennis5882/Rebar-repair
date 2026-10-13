@@ -9,6 +9,7 @@ import {
   columnRhoVMin,
   gbColumnSeismic,
   gbWallSeismic,
+  distRho,
   lambdaV,
   tieRhoV,
   wallAxialRatioLimit,
@@ -153,5 +154,20 @@ describe("gbColumnSeismic / gbWallSeismic", () => {
     expect(r.mu).toBeCloseTo(3600000 / (14.3 * 1.2e6), 3);
     expect(r.issues.map((x) => x.kind)).toEqual(["wallRhoV"]);
     expect(gbWallSeismic(1, [{ ...rows[1], pu: 9000 }]).issues.map((x) => x.kind)).toEqual(["wallAxial", "wallRhoV"]);
+  });
+});
+
+// Live GB dummy WC-TABLE (2026-10-13): rhoV.use 0.584, rhoH.use 0.000 (not
+// computed), H-Rebar "d10 @200", BarLayer Double, hw 0.2 m.
+describe("wall distribution ρ when Gen NX reports 0", () => {
+  const dia = (l: string) => ({ d10: 10, d12: 12 })[l] ?? null;
+  it("parses the bar string with layers", () => {
+    expect(distRho("d10 @200", 200, 2, dia)).toBeCloseTo((100 * 2 * 78.54) / (200 * 200), 3);
+    expect(distRho("-", 200, 2, dia)).toBeNull();
+  });
+  it("uses the table value when positive, else the bar string", () => {
+    const row = { pu: 419.291, lw: 6000, tw: 200, fck: 30, rhoV: 0.584, rhoH: 0, vRebar: "d12 @200", hRebar: "d10 @200", layers: 2 };
+    expect(gbWallSeismic(1, [row], dia).issues).toEqual([]); // ρH 0.393% ≥ 0.25%
+    expect(gbWallSeismic(1, [{ ...row, hRebar: "d10 @400", layers: 1 }], dia).issues).toEqual([{ kind: "wallRhoH", actual: 0.098, limit: 0.25 }]);
   });
 });

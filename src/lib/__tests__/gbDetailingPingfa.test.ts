@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { gbBeamDetailing } from "../gbDetailing";
-import { beamPingfa, beamPingfaLine, gbGradeLetter } from "../pingfa";
+import { beamPingfa, beamPingfaLine, columnPingfa, columnPingfaLine, gbGradeLetter, wallPingfa } from "../pingfa";
 import { foldBySector } from "../detailIssues";
 import { toModelDiameter } from "../../data/rcCodePresets";
 import type { SectorFormValues } from "../beamRebarForm";
@@ -114,5 +114,23 @@ describe("beamPingfa (22G101-1)", () => {
 
   it("returns null for a non-GB grade", () => {
     expect(beamPingfa(all(), 300, 600, 420, 400, dia)).toBeNull();
+  });
+});
+
+describe("columnPingfa / wallPingfa (22G101-1)", () => {
+  const f = { mainName: "d20", mainNum: "12", useCorner: false, cornerName: "", endName: "d10", endLegY: "4", endLegZ: "4", endDist: "100", cenName: "d10", cenDist: "200" };
+  it("column: 全部纵筋, 加密/非加密 ties, leg layout (live GB dummy C500x500)", () => {
+    const p = columnPingfa(f, 500, 500, 400, 400, dia)!;
+    expect(p).toEqual({ section: "500×500", longitudinal: "12C20", stirrup: "C10@100/200", legs: "4×4" });
+    expect(columnPingfaLine(p)).toBe("12C20  C10@100/200");
+  });
+  it("column: corner bars split into 角筋 + 中部筋; HPB300 ties get A", () => {
+    const p = columnPingfa({ ...f, useCorner: true, cornerName: "d25" }, 500, 500, 400, 300, dia)!;
+    expect(p.longitudinal).toBe("角筋4C25 中部筋8C20");
+    expect(p.stirrup).toBe("A10@100/200");
+  });
+  it("wall: Q(排) thickness + distribution bars; null off the GB grades", () => {
+    expect(wallPingfa({ name: "d12", dist: "200" }, { name: "d10", dist: "200" }, 200, 2, 400, 400, dia)).toEqual({ body: "Q(2排) 200", horizontal: "C10@200", vertical: "C12@200" });
+    expect(wallPingfa({ name: "d12", dist: "200" }, { name: "d10", dist: "200" }, 200, 2, 420, 400, dia)).toBeNull();
   });
 });

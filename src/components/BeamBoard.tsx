@@ -17,6 +17,7 @@ import {
 import { genVerdictFromDemand, judgeSection, type DemandBySector, type GenVerdict, type MatProps } from "../lib/beamBoard";
 import { kdsBeamDetailing } from "../lib/kdsDetailing";
 import { gbBeamDetailing } from "../lib/gbDetailing";
+import { CrackBlock } from "./CrackBlock";
 import { beamPingfa, beamPingfaLine, type BeamPingfa } from "../lib/pingfa";
 import { toModelDiameter } from "../data/rcCodePresets";
 import type { IssueBase } from "../lib/detailIssues";
@@ -430,7 +431,13 @@ export function BeamBoard() {
     try {
       const res = await runBeamCheckSection(repKey, sid, conn);
       if (!res.ok) {
-        setActionMsg(res.code === "need_analysis" ? { ok: false, kind: "needAnalysis" } : { ok: false, kind: "recheckFail", res });
+        setActionMsg(
+          res.code === "need_load_comb"
+            ? { ok: false, kind: "needLoadComb" }
+            : res.code === "need_analysis"
+              ? { ok: false, kind: "needAnalysis" }
+              : { ok: false, kind: "recheckFail", res }
+        );
         return;
       }
       setDemand((prev) => ({ ...prev, [sid]: res.bySector }));
@@ -524,7 +531,7 @@ export function BeamBoard() {
       setStatus(
         loaded
           ? { ok: true, kind: "recheckDone", loaded, total: order.length }
-          : res.needAnalysis
+          : res.needLoadComb ? { ok: false, kind: "needLoadComb" } : res.needAnalysis
             ? { ok: false, kind: "needAnalysis" }
             : { ok: false, kind: "recheckEmpty" }
       );
@@ -968,6 +975,21 @@ export function BeamBoard() {
                   {family !== "GB" ? t("board.detailNote") : gbGrade ? t("board.gbDetailNoteSeis", { grade: t(`designCode.gbGrade${gbGrade}`) }) : t("board.gbDetailNote")}
                 </div>
               </div>
+            )}
+
+            {/* --- crack width (GB 50010 7.1.2), service moment read from Gen NX --- */}
+            {family === "GB" && selectedSid && rows[selectedSid] && (
+              <CrackBlock
+                conn={conn}
+                elemKeys={selectedGrp.elementKeys}
+                sectors={rows[selectedSid].sectors}
+                b={n(rows[selectedSid].b)}
+                h={n(rows[selectedSid].h)}
+                dt={n(rows[selectedSid].dt)}
+                db={n(rows[selectedSid].db)}
+                fcuk={mat.fck}
+                materialDB={materialDB}
+              />
             )}
           </div>
         </div>

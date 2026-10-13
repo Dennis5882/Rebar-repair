@@ -16,9 +16,11 @@ import { MemberVerdictCell } from "./MemberVerdictCell";
 import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
 import type { WallItem, WallPayload } from "../types/rebar";
 import { useDesignCode } from "../context/DesignCodeContext";
-import { rcCheckFamily } from "../data/rcCodePresets";
+import { rcCheckFamily, toModelDiameter } from "../data/rcCodePresets";
 import { gbWallSeismic, type WallSeisResult } from "../lib/gbSeismic";
 import { SeisCell, SeisDetail } from "./SeisDetail";
+import { PingfaBlock } from "./PingfaBlock";
+import { wallPingfa, wallPingfaLine, type WallPingfa } from "../lib/pingfa";
 
 // The WALL tab's board. Walls don't fit the SECT-grouped section model the
 // column/brace boards use — a wall is keyed by Wall ID and carries MULTIPLE
@@ -234,17 +236,42 @@ export function WallBoard() {
   // GB + a seismic grade: wall axial ratio (GB 50011 6.4.2) and distribution ρ
   // (GB 55008 4.4.7-1) from the WC-TABLE rows of the group's walls (worst
   // story). Advisory; members with unsaved edits are left out (stale table).
-  const { designCode, gbGrade } = useDesignCode();
+  const { designCode, materialDB, gbGrade } = useDesignCode();
   const showSeis = rcCheckFamily(designCode) === "GB" && gbGrade > 0;
+  const showPingfa = rcCheckFamily(designCode) === "GB";
   const seis = useMemo(() => {
     const out: Record<string, WallSeisResult> = {};
     if (!showSeis || !gbGrade) return out;
+    const dia = (label: string) => toModelDiameter(materialDB, label, "mm");
     for (const g of groups) {
       const rs = g.members.filter((m) => !rows[m]?.dirty).flatMap((m) => check[m] || []);
-      out[g.key] = gbWallSeismic(gbGrade, rs.length ? rs : undefined);
+      out[g.key] = gbWallSeismic(gbGrade, rs.length ? rs : undefined, dia);
     }
     return out;
-  }, [showSeis, gbGrade, groups, rows, check]);
+  }, [showSeis, gbGrade, groups, rows, check, materialDB]);
+
+  // 平法 墙身 line per group, from the shown REBW item (mm) + the WC-TABLE's
+  // fy/fys, thickness and BarLayer — so it appears after a 재검토.
+  const pingfaOf = useCallback(
+    (wid: string, it: WallItem | undefined): WallPingfa | null => {
+      if (!showPingfa || !it) return null;
+      const m = (check[wid] || []).find((x) => x.fy != null);
+      if (!m?.fy) return null;
+      const dia = (label: string) => toModelDiameter(materialDB, label, "mm");
+      const v = it.VERTICAL_REBAR || {};
+      const h = it.HORIZONTAL_REBAR || {};
+      return wallPingfa(
+        { name: v.NAME || "", dist: v.DIST != null ? String(v.DIST) : "" },
+        { name: h.NAME || "", dist: h.DIST != null ? String(h.DIST) : "" },
+        m.tw ?? thicknessMm[wid] ?? null,
+        m.layers ?? null,
+        m.fy,
+        m.fys ?? m.fy,
+        dia
+      );
+    },
+    [showPingfa, check, materialDB, thicknessMm]
+  );
 
   const selectedGroup = useMemo(() => groups.find((g) => selectedId != null && g.members.includes(selectedId)) || null, [groups, selectedId]);
   const [reportOpen, setReportOpen] = useState(false);
@@ -372,7 +399,7 @@ export function WallBoard() {
       setStatus(
         loaded
           ? { ok: true, kind: "recheckDone", loaded, total: order.length }
-          : res.needAnalysis
+          : res.needLoadComb ? { ok: false, kind: "needLoadComb" } : res.needAnalysis
             ? { ok: false, kind: "needAnalysis" }
             : { ok: false, kind: "recheckEmptyMember" }
       );
@@ -400,7 +427,7 @@ export function WallBoard() {
         return next;
       });
       const anyJudged = group.members.some((id) => (res.byKey[id] || []).some((r) => r.chk != null));
-      setActionMsg(anyJudged ? { ok: true, kind: "sectionChecked" } : res.needAnalysis ? { ok: false, kind: "needAnalysis" } : { ok: false, kind: "recheckEmptyMember" });
+      setActionMsg(anyJudged ? { ok: true, kind: "sectionChecked" } : res.needLoadComb ? { ok: false, kind: "needLoadComb" } : res.needAnalysis ? { ok: false, kind: "needAnalysis" } : { ok: false, kind: "recheckEmptyMember" });
     } catch (e) {
       setActionMsg({ ok: false, kind: "recheckFail", res: { ok: false, error: String(e) } });
     } finally {
@@ -534,6 +561,7 @@ export function WallBoard() {
                 <th>{t("wboard.colHorizontal")}</th>
                 <th>{t("wboard.colEnd")}</th>
                 <th>{t("wboard.colCover")}</th>
+                {showPingfa && <th>{t("board.colPingfa")}</th>}
                 {showSeis && <th>{t("board.colAxialRatio")}</th>}
                 <th>{t("board.colVerdict")}</th>
               </tr>
@@ -568,13 +596,14 @@ export function WallBoard() {
                     <td className="mono">{h.NAME ? <><span className="bar-stir">{h.NAME}</span>@{h.DIST ?? "?"}</> : "—"}</td>
                     <td className="mono">{it0.USE_END_REBAR && er.NAME ? <><b>{er.NUM ?? "?"}</b>×{er.NAME}</> : "—"}</td>
                     <td className="mono">{cc.DW ?? "?"}/{cc.DE ?? "?"}</td>
+                    {showPingfa && <td className="mono cell-pingfa">{((p) => (p ? wallPingfaLine(p) || "—" : "—"))(pingfaOf(repId, it0))}</td>}
                     {showSeis && <SeisCell res={seis[g.key]} />}
                     <MemberVerdictCell v={groupVerdicts[g.key]} genNxLabel={t("board.verdictGenNx")} warn={showSeis ? seis[g.key]?.issues.length : 0} />
                   </tr>
                 );
               })}
               {visibleGroups.length === 0 && (
-                <tr><td colSpan={9 + (showSeis ? 1 : 0)} className="board-empty">{t("board.filterEmpty")}</td></tr>
+                <tr><td colSpan={9 + (showSeis ? 1 : 0) + (showPingfa ? 1 : 0)} className="board-empty">{t("board.filterEmpty")}</td></tr>
               )}
             </tbody>
           </table>
@@ -757,6 +786,15 @@ export function WallBoard() {
                 <JudgeBar label={t("board.axialFlexLabel")} sym="Rat" ratio={selectedVerdict.ratPM} cap={null} unit="" t={t} />
                 <JudgeBar label={t("board.shearLabel")} sym="Rat" ratio={selectedVerdict.ratShear} cap={null} unit="" t={t} />
               </div>
+            )}
+            {showPingfa && selectedGroup && selectedId && (
+              <PingfaBlock
+                lines={((p) =>
+                  p
+                    ? [p.body, p.horizontal && t("board.pingfaWallH", { bar: p.horizontal }), p.vertical && t("board.pingfaWallV", { bar: p.vertical })].filter((x): x is string => !!x)
+                    : null)(pingfaOf(selectedId, rows[selectedId]?.items[segIndex]))}
+                noteKey="board.pingfaNoteWall"
+              />
             )}
             {showSeis && selectedGroup && seis[selectedGroup.key] && (
               <SeisDetail
