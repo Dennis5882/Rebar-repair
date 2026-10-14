@@ -9,7 +9,7 @@ import { EMPTY_COLUMN_FORM, buildColumnPayload, columnFormIssue, fillColumnForm,
 import { useMemberVerdict } from "../lib/useMemberVerdict";
 import { lenToMm, lenToModel, numToMm } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
-import { ReportDrawer, type ReportTargets } from "./ReportDrawer";
+import { ReportDrawer, reportVerdict, type ReportLists, type ReportTargets } from "./ReportDrawer";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
@@ -412,9 +412,18 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   const selectedGrp = selectedSid ? sections[selectedSid] : null;
   const [reportOpen, setReportOpen] = useState(false);
   const closeReport = useCallback(() => setReportOpen(false), []);
-  const reportAll = useMemo<ReportTargets>(
-    () => ({ label: String(order.length), elemKeys: order.flatMap((sid) => sections[sid]?.elementKeys || []), sectionIds: order }),
-    [order, sections],
+  const reportLists = useMemo<ReportLists>(
+    () => ({
+      memb: order.flatMap((sid) =>
+        [...(sections[sid]?.elementKeys || [])]
+          .sort((a, b) => Number(a) - Number(b))
+          .map((ek) => ({ key: ek, label: `#${ek}`, sub: sectionGroupLabel(t, sid, sections[sid]), ...reportVerdict(verdicts[sid]) })),
+      ),
+      prop: order
+        .filter((sid) => /^\d+$/.test(sid))
+        .map((sid) => ({ key: sid, label: sectionGroupLabel(t, sid, sections[sid]), ...reportVerdict(verdicts[sid]) })),
+    }),
+    [order, sections, t, verdicts],
   );
   const reportSel = useMemo<ReportTargets | null>(
     () =>
@@ -431,7 +440,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
 
   return (
     <div className="beam-board">
-      <ReportDrawer member={type} open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} all={reportAll} />
+      <ReportDrawer member={type} open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} lists={reportLists} />
       {/* --- toolbar --- */}
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">

@@ -80,7 +80,13 @@ export function isListStatus(s: StatusMsg): boolean {
 // here alongside the text resolvers so a new status kind only has to teach
 // its ok/err-ness in one place.
 export function statusClass(s: StatusMsg): "ok" | "err" {
-  return s.ok ? "ok" : "err";
+  return s.ok || isRecheckPending(s) ? "ok" : "err";
+}
+
+// A recheck whose HTTP call timed out is NOT a failure: the solve usually
+// keeps running (and may commit) inside Gen NX — same idea as analyzeRunning.
+function isRecheckPending(s: StatusMsg): boolean {
+  return s.kind === "recheckFail" && s.res.code === "timeout";
 }
 
 export function statusText(t: TFn, s: StatusMsg): string {
@@ -135,6 +141,7 @@ export function statusText(t: TFn, s: StatusMsg): string {
     case "recheckEmptyMember":
       return t("board.recheckEmptyMember");
     case "recheckFail":
+      if (isRecheckPending(s)) return t("board.recheckPending");
       return t("board.recheckFail", { error: errText(t, s.res) });
     case "sectionChecking":
       return t("board.checkingSection");

@@ -24,7 +24,7 @@ import type { IssueBase } from "../lib/detailIssues";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { SectionPreview } from "./SectionPreview";
-import { ReportDrawer, type ReportTargets } from "./ReportDrawer";
+import { ReportDrawer, reportVerdict, type ReportLists, type ReportTargets } from "./ReportDrawer";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { BoardEmptyState, BoardSummaryPlaceholder } from "./BoardEmpty";
@@ -571,9 +571,18 @@ export function BeamBoard() {
   const selected = selectedSid ? rows[selectedSid] : null;
   const [reportOpen, setReportOpen] = useState(false);
   const closeReport = useCallback(() => setReportOpen(false), []);
-  const reportAll = useMemo<ReportTargets>(
-    () => ({ label: String(order.length), elemKeys: order.flatMap((sid) => sections[sid]?.elementKeys || []), sectionIds: order }),
-    [order, sections],
+  const reportLists = useMemo<ReportLists>(
+    () => ({
+      memb: order.flatMap((sid) =>
+        [...(sections[sid]?.elementKeys || [])]
+          .sort((a, b) => Number(a) - Number(b))
+          .map((ek) => ({ key: ek, label: `#${ek}`, sub: sectionGroupLabel(t, sid, sections[sid]), ...reportVerdict(verdicts[sid]) })),
+      ),
+      prop: order
+        .filter((sid) => /^\d+$/.test(sid))
+        .map((sid) => ({ key: sid, label: sectionGroupLabel(t, sid, sections[sid]), ...reportVerdict(verdicts[sid]) })),
+    }),
+    [order, sections, t, verdicts],
   );
   const reportSel = useMemo<ReportTargets | null>(
     () =>
@@ -608,7 +617,7 @@ export function BeamBoard() {
 
   return (
     <div className="beam-board">
-      <ReportDrawer member="BEAM" open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} all={reportAll} />
+      <ReportDrawer member="BEAM" open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} lists={reportLists} />
       {/* --- toolbar: connection-driven load + global materials --- */}
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">

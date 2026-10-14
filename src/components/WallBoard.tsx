@@ -9,7 +9,7 @@ import { EMPTY_WALL_FORM, buildWallItem, fillWallForm, isBareWallItem, segmentLa
 import { useMemberVerdict, type EffVerdict } from "../lib/useMemberVerdict";
 import { numToMm, numToModel } from "../lib/units";
 import { SectionPreview } from "./SectionPreview";
-import { ReportDrawer, type ReportTargets } from "./ReportDrawer";
+import { ReportDrawer, reportVerdict, type ReportLists, type ReportTargets } from "./ReportDrawer";
 import { BarSelect } from "./BarSelect";
 import { JudgeBar } from "./JudgeBar";
 import { MemberVerdictCell } from "./MemberVerdictCell";
@@ -324,7 +324,10 @@ export function WallBoard() {
   const [reportOpen, setReportOpen] = useState(false);
   const closeReport = useCallback(() => setReportOpen(false), []);
   // Walls report by Wall ID; "whole board" lists every loaded wall explicitly.
-  const reportAll = useMemo<ReportTargets>(() => ({ label: String(groups.length), wallIds: groups.flatMap((g) => g.members) }), [groups]);
+  const reportLists = useMemo<ReportLists>(
+    () => ({ wall: groups.flatMap((g) => g.members.map((id) => ({ key: String(id), label: `#${id}`, sub: g.label, ...reportVerdict(verdicts[id]) }))) }),
+    [groups, verdicts],
+  );
   const reportSel = useMemo<ReportTargets | null>(
     () => (selectedGroup ? { label: selectedGroup.label, wallIds: selectedGroup.members } : null),
     [selectedGroup],
@@ -516,7 +519,7 @@ export function WallBoard() {
 
   return (
     <div className="beam-board">
-      <ReportDrawer member="WALL" open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} all={reportAll} />
+      <ReportDrawer member="WALL" open={reportOpen} onClose={closeReport} conn={conn} selected={reportSel} lists={reportLists} />
       {/* --- toolbar --- */}
       <div className="board-toolbar panel">
         <div className="board-toolbar-row">
