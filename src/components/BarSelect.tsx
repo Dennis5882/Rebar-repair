@@ -34,7 +34,7 @@ export function BarSelect({ id, value, onChange, placeholder }: Props) {
         <option value="">{t("common.pickBarOption")}</option>
         {bars.map((b) => (
           <option key={b.label} value={b.label}>
-            {b.label}
+            {b.xref ? `${b.label} (${b.xref})` : b.label}
           </option>
         ))}
       </select>

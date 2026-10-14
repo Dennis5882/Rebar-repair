@@ -21,6 +21,8 @@ import { gbWallBoundary, gbWallSeismic, type WallBoundaryResult, type WallSeisRe
 import { strengthenedStories } from "../lib/gbMemberClass";
 import { gbConcrete } from "../lib/rcBeamCheck";
 import { SeisCell, SeisDetail } from "./SeisDetail";
+import { TwWallSeisBlock } from "./TwWallSeisBlock";
+import { twWallSeismic, type TwWallResult } from "../lib/twWallSeismic";
 import { PingfaBlock } from "./PingfaBlock";
 import { wallPingfa, wallPingfaLine, type WallPingfa } from "../lib/pingfa";
 
@@ -240,8 +242,10 @@ export function WallBoard() {
   // GB + a seismic grade: wall axial ratio (GB 50011 6.4.2) and distribution ρ
   // (GB 55008 4.4.7-1) from the WC-TABLE rows of the group's walls (worst
   // story). Advisory; members with unsaved edits are left out (stale table).
-  const { designCode, materialDB, gbGrade } = useDesignCode();
+  const { designCode, materialDB, gbGrade, twSmf } = useDesignCode();
   const showSeis = rcCheckFamily(designCode) === "GB" && gbGrade > 0;
+  // Taiwan special structural wall: 112年版 18.7.2 web-steel rules (advisory).
+  const showTwSeis = rcCheckFamily(designCode) === "TWN_ACI" && twSmf;
   const showPingfa = rcCheckFamily(designCode) === "GB";
   const selectedGroup = useMemo(() => groups.find((g) => selectedId != null && g.members.includes(selectedId)) || null, [groups, selectedId]);
 
@@ -297,6 +301,32 @@ export function WallBoard() {
     }
     return out;
   }, [showSeis, gbGrade, groups, rows, check, materialDB, boundary, selectedGroup, selectedId, segIndex]);
+
+  const twSeis = useMemo(() => {
+    const out: Record<string, TwWallResult> = {};
+    if (!showTwSeis) return out;
+    const dia = (label: string) => toModelDiameter(materialDB, label, "mm");
+    for (const g of groups) {
+      const rs = g.members.filter((m) => !rows[m]?.dirty).flatMap((m) => check[m] || []);
+      // wall height from the shown segment's story range (levels are model units)
+      const repId = selectedGroup?.key === g.key && selectedId ? selectedId : g.members[0];
+      const it = rows[repId]?.items[selectedGroup?.key === g.key ? segIndex : 0];
+      const idx = (name?: string) => (name ? stories.indexOf(name) : -1);
+      const from = idx(it?.STORY?.FROM);
+      const to = idx(it?.STORY?.TO);
+      const lv = storyLevels.map((v) => Number(numToMm(v, unit)) || 0);
+      let hw: number | null = null;
+      if (from >= 0 && to >= 0 && lv.length) {
+        const lo = Math.min(from, to);
+        const hi = Math.max(from, to);
+        hw = (lv[Math.min(hi + 1, lv.length - 1)] ?? 0) - (lv[lo] ?? 0);
+      } else if (lv.length > 1) {
+        hw = lv[lv.length - 1] - lv[0];
+      }
+      out[g.key] = twWallSeismic(rs.length ? rs : undefined, dia, hw && hw > 0 ? hw : null);
+    }
+    return out;
+  }, [showTwSeis, groups, rows, check, materialDB, selectedGroup, selectedId, segIndex, stories, storyLevels, unit]);
 
   // 平法 墙身 line per group, from the shown REBW item (mm) + the WC-TABLE's
   // fy/fys, thickness and BarLayer — so it appears after a 재검토.
@@ -844,6 +874,12 @@ export function WallBoard() {
                     ? [p.body, p.horizontal && t("board.pingfaWallH", { bar: p.horizontal }), p.vertical && t("board.pingfaWallV", { bar: p.vertical })].filter((x): x is string => !!x)
                     : null)(pingfaOf(selectedId, rows[selectedId]?.items[segIndex]))}
                 noteKey="board.pingfaNoteWall"
+              />
+            )}
+            {showTwSeis && selectedGroup && twSeis[selectedGroup.key] && (
+              <TwWallSeisBlock
+                res={twSeis[selectedGroup.key]}
+                waiting={selectedGroup.members.some((m) => !check[m] || rows[m]?.dirty)}
               />
             )}
             {showSeis && selectedGroup && seis[selectedGroup.key] && (

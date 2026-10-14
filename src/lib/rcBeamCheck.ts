@@ -142,10 +142,18 @@ export function flexuralCapacity(
   fy: number,
   b: number,
   d: number,
-  As: number
+  As: number,
+  // Compression steel on the opposite face (KDS/TWN only): area and depth from
+  // the compression fibre. Solved by strain compatibility; omitted ⇒ the
+  // singly-reinforced Whitney block below.
+  comp?: { As: number; d: number }
 ): FlexuralCapacity | null {
   if (!(fck > 0 && fy > 0 && b > 0 && d > 0 && As > 0)) return null;
   if (family === "GB") return gbFlexuralCapacity(fck, fy, b, d, As);
+  if (comp && comp.As > 0 && comp.d > 0 && comp.d < d) {
+    const r = doublyReinforced(family, fck, fy, b, d, As, comp.As, comp.d);
+    if (r) return r;
+  }
 
   const beta1 = family === "KDS" ? interpolateTable(fck, "beta1") : twnAciBeta1(fck);
   const eta = family === "KDS" ? interpolateTable(fck, "eta") : 1;
@@ -194,6 +202,57 @@ export function flexuralCapacity(
   }
 
   const Mn_kNm = (As * fy * (d - a / 2)) / 1e6;
+  return { phi, zone, a_mm: a, c_mm: c, epsT, Mn_kNm, phiMn_kNm: phi * Mn_kNm };
+}
+
+// Strain-compatibility solution with compression steel A's at depth d' (the
+// textbook ACI model: concrete stress block 0.85·f'c·β1·c, steel elastic-
+// perfectly-plastic, displaced concrete neglected). φ comes from the same
+// net tension strain εt of the tension steel as the singly reinforced path.
+function doublyReinforced(family: RcFormulaFamily, fck: number, fy: number, b: number, d: number, As: number, AsP: number, dP: number): FlexuralCapacity | null {
+  const beta1 = family === "KDS" ? interpolateTable(fck, "beta1") : twnAciBeta1(fck);
+  const eta = family === "KDS" ? interpolateTable(fck, "eta") : 1;
+  const stress = (strain: number) => Math.max(-fy, Math.min(fy, strain * Es_MPa)); // + = compression
+  const force = (c: number) => {
+    const a = Math.min(beta1 * c, 2 * d);
+    const fsT = Math.min(fy, ((0.003 * (d - c)) / c) * Es_MPa); // tension steel stress (≥0 for c ≤ d)
+    const fsC = stress((0.003 * (c - dP)) / c);
+    return 0.85 * eta * fck * a * b + AsP * fsC - As * Math.max(fsT, 0);
+  };
+  // F(c) increases with c; bracket and bisect on (dP, 2d).
+  let lo = dP * 1.0001;
+  let hi = 2 * d;
+  if (force(lo) > 0 || force(hi) < 0) return null;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (force(mid) < 0) lo = mid;
+    else hi = mid;
+  }
+  const c = (lo + hi) / 2;
+  const epsT = (0.003 * (d - c)) / c;
+  const epsTy = fy / Es_MPa;
+  const a = Math.min(beta1 * c, 2 * d);
+  const fsC = stress((0.003 * (c - dP)) / c);
+  const Mn_N = 0.85 * eta * fck * a * b * (d - a / 2) + AsP * fsC * (d - dP);
+  if (!(Mn_N > 0)) return null;
+
+  let phi: number;
+  let zone: StrainZone;
+  const phiC = 0.65;
+  const phiT = family === "KDS" ? 0.85 : 0.9;
+  const upper = family === "KDS" ? 0.005 : epsTy + 0.003;
+  const span = family === "KDS" ? 0.005 - epsTy : 0.003;
+  if (epsT >= upper) {
+    phi = phiT;
+    zone = "tension";
+  } else if (epsT <= epsTy) {
+    phi = phiC;
+    zone = "compression";
+  } else {
+    phi = phiC + ((phiT - phiC) * (epsT - epsTy)) / span;
+    zone = "transition";
+  }
+  const Mn_kNm = Mn_N / 1e6;
   return { phi, zone, a_mm: a, c_mm: c, epsT, Mn_kNm, phiMn_kNm: phi * Mn_kNm };
 }
 
@@ -246,13 +305,35 @@ export function shearCapacity(
   bw: number,
   d: number,
   Av: number,
-  s: number
+  s: number,
+  // Tension steel area at the section (TWN only): enables the 22.5.5.1 表
+  // (b)/(c) Vc that depends on ρw and, below Av,min, the size effect λs.
+  As?: number
 ): ShearCapacity | null {
   if (!(fck > 0 && bw > 0 && d > 0)) return null;
   if (family === "GB") return gbShearCapacity(fck, fyt, bw, d, Av, s);
   const coeff = family === "KDS" ? 1 / 6 : 0.17;
-  const Vc_N = coeff * Math.sqrt(fck) * bw * d;
-  const Vs_N = Av > 0 && s > 0 && fyt > 0 ? (Av * fyt * d) / s : 0;
+  let Vc_N = coeff * Math.sqrt(fck) * bw * d;
+  if (family === "TWN_ACI" && As != null && As > 0) {
+    // 表22.5.5.1 (no axial force): (a) 0.17λ√f'c, (b) 0.68λρw^(1/3)√f'c when
+    // Av ≥ Av,min — either may be used, so the larger; (c) adds λs below Av,min
+    // and then (a) is not available. 22.5.5.1.1 caps Vc at 0.42λ√f'c·bw·d.
+    const rho = As / (bw * d);
+    const sqrtF = Math.sqrt(fck);
+    const fytAvmin = Math.min(fyt, 420);
+    const avMin = s > 0 && fytAvmin > 0 ? (Math.max(0.062 * sqrtF, 0.35) * bw * s) / fytAvmin : 0;
+    const alt = 0.68 * Math.cbrt(rho) * sqrtF * bw * d;
+    if (Av >= avMin - 1e-9) {
+      Vc_N = Math.max(Vc_N, alt);
+    } else {
+      const lambdaS = Math.min(1, Math.sqrt(2 / (1 + d / 250)));
+      Vc_N = lambdaS * alt;
+    }
+    Vc_N = Math.min(Vc_N, 0.42 * sqrtF * bw * d);
+  }
+  // Taiwan 表20.2.2.4(a): CNS 560 stirrups design fyt ≤ 420 MPa (4,200 kgf/cm²).
+  const fytUse = family === "KDS" ? fyt : Math.min(fyt, 420);
+  const Vs_N = Av > 0 && s > 0 && fytUse > 0 ? (Av * fytUse * d) / s : 0;
   const Vn_N = Vc_N + Vs_N;
   const phi = 0.75;
   return { phi, Vc_kN: Vc_N / 1000, Vs_kN: Vs_N / 1000, Vn_kN: Vn_N / 1000, phiVn_kN: (phi * Vn_N) / 1000 };

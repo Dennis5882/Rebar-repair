@@ -1,5 +1,6 @@
 import type { SectorKey } from "../types/rebar";
 import { SECTORS } from "../types/rebar";
+import { TENSION_FACE } from "./detailIssues";
 import { barArea_mm2, flexuralCapacity, shearCapacity, type RcFormulaFamily } from "./rcBeamCheck";
 import { toModelDiameter } from "../data/rcCodePresets";
 import type { SectorFormValues } from "./beamRebarForm";
@@ -89,23 +90,32 @@ export function sectorCapacity(
   h_mm: number,
   dt_mm: number,
   db_mm: number,
-  s: SectorFormValues
+  s: SectorFormValues,
+  station?: SectorKey
 ): SectorCap {
   const dNeg = h_mm - dt_mm; // top bars resist negative (hogging) moment
   const dPos = h_mm - db_mm; // bottom bars resist positive (sagging) moment
 
   const topDia = toModelDiameter(materialDB, s.topName, "mm");
   const asTop = topDia && s.topNum ? barArea_mm2(topDia) * num(s.topNum) : 0;
-  const neg = asTop > 0 ? flexuralCapacity(family, mat.fck, mat.fy, b_mm, dNeg, asTop) : null;
+  const botDia0 = toModelDiameter(materialDB, s.botName, "mm");
+  const asBot0 = botDia0 && s.botNum ? barArea_mm2(botDia0) * num(s.botNum) : 0;
+  // The opposite face acts as compression steel (KDS/TWN strain-compatibility).
+  const compNeg = asBot0 > 0 && db_mm > 0 ? { As: asBot0, d: db_mm } : undefined;
+  const compPos = asTop > 0 && dt_mm > 0 ? { As: asTop, d: dt_mm } : undefined;
+  const neg = asTop > 0 ? flexuralCapacity(family, mat.fck, mat.fy, b_mm, dNeg, asTop, compNeg) : null;
 
   const botDia = toModelDiameter(materialDB, s.botName, "mm");
   const asBot = botDia && s.botNum ? barArea_mm2(botDia) * num(s.botNum) : 0;
-  const pos = asBot > 0 ? flexuralCapacity(family, mat.fck, mat.fy, b_mm, dPos, asBot) : null;
+  const pos = asBot > 0 ? flexuralCapacity(family, mat.fck, mat.fy, b_mm, dPos, asBot, compPos) : null;
 
   const shearDia = toModelDiameter(materialDB, s.shearName, "mm");
   const av = shearDia && s.shearLeg ? barArea_mm2(shearDia) * num(s.shearLeg) : 0;
   const dShear = Math.max(dNeg, dPos) || h_mm;
-  const shear = shearCapacity(family, mat.fck, mat.fyt, b_mm, dShear, av, num(s.shearDist));
+  // Tension steel at the station (top at the supports, bottom at mid-span) for
+  // the Taiwan ρw-dependent Vc; without a station take the larger face.
+  const asT = station ? (TENSION_FACE[station].top ? asTop : asBot) : Math.max(asTop, asBot);
+  const shear = shearCapacity(family, mat.fck, mat.fyt, b_mm, dShear, av, num(s.shearDist), asT > 0 ? asT : undefined);
 
   return {
     phiMnNeg: neg ? neg.phiMn_kNm : null,
@@ -155,7 +165,7 @@ export function judgeSection(
   let ratioShear: number | undefined;
 
   for (const key of SECTORS) {
-    const cap = sectorCapacity(family, mat, materialDB, b_mm, h_mm, dt_mm, db_mm, sectors[key]);
+    const cap = sectorCapacity(family, mat, materialDB, b_mm, h_mm, dt_mm, db_mm, sectors[key], key);
     govNeg = minCap(govNeg, cap.phiMnNeg);
     govPos = minCap(govPos, cap.phiMnPos);
     govV = minCap(govV, cap.phiVn);

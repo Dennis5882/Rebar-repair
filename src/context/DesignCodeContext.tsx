@@ -22,6 +22,15 @@ interface DesignCodeContextValue {
   setGbGrade: (g: 0 | SeismicGrade) => void;
   gbSystem: GbSystem;
   setGbSystem: (s: GbSystem) => void;
+  // TWN only: 特殊抗彎矩構架 (112年版 18.3) beam rules on/off. Gen NX has no API
+  // field for it (same as GB's 抗震等级), so the user picks it here.
+  twSmf: boolean;
+  setTwSmf: (v: boolean) => void;
+  // Unit the board's material strength inputs (fck / fy / fyt) are typed and
+  // shown in. The boards still compute in MPa; "kgf/cm2" (Taiwan drawings) is a
+  // display/input conversion with the code's own ×10 pairing (280 ↔ 28 MPa).
+  stressUnit: "MPa" | "kgf/cm2";
+  setStressUnit: (u: "MPa" | "kgf/cm2") => void;
 }
 
 const DesignCodeContext = createContext<DesignCodeContextValue | null>(null);
@@ -124,12 +133,24 @@ export function DesignCodeProvider({ children }: { children: ReactNode }) {
     writeSession("gbSystem", s);
   }, []);
 
+  const [twSmf, setTwSmfState] = useState<boolean>(() => readSession("twSmf", "0") === "1");
+  const setTwSmf = useCallback((v: boolean) => {
+    setTwSmfState(v);
+    writeSession("twSmf", v ? "1" : "0");
+  }, []);
+
+  const [stressUnit, setStressUnitState] = useState<"MPa" | "kgf/cm2">(() => (readSession("stressUnit", "") === "kgf/cm2" ? "kgf/cm2" : "MPa"));
+  const setStressUnit = useCallback((u: "MPa" | "kgf/cm2") => {
+    setStressUnitState(u);
+    writeSession("stressUnit", u);
+  }, []);
+
   const bars = useMemo(() => (materialDB ? getBars(materialDB) : []), [materialDB]);
   const overridden = useMemo(() => isOverrideFn(designCode, materialDB), [designCode, materialDB]);
 
   const value = useMemo<DesignCodeContextValue>(
-    () => ({ designCode, setDesignCode, materialDB, setMaterialDB, isOverride: overridden, bars, gbGrade, setGbGrade, gbSystem, setGbSystem }),
-    [designCode, setDesignCode, materialDB, setMaterialDB, overridden, bars, gbGrade, setGbGrade, gbSystem, setGbSystem]
+    () => ({ designCode, setDesignCode, materialDB, setMaterialDB, isOverride: overridden, bars, gbGrade, setGbGrade, gbSystem, setGbSystem, twSmf, setTwSmf, stressUnit, setStressUnit }),
+    [designCode, setDesignCode, materialDB, setMaterialDB, overridden, bars, gbGrade, setGbGrade, gbSystem, setGbSystem, twSmf, setTwSmf, stressUnit, setStressUnit]
   );
 
   return <DesignCodeContext.Provider value={value}>{children}</DesignCodeContext.Provider>;

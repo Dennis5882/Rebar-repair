@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useDesignCode } from "../context/DesignCodeContext";
@@ -17,6 +17,8 @@ import {
 import { genVerdictFromDemand, judgeSection, type DemandBySector, type GenVerdict, type MatProps } from "../lib/beamBoard";
 import { kdsBeamDetailing } from "../lib/kdsDetailing";
 import { gbBeamDetailing } from "../lib/gbDetailing";
+import { twBeamDetailing } from "../lib/twDetailing";
+import { DevLengthBlock } from "./DevLengthBlock";
 import { CrackBlock } from "./CrackBlock";
 import { beamPingfa, beamPingfaLine, type BeamPingfa } from "../lib/pingfa";
 import { toModelDiameter } from "../data/rcCodePresets";
@@ -116,7 +118,12 @@ const MODE_LABEL: Record<BeamInputMode, string> = { all: "beam.modeAll", endCent
 export function BeamBoard() {
   const { t } = useI18n();
   const { payload: conn, lengthUnit } = useConn();
-  const { designCode, materialDB, gbGrade } = useDesignCode();
+  const { designCode, materialDB, gbGrade, twSmf, stressUnit } = useDesignCode();
+  // fck/fy/fyt state is MPa; kgf/cm² (Taiwan) is the code-paired ×10 view of it.
+  const sk = stressUnit === "kgf/cm2" ? 10 : 1;
+  const showStress = (v: string) => (v === "" || sk === 1 ? v : String(Math.round(Number(v) * sk * 1e6) / 1e6));
+  const stressLabel = (s: string) => (sk === 10 ? s.replace("MPa", "kgf/cm²") : s);
+  const readStress = (v: string) => (v === "" || sk === 1 ? v : String(Math.round((Number(v) / sk) * 1e9) / 1e9));
   const { nonce: loadAllNonce } = useLoadAll();
 
   const [sections, setSections] = useState<Record<string, BeamSectionGroup>>({});
@@ -155,9 +162,16 @@ export function BeamBoard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAllNonce]);
 
-  const [fck, setFck] = useState("24");
-  const [fy, setFy] = useState("400");
-  const [fyt, setFyt] = useState("400");
+  const [fck, setFckState] = useState("24");
+  const [fy, setFyState] = useState("400");
+  const [fyt, setFytState] = useState("400");
+  // Until the user types a material value, follow the design code's usual
+  // starting grades (KDS C24/SD400, Taiwan f'c 280 kgf/cm² ≈ 28 MPa / SD420,
+  // GB C30/HRB400) instead of leaving the KDS numbers on a Taiwan model.
+  const matTouched = useRef(false);
+  const setFck = (v: string) => { matTouched.current = true; setFckState(v); };
+  const setFy = (v: string) => { matTouched.current = true; setFyState(v); };
+  const setFyt = (v: string) => { matTouched.current = true; setFytState(v); };
   const [defB] = useState(DEFAULT_B);
   const [defH] = useState(DEFAULT_H);
 
@@ -208,6 +222,13 @@ export function BeamBoard() {
   useEffect(() => setActionMsg(null), [selectedSid]);
 
   const family = formulaFamily(designCode);
+  useEffect(() => {
+    if (matTouched.current) return;
+    const d = family === "TWN_ACI" ? ["28", "420", "420"] : family === "GB" ? ["30", "400", "400"] : ["24", "400", "400"];
+    setFckState(d[0]);
+    setFyState(d[1]);
+    setFytState(d[2]);
+  }, [family]);
   const mat: MatProps = useMemo(() => ({ fck: n(fck), fy: n(fy), fyt: n(fyt) }), [fck, fy, fyt]);
 
   const judgments = useMemo(() => {
@@ -235,7 +256,7 @@ export function BeamBoard() {
   // (ρmin, 表9.2.9 spacing, ρsv, diameters). Advisory, never folded into OK/NG.
   const detailing = useMemo(() => {
     const out: Record<string, ShownDetail> = {};
-    if (family !== "KDS" && family !== "GB") return out;
+    if (family !== "KDS" && family !== "GB" && family !== "TWN_ACI") return out;
     for (const sid of order) {
       const r = rows[sid];
       if (!r) continue;
@@ -243,13 +264,16 @@ export function BeamBoard() {
       if (family === "KDS") {
         const issues = kdsBeamDetailing(...args).map((d) => ({ ...d, msgKey: d.kind === "sMax" && d.halved ? "board.detail.sMaxHalved" : `board.detail.${d.kind}` }));
         out[sid] = { issues, complete: true };
+      } else if (family === "TWN_ACI") {
+        const issues = twBeamDetailing(...args, twSmf).map((d) => ({ ...d, msgKey: `board.twDetail.${d.kind}` }));
+        out[sid] = { issues, complete: true };
       } else {
         const gb = gbBeamDetailing(...args, gbGrade || undefined);
         out[sid] = { issues: gb.issues.map((d) => ({ ...d, msgKey: `board.gbDetail.${d.kind}` })), complete: gb.complete };
       }
     }
     return out;
-  }, [family, order, rows, mat, materialDB, demand, gbGrade]);
+  }, [family, order, rows, mat, materialDB, demand, gbGrade, twSmf]);
 
   // 平法 (22G101-1) notation — GB models only; adds one board column.
   const showPingfa = family === "GB";
@@ -641,9 +665,9 @@ export function BeamBoard() {
           )}
           <div className="board-mat">
             <span className="board-mat-title">{t("board.materialTitle")}</span>
-            <label className="board-mat-fld">{t("beam.fck")}<input type="number" step="any" value={fck} onChange={(e) => setFck(e.target.value)} /></label>
-            <label className="board-mat-fld">{t("beam.fy")}<input type="number" step="any" value={fy} onChange={(e) => setFy(e.target.value)} /></label>
-            <label className="board-mat-fld">{t("beam.fyt")}<input type="number" step="any" value={fyt} onChange={(e) => setFyt(e.target.value)} /></label>
+            <label className="board-mat-fld">{stressLabel(t("beam.fck"))}<input type="number" step="any" value={showStress(fck)} onChange={(e) => setFck(readStress(e.target.value))} /></label>
+            <label className="board-mat-fld">{stressLabel(t("beam.fy"))}<input type="number" step="any" value={showStress(fy)} onChange={(e) => setFy(readStress(e.target.value))} /></label>
+            <label className="board-mat-fld">{stressLabel(t("beam.fyt"))}<input type="number" step="any" value={showStress(fyt)} onChange={(e) => setFyt(readStress(e.target.value))} /></label>
           </div>
         </div>
         {status && (
@@ -963,12 +987,12 @@ export function BeamBoard() {
             )}
 
             {/* --- detailing rules (advisory; KDS or GB models) --- */}
-            {(family === "KDS" || family === "GB") && selectedSid && detailing[selectedSid] && (
+            {(family === "KDS" || family === "GB" || family === "TWN_ACI") && selectedSid && detailing[selectedSid] && (
               <div className="judge-block detail-block">
-                <div className="judge-title">{t(family === "GB" ? "board.gbDetailTitle" : "board.detailTitle")}</div>
+                <div className="judge-title">{t(family === "GB" ? "board.gbDetailTitle" : family === "TWN_ACI" ? "board.twDetailTitle" : "board.detailTitle")}</div>
                 {!detailing[selectedSid].complete && <div className="hint detail-note">{t("board.gbDetailPartial")}</div>}
                 {detailing[selectedSid].issues.length === 0 ? (
-                  detailing[selectedSid].complete && <div className="detail-ok">{t(family === "GB" ? "board.gbDetailOk" : "board.detailOk")}</div>
+                  detailing[selectedSid].complete && <div className="detail-ok">{t(family === "GB" ? "board.gbDetailOk" : family === "TWN_ACI" ? "board.twDetailOk" : "board.detailOk")}</div>
                 ) : (
                   <ul className="detail-list">
                     {detailing[selectedSid].issues.map((d, i) => (
@@ -981,9 +1005,19 @@ export function BeamBoard() {
                   </ul>
                 )}
                 <div className="hint detail-note">
-                  {family !== "GB" ? t("board.detailNote") : gbGrade ? t("board.gbDetailNoteSeis", { grade: t(`designCode.gbGrade${gbGrade}`) }) : t("board.gbDetailNote")}
+                  {family === "TWN_ACI" ? t(twSmf ? "board.twDetailNoteSmf" : "board.twDetailNote") : family !== "GB" ? t("board.detailNote") : gbGrade ? t("board.gbDetailNoteSeis", { grade: t(`designCode.gbGrade${gbGrade}`) }) : t("board.gbDetailNote")}
                 </div>
               </div>
+            )}
+
+            {/* --- Taiwan development / lap lengths (標準圖 RC02 equations), cm --- */}
+            {family === "TWN_ACI" && selectedSid && rows[selectedSid] && (
+              <DevLengthBlock
+                fck={mat.fck}
+                fy={mat.fy}
+                materialDB={materialDB}
+                bars={SECTORS.flatMap((k) => [rows[selectedSid].sectors[k].topName, rows[selectedSid].sectors[k].botName])}
+              />
             )}
 
             {/* --- crack width (GB 50010 7.1.2), service moment read from Gen NX --- */}

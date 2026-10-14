@@ -239,6 +239,19 @@ route files under `api/`).
   (member boards) / stripped keeping Mu/Vu (beam) so it can't show as authoritative
   until re-checked.
 
+- **Taiwan (TWN-USD112, v1.11.0)** — formulas/clauses read from `COde/TW/knowledge/concrete-design-code-112`
+  (112年版; chapter 18 covers ONLY 特殊抗彎矩構架 + 特殊結構牆, no IMF/OMF). `rcBeamCheck` TWN branch:
+  β1/φ/Vc(a)(b)(c)+λs, compression steel (strain compatibility, KDS+TWN), stirrup fyt ≤ 420. Advisory
+  (never OK/NG): `twDetailing` (9.6.1.2/9.6.3.4/表9.7.6.2.2 + SMF 18.3 via the design-code panel's 耐震構架 =
+  `DesignCodeContext.twSmf`), `twColumnSeismic` (18.4), `twScwb`+`twColumnMn` (18.4.3.2 ΣMnc ≥ 1.2ΣMnb, bars
+  assumed evenly on the perimeter ⇒ approximate), `twWallSeismic` (18.7.2), `twDevLength` (25.4/25.5, cells
+  verified against 標準圖 RC02 — kgf/cm² native, ceil to cm). Material inputs can be kgf/cm²
+  (`stressUnit`, ×10 pairing). TWN-USD100/92 stay unlinked: no source text in the KB. `/ope/LCOM-CONC`
+  auto-gen is KDS-only; a 16-storey column recheck can exceed the 32 s app timeout ⇒ read back (the UI
+  shows "still running", `statusMsg.isRecheckPending`).
+- **Themes**: dark/light/teal via `<html data-theme>` (`src/lib/theme.ts`, key `rebar_theme`, inline script
+  in `index.html`); tokens in `style.css`, `--on-accent` for text on the accent.
+
 ## i18n rules
 
 - **Keep all 4 locales at key parity.** Adding/removing a key touches every file.

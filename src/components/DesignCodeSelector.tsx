@@ -16,8 +16,9 @@ const MATERIAL_DB_KEYS = Object.keys(MATERIAL_DBS);
 // the material dropdown here can be overridden away from its default.
 export function DesignCodeSelector() {
   const { t } = useI18n();
-  const { designCode, setDesignCode, materialDB, setMaterialDB, isOverride, gbGrade, setGbGrade, gbSystem, setGbSystem } = useDesignCode();
+  const { designCode, setDesignCode, materialDB, setMaterialDB, isOverride, gbGrade, setGbGrade, gbSystem, setGbSystem, twSmf, setTwSmf, stressUnit, setStressUnit } = useDesignCode();
   const isGb = rcCheckFamily(designCode) === "GB";
+  const isTw = rcCheckFamily(designCode) === "TWN_ACI";
 
   return (
     <section className="panel">
@@ -72,6 +73,28 @@ export function DesignCodeSelector() {
             </div>
           </div>
           <div className="hint" style={{ marginTop: 0 }}>{t("designCode.gbSeismicHint")}</div>
+        </>
+      )}
+      {/* TWN only: 特殊抗彎矩構架 turns on the 18.3 beam detailing rules. */}
+      {isTw && (
+        <>
+          <div className="row2 gb-seismic">
+            <div className="field">
+              <label htmlFor="twFrame">{t("designCode.twFrameLabel")}</label>
+              <select id="twFrame" value={twSmf ? "smf" : "none"} onChange={(e) => setTwSmf(e.target.value === "smf")}>
+                <option value="none">{t("designCode.twFrameNone")}</option>
+                <option value="smf">{t("designCode.twFrameSmf")}</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="stressUnit">{t("designCode.stressUnitLabel")}</label>
+              <select id="stressUnit" value={stressUnit} onChange={(e) => setStressUnit(e.target.value as "MPa" | "kgf/cm2")}>
+                <option value="MPa">MPa</option>
+                <option value="kgf/cm2">kgf/cm²</option>
+              </select>
+            </div>
+          </div>
+          <div className="hint" style={{ marginTop: 0 }}>{t("designCode.twSeismicHint")}</div>
         </>
       )}
       {isOverride ? (

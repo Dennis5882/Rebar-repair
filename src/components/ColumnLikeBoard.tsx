@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n/useI18n";
 import { useConn } from "../context/ConnContext";
 import { useLoadAll } from "../context/LoadAllContext";
-import { getProjectGeometry, listMemberSections, runAnalysis, runBraceCheck, runColumnCheck, saveRebar, sectionGroupLabel, type MemberCheckRow, type MemberSectionGroup } from "../lib/api";
+import { getProjectGeometry, listBeamSections, listMemberSections, runAnalysis, runBraceCheck, runColumnCheck, saveRebar, sectionGroupLabel, type BeamSectionsOk, type MemberCheckRow, type MemberSectionGroup } from "../lib/api";
 import { statusClass, statusText, type StatusMsg } from "../lib/statusMsg";
 import { compressKeyRanges } from "../lib/keyRange";
 import { EMPTY_COLUMN_FORM, buildColumnPayload, columnFormIssue, fillColumnForm, type FormState } from "../lib/columnRebarForm";
@@ -21,6 +21,10 @@ import { gbColumnSeismic, type ColumnSeisResult, type ColumnSituation } from "..
 import { classifyColumns, type ColumnClass } from "../lib/gbMemberClass";
 import type { ModelGeometry } from "../types/geometry";
 import { SeisCell, SeisDetail } from "./SeisDetail";
+import { TwColSeisBlock, type TwScwbCell } from "./TwColSeisBlock";
+import { computeScwb, type ScwbBeam, type ScwbColumn } from "../lib/twScwb";
+import { fillFromPayload } from "../lib/beamRebarForm";
+import { twColumnSeismic, type TwColResult } from "../lib/twColumnSeismic";
 import { PingfaBlock } from "./PingfaBlock";
 import { columnPingfa, columnPingfaLine, type ColumnPingfa } from "../lib/pingfa";
 
@@ -150,8 +154,10 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
   // GB + a seismic grade: 审图-style seismic column checks (axial ratio, ρmin,
   // dense-zone ties, ρv) — advisory, never folded into the Gen NX verdict.
   // Materials and Pu come from the CC-TABLE rows, so most rules wait for 재검토.
-  const { designCode, materialDB, gbGrade, gbSystem } = useDesignCode();
+  const { designCode, materialDB, gbGrade, gbSystem, twSmf } = useDesignCode();
   const showSeis = isColumn && rcCheckFamily(designCode) === "GB" && gbGrade > 0;
+  // Taiwan special moment frame: 112年版 18.4 column rules (advisory).
+  const showTwSeis = isColumn && rcCheckFamily(designCode) === "TWN_ACI" && twSmf;
   // 平法 for GB columns (any grade) — bar grade letters from the CC-TABLE fy/fys.
   const showPingfa = isColumn && rcCheckFamily(designCode) === "GB";
   const colCount = 8 + (showSeis ? 1 : 0) + (showPingfa ? 1 : 0);
@@ -165,7 +171,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     setSitOverride({});
   }, [sections]);
   useEffect(() => {
-    if (!showSeis || geo || Object.keys(sections).length === 0) return;
+    if (!(showSeis || showTwSeis) || geo || Object.keys(sections).length === 0) return;
     let live = true;
     getProjectGeometry(conn)
       .then((r) => {
@@ -176,7 +182,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSeis, sections, geo]);
+  }, [showSeis, showTwSeis, sections, geo]);
   const autoSit = useMemo(() => {
     const out: Record<string, ColumnSituation & { corners: number; bases: number }> = {};
     if (!geo) return out;
@@ -264,6 +270,102 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
     }
     return out;
   }, [showSeis, gbGrade, gbSystem, order, rows, check, materialDB, situation]);
+
+  // Strong-column / weak-beam (18.4.3.2) needs the framing beams' bars — loaded
+  // once from the same beam-sections endpoint the Beam board uses.
+  const [beamSecs, setBeamSecs] = useState<BeamSectionsOk | null>(null);
+  const [beamSecsLoading, setBeamSecsLoading] = useState(false);
+  useEffect(() => {
+    setBeamSecs(null);
+  }, [sections]);
+  useEffect(() => {
+    if (!showTwSeis || beamSecs || beamSecsLoading || Object.keys(sections).length === 0) return;
+    let live = true;
+    setBeamSecsLoading(true);
+    listBeamSections(conn)
+      .then((r) => {
+        if (live && r.ok) setBeamSecs(r);
+      })
+      .catch(() => {})
+      .finally(() => live && setBeamSecsLoading(false));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTwSeis, sections, beamSecs]);
+
+  const scwbBySect = useMemo(() => {
+    if (!showTwSeis || !geo || !beamSecs) return null;
+    const toMm = (s: string) => Number(lenToMm(s, beamSecs.unit)) || 0;
+    const dia = (label: string) => (label ? toModelDiameter(materialDB, label, "mm") : null);
+    const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const beamBy: Record<string, ScwbBeam> = {};
+    for (const [sid, grp] of Object.entries(beamSecs.sections)) {
+      if (grp.dimB == null || grp.dimH == null) continue;
+      const f = fillFromPayload(grp.payload);
+      const area = (name: string, cnt: string) => {
+        const d = dia(name);
+        return d ? Math.PI / 4 * d * d * num(cnt) : 0;
+      };
+      const end = (k: "I" | "J") => ({ topAs: area(f.sectors[k].topName, f.sectors[k].topNum), botAs: area(f.sectors[k].botName, f.sectors[k].botNum) });
+      const dias = (["I", "M", "J"] as const).flatMap((k) => [dia(f.sectors[k].topName) ?? 0, dia(f.sectors[k].botName) ?? 0]);
+      beamBy[sid] = { b: grp.dimB, h: grp.dimH, dt: toMm(f.dt), db: toMm(f.db), I: end("I"), J: end("J"), maxBarDia: Math.max(0, ...dias) };
+    }
+    return beamBy;
+  }, [showTwSeis, geo, beamSecs, materialDB]);
+
+  const scwb = useMemo(() => {
+    if (!scwbBySect || !geo) return null;
+    const dia = (label: string) => (label ? toModelDiameter(materialDB, label, "mm") : null);
+    const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    const colBy: Record<string, ScwbColumn> = {};
+    let fck: number | undefined;
+    let fy: number | undefined;
+    for (const sid of order) {
+      const r = rows[sid];
+      if (!r) continue;
+      const d = dia(r.form.mainName);
+      const mats = (r.dirty ? [] : check[sid] || []).filter((x) => x.fck != null);
+      if (mats[0]) {
+        fck ??= mats[0].fck;
+        fy ??= mats[0].fy;
+      }
+      if (!d) continue;
+      colBy[sid] = {
+        b: num(r.b),
+        h: num(r.h),
+        cover: num(r.form.doVal),
+        nBars: num(r.form.mainNum),
+        barArea: (Math.PI / 4) * d * d,
+        pu: mats.reduce((m, x) => Math.max(m, x.pu ?? 0), 0),
+      };
+    }
+    if (fck == null || fy == null) return { result: null, fy: 0 };
+    return { result: computeScwb(geo, scwbBySect, colBy, fck, fy), fy };
+  }, [scwbBySect, geo, order, rows, check, materialDB]);
+
+  const twSeis = useMemo(() => {
+    const out: Record<string, TwColResult> = {};
+    if (!showTwSeis) return out;
+    const dia = (label: string) => (label ? toModelDiameter(materialDB, label, "mm") : null);
+    const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    for (const sid of order) {
+      const r = rows[sid];
+      if (!r) continue;
+      const f = r.form;
+      out[sid] = twColumnSeismic(
+        num(r.b),
+        num(r.h),
+        num(f.doVal),
+        { dia: dia(f.mainName), num: num(f.mainNum) },
+        { dia: dia(f.endName), legY: num(f.endLegY), legZ: num(f.endLegZ), s: num(f.endDist) },
+        num(f.cenDist),
+        r.dirty ? undefined : check[sid],
+        situation(sid).hn
+      );
+    }
+    return out;
+  }, [showTwSeis, order, rows, check, materialDB, situation]);
 
   const pingfa = useMemo(() => {
     const out: Record<string, ColumnPingfa | null> = {};
@@ -560,7 +662,7 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                     <td className="mono">{f.hoopType}</td>
                     {showPingfa && <td className="mono cell-pingfa">{pingfa[sid] ? columnPingfaLine(pingfa[sid]!) || "—" : "—"}</td>}
                     {showSeis && <SeisCell res={seis[sid]} />}
-                    <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} warn={showSeis ? seis[sid]?.issues.length : 0} />
+                    <MemberVerdictCell v={v} genNxLabel={t("board.verdictGenNx")} warn={showSeis ? seis[sid]?.issues.length : showTwSeis ? twSeis[sid]?.issues.length : 0} />
                   </tr>
                 );
               })}
@@ -727,6 +829,22 @@ export function ColumnLikeBoard({ type, isColumn, ns, mainPlaceholder, hoopPlace
                     : null
                 }
                 noteKey="board.pingfaNoteColumn"
+              />
+            )}
+            {showTwSeis && twSeis[selectedSid] && (
+              <TwColSeisBlock
+                res={twSeis[selectedSid]}
+                waiting={!check[selectedSid] || selected.dirty}
+                scwbLoading={!beamSecs || !geo}
+                scwb={
+                  scwb?.result?.bySection[selectedSid]
+                    ? ({
+                        ...scwb.result.bySection[selectedSid],
+                        colSmallSide: Math.min(Number(selected.b) || 0, Number(selected.h) || 0),
+                        fy: scwb.fy,
+                      } as TwScwbCell)
+                    : null
+                }
               />
             )}
             {showSeis && seis[selectedSid] && (
