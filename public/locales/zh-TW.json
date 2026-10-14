@@ -1,5 +1,7 @@
 {
   "app.title": "QuickRebar NX API",
+  "meta.title": "QuickRebar NX API — Gen NX 配筋編輯",
+  "meta.desc": "透過 Open API 編輯 MIDAS Gen NX 模型中梁、柱、牆、支撐的配筋，並檢視設計檢核結果（OK/NG）。",
   "app.subtitle": "MIDAS Gen NX · 基於 Open API — 任何人皆可使用自己的 MAPI Key 連線並編輯自己的 Gen NX 模型。",
   "app.footerHint": "所有配筋分頁（梁/柱/牆/支撐）的尺寸、間距、保護層數值均以 mm 顯示與輸入，儲存時轉換為模型的作用中長度單位。斷面預覽為示意圖，可能與實際配置/間距有所不同（梁/柱/支撐以中央斷面為準，牆以平面斷面為準）。",
   "lang.label": "語言",
@@ -625,6 +627,7 @@
   "guide.codeBarsHeaderXref": "對應規格（美國）",
   "guide.codeConfirmWarning": "此設計規範的材料規格對應可能存在地區差異 — 建議於實際專案中再次確認。",
 
+  "guide.release.v1_11_1.item1": "分享連結的預覽現在會依語言顯示（/ko/、/en/、/zh-CN/、/zh-TW/ 路徑），開啟該連結即以對應語言啟動。",
   "guide.release.v1_11_0.item1": "台灣規範（TWN-USD112）梁新增細部規定提示——最少受撓鋼筋、最少剪力鋼筋、箍筋最大間距（112年版 9.6.1.2、9.6.3.4、表9.7.6.2.2）。",
   "guide.release.v1_11_0.item2": "在設計規範面板選擇台灣特殊抗彎矩構架後，同時檢核第18.3節梁的規定（梁寬、鋼筋比上限、正負彎矩比、連續鋼筋、端部箍筋間距）。",
   "guide.release.v1_11_0.item3": "台灣規範的預估剪力強度依表20.2.2.4(a)將箍筋降伏強度限制為 4,200 kgf/cm²（420 MPa）。",

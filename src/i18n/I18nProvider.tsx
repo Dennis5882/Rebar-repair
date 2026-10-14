@@ -43,7 +43,16 @@ async function detectFromIp(): Promise<LangCode | null> {
   return null;
 }
 
+// Shared links carry the language in the path (/zh-CN/, /ko/ …, case-insensitive);
+// it wins over the saved choice so the link opens in the language it previewed.
+function langFromPath(): LangCode | null {
+  const seg = (location.pathname.split("/")[1] || "").toLowerCase();
+  return LANGS.find((l) => l.code.toLowerCase() === seg)?.code ?? null;
+}
+
 async function detectInitialLang(): Promise<LangCode> {
+  const fromPath = langFromPath();
+  if (fromPath) return fromPath;
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && isLangCode(saved)) return saved;

@@ -1,5 +1,7 @@
 {
   "app.title": "QuickRebar NX API",
+  "meta.title": "QuickRebar NX API — Gen NX rebar editor",
+  "meta.desc": "Edit beam, column, wall and brace rebar in a MIDAS Gen NX model through the Open API and see the design-check verdict (OK/NG).",
   "app.subtitle": "MIDAS Gen NX · Powered by Open API — anyone can connect with their own MAPI Key and edit their own Gen NX model.",
   "app.footerHint": "All rebar tabs (beam/column/wall/brace) display and take dimension, spacing, and cover values in mm, converting to the model's active length unit on save. Section previews are schematic and may differ from the actual layout/spacing (beam/column/brace use the center section, wall uses the plan section).",
   "lang.label": "Language",
@@ -625,6 +627,7 @@
   "guide.codeBarsHeaderXref": "US Cross-ref",
   "guide.codeConfirmWarning": "This design code's material mapping has regional variation — please double-check for your actual project.",
 
+  "guide.release.v1_11_1.item1": "Shared links now preview in the matching language (/ko/, /en/, /zh-CN/, /zh-TW/ paths); opening such a link starts the app in that language.",
   "guide.release.v1_11_0.item1": "Taiwan (TWN-USD112) beams now get detailing warnings — minimum flexural steel, minimum shear steel and maximum stirrup spacing (112 edition 9.6.1.2, 9.6.3.4, Table 9.7.6.2.2).",
   "guide.release.v1_11_0.item2": "Choosing Taiwan special moment frame in the design code panel also checks the 18.3 beam rules (width, reinforcement-ratio cap, positive/negative moment ratio, continuous bars, end stirrup spacing).",
   "guide.release.v1_11_0.item3": "The Taiwan estimated shear strength now caps stirrup yield at 4,200 kgf/cm² (420 MPa) per Table 20.2.2.4(a).",

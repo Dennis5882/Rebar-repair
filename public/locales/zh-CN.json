@@ -1,5 +1,7 @@
 {
   "app.title": "QuickRebar NX API",
+  "meta.title": "QuickRebar NX API — Gen NX 配筋编辑",
+  "meta.desc": "通过 Open API 编辑 MIDAS Gen NX 模型中梁、柱、墙、支撑的配筋，并查看设计验算结果（OK/NG）。",
   "app.subtitle": "MIDAS Gen NX · 基于 Open API — 任何人都可以使用自己的 MAPI Key 连接并编辑自己的 Gen NX 模型。",
   "app.footerHint": "所有配筋选项卡（梁/柱/墙/支撑）的尺寸、间距、保护层数值均以 mm 显示和输入，保存时转换为模型的活动长度单位。截面预览为示意图，可能与实际配置/间距有所不同（梁/柱/支撑以中央截面为准，墙以平面截面为准）。",
   "lang.label": "语言",
@@ -625,6 +627,7 @@
   "guide.codeBarsHeaderXref": "对应规格（美国）",
   "guide.codeConfirmWarning": "该设计规范的材料规格对应关系可能存在地区差异 — 建议在实际项目中再次确认。",
 
+  "guide.release.v1_11_1.item1": "分享链接的预览现在会按语言显示（/ko/、/en/、/zh-CN/、/zh-TW/ 路径），打开该链接即以对应语言启动。",
   "guide.release.v1_11_0.item1": "台湾规范（TWN-USD112）梁新增构造规定提示——最小受弯钢筋、最小剪力钢筋、箍筋最大间距（112年版 9.6.1.2、9.6.3.4、表9.7.6.2.2）。",
   "guide.release.v1_11_0.item2": "在设计规范面板选择台湾特殊抗弯矩框架后，同时检查 18.3 节梁的规定（梁宽、配筋率上限、正负弯矩比、连续钢筋、端部箍筋间距）。",
   "guide.release.v1_11_0.item3": "台湾规范的预估抗剪强度按表20.2.2.4(a)将箍筋屈服强度限制为 4,200 kgf/cm²（420 MPa）。",
