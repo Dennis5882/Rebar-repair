@@ -8,7 +8,8 @@ import releases from "../data/releases.json";
 // four locales — so a version bump can never ship without its release notes.
 export interface Release {
   version: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (KST)
+  time?: string; // HH:MM (KST); absent on the oldest entries
   id: string; // locale key segment
   items: number;
 }

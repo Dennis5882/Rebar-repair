@@ -627,6 +627,7 @@
   "guide.codeBarsHeaderXref": "US Cross-ref",
   "guide.codeConfirmWarning": "This design code's material mapping has regional variation — please double-check for your actual project.",
 
+  "guide.release.v1_11_2.item1": "Release notes now show the release time (KST) as well as the date.",
   "guide.release.v1_11_1.item1": "Shared links now preview in the matching language (/ko/, /en/, /zh-CN/, /zh-TW/ paths); opening such a link starts the app in that language.",
   "guide.release.v1_11_0.item1": "Taiwan (TWN-USD112) beams now get detailing warnings — minimum flexural steel, minimum shear steel and maximum stirrup spacing (112 edition 9.6.1.2, 9.6.3.4, Table 9.7.6.2.2).",
   "guide.release.v1_11_0.item2": "Choosing Taiwan special moment frame in the design code panel also checks the 18.3 beam rules (width, reinforcement-ratio cap, positive/negative moment ratio, continuous bars, end stirrup spacing).",

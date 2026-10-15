@@ -77,7 +77,7 @@ export function GuideDrawer() {
               {RELEASES.map((r) => (
                 <div className="release-entry" key={r.version}>
                   <div className="release-date">
-                    <span className="release-ver">v{r.version}</span> · {r.date}
+                    <span className="release-ver">v{r.version}</span> · {r.date}{r.time ? ` ${r.time}` : ""}
                   </div>
                   <ul>
                     {Array.from({ length: r.items }, (_, i) => (

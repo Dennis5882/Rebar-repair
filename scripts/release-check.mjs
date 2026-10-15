@@ -24,6 +24,7 @@ const ids = new Set();
 releases.forEach((r, i) => {
   if (!/^\d+\.\d+\.\d+$/.test(r.version)) errors.push(`bad version "${r.version}"`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) errors.push(`${r.version}: bad date "${r.date}"`);
+  if (r.time !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time)) errors.push(`${r.version}: bad time "${r.time}"`);
   if (!(Number.isInteger(r.items) && r.items > 0)) errors.push(`${r.version}: items must be ≥ 1`);
   if (ids.has(r.id)) errors.push(`duplicate id ${r.id}`);
   ids.add(r.id);

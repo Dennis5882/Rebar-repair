@@ -1,6 +1,6 @@
 // Opens a new version: `npm run release -- patch|minor|major [--items N]`.
 // Bumps package.json (+ package-lock.json), prepends the entry to
-// src/data/releases.json (date = today KST), and inserts EMPTY note keys
+// src/data/releases.json (date + time = now KST), and inserts EMPTY note keys
 // guide.release.<id>.item1..N into all four locales. The build stays red
 // (i18n:check + release-check) until every note is written — the bump and its
 // release notes always land in the same commit.
@@ -24,7 +24,9 @@ else if (level === "minor") [mi, pa] = [mi + 1, 0];
 else pa += 1;
 const version = `${ma}.${mi}.${pa}`;
 const id = "v" + version.replace(/\./g, "_");
-const kst = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+const kstNow = new Date(Date.now() + 9 * 3600 * 1000).toISOString();
+const kst = kstNow.slice(0, 10);
+const kstTime = kstNow.slice(11, 16); // HH:MM KST
 
 const setVersion = (txt) => txt.replace(/("version":\s*")[^"]+(")/, `$1${version}$2`);
 writeFileSync(pkgPath, setVersion(pkgTxt));
@@ -39,7 +41,7 @@ try {
 
 const relPath = new URL("src/data/releases.json", root);
 const rel = JSON.parse(readFileSync(relPath, "utf8"));
-rel.unshift({ version, date: kst, id, items });
+rel.unshift({ version, date: kst, time: kstTime, id, items });
 writeFileSync(relPath, "[\n" + rel.map((r) => "  " + JSON.stringify(r).replace(/,"/g, ', "').replace(/":/g, '": ').replace(/^\{/, "{ ").replace(/\}$/, " }")).join(",\n") + "\n]\n");
 
 // Locale files use blank-line group separators — splice lines, never re-serialize.
@@ -55,5 +57,5 @@ for (const lang of ["en", "ko", "zh-CN", "zh-TW"]) {
   writeFileSync(p, lines.join(eol));
 }
 
-console.log(`v${version} (${kst}) opened with ${items} empty note(s): guide.release.${id}.item1..${items}`);
+console.log(`v${version} (${kst} ${kstTime} KST) opened with ${items} empty note(s): guide.release.${id}.item1..${items}`);
 console.log("Write them in en / ko / zh-CN / zh-TW — the build fails until every note is filled.");
